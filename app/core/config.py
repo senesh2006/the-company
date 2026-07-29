@@ -35,6 +35,10 @@ class Settings(BaseSettings):
             path=f"{values.get('POSTGRES_DB') or ''}",
         )
 
+    # Supabase Client
+    SUPABASE_URL: Optional[str] = None
+    SUPABASE_KEY: Optional[str] = None
+
     # Redis
     REDIS_URL: RedisDsn
 
