@@ -7,6 +7,7 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "The Company"
     API_V1_STR: str = "/api/v1"
     OPENAI_API_KEY: Optional[str] = None
+    FIREWORKS_API_KEY: Optional[str] = None
 
     # Security
     SECRET_KEY: str

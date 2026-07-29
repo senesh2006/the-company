@@ -32,7 +32,11 @@ def create_team_graph(business_id: str, task_id: str):
         register_default_tools(business_id, agent["role"], agent["id"], task_id)
         
     # Build Supervisor Node
-    llm = ChatOpenAI(model="gpt-4o", api_key=settings.OPENAI_API_KEY)
+    llm = ChatOpenAI(
+        model="accounts/fireworks/models/llama-v3p1-70b-instruct" if settings.FIREWORKS_API_KEY else "gpt-4o", 
+        api_key=settings.FIREWORKS_API_KEY or settings.OPENAI_API_KEY,
+        base_url="https://api.fireworks.ai/inference/v1" if settings.FIREWORKS_API_KEY else None
+    )
     
     class Router(BaseModel):
         """Worker to route to next. If no workers needed, route to FINISH."""
