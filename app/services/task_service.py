@@ -75,3 +75,58 @@ class TaskService:
         except Exception as e:
             logger.error(f"Error updating task {task_id} status to {status}: {e}")
             raise e
+
+    # --- Queue Specific Methods ---
+
+    def queue_task(self, business_id: str, description: str, priority: int = 0) -> dict[str, Any]:
+        """Creates a new task with status 'queued' and a specific priority."""
+        try:
+            data = {
+                "business_id": business_id,
+                "description": description,
+                "status": "queued",
+                "priority": priority
+            }
+            response = self.client.table("tasks").insert(data).execute()
+            return response.data[0] if response.data else {}
+        except Exception as e:
+            logger.error(f"Error queuing task for business {business_id}: {e}")
+            raise e
+
+    def claim_task(self, business_id: str, agent_id: str) -> Optional[dict[str, Any]]:
+        """Atomically claims the highest priority queued task for the given agent."""
+        try:
+            # We call the RPC we created in the migration
+            response = self.client.rpc("claim_next_task", {
+                "p_business_id": business_id,
+                "p_agent_id": agent_id
+            }).execute()
+            
+            return response.data[0] if response.data else None
+        except Exception as e:
+            logger.error(f"Error claiming task for agent {agent_id}: {e}")
+            raise e
+
+    def requeue_task(self, task_id: str) -> dict[str, Any]:
+        """Requeues a failed or running task back to 'queued' state and clears the agent."""
+        try:
+            response = self.client.table("tasks")\
+                .update({
+                    "status": "queued",
+                    "agent_id": None
+                })\
+                .eq("id", task_id)\
+                .execute()
+            return response.data[0] if response.data else {}
+        except Exception as e:
+            logger.error(f"Error requeuing task {task_id}: {e}")
+            raise e
+
+    def complete_task(self, task_id: str) -> dict[str, Any]:
+        """Marks a task as completed."""
+        return self.update_task_status(task_id, "completed")
+
+    def fail_task(self, task_id: str) -> dict[str, Any]:
+        """Marks a task as failed."""
+        return self.update_task_status(task_id, "failed")
+
