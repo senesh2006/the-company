@@ -4,14 +4,19 @@ from langchain_openai import ChatOpenAI
 from langgraph.graph import StateGraph, END
 from langgraph.prebuilt import ToolNode
 from app.agents.state import AgentState
-from app.agents.tools import create_supabase_tools
+from app.agents.tools import register_default_tools
+from app.agents.tool_registry import registry
 from app.core.config import settings
 
-def create_agent_graph(business_id: str):
+def create_agent_graph(business_id: str, role: str = "assistant"):
     """
-    Creates and compiles the LangGraph StateGraph for the given business.
+    Creates and compiles the LangGraph StateGraph for the given business and role.
     """
-    tools = create_supabase_tools(business_id)
+    # Register default tools for the specified role
+    register_default_tools(business_id, role)
+    
+    # Retrieve LangChain-compatible tools from the registry
+    tools = registry.get_langchain_tools(role)
     llm = ChatOpenAI(model="gpt-4o", api_key=settings.OPENAI_API_KEY).bind_tools(tools)
     
     # Node: Plan
