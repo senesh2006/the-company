@@ -14,7 +14,7 @@ class AgentRunner:
         self.role = role
         self.thread_id = f"{business_id}:{agent_id}:{task_id}"
         
-        self.graph = create_agent_graph(self.business_id, self.role)
+        self.graph = create_agent_graph(self.business_id, self.role, self.agent_id, self.task_id)
         
         # We need a psycopg connection pool for the PostgresSaver
         # In a real app, this pool should be global and passed in to avoid reconnects

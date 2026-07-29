@@ -5,6 +5,10 @@ from pydantic import BaseModel
 from langchain_core.tools import StructuredTool
 from app.core.logging import logger
 
+from app.services.cost_service import CostService
+
+cost_service = CostService()
+
 class BaseTool(ABC):
     """
     Abstract base class for all agent tools.
@@ -13,6 +17,11 @@ class BaseTool(ABC):
     description: str
     args_schema: Type[BaseModel]
     cost_estimate: float = 0.0
+    
+    # Metadata for cost tracking
+    business_id: Optional[str] = None
+    agent_id: Optional[str] = None
+    task_id: Optional[str] = None
 
     @abstractmethod
     def _run(self, **kwargs) -> Any:
@@ -24,10 +33,20 @@ class BaseTool(ABC):
         Wraps the _run method to provide logging and cost tracking.
         """
         logger.info(f"Executing Tool: {self.name} | Estimated Cost: ${self.cost_estimate}")
-        # TODO: In the future, write this cost_estimate to the `cost_records` Supabase table.
         try:
             result = self._run(**kwargs)
             logger.info(f"Completed Tool: {self.name}")
+            
+            if self.business_id:
+                cost_service.log_cost(
+                    business_id=self.business_id,
+                    agent_id=self.agent_id,
+                    task_id=self.task_id,
+                    amount=self.cost_estimate,
+                    record_type="tool",
+                    description=f"Tool execution: {self.name}"
+                )
+                
             return result
         except Exception as e:
             logger.error(f"Tool {self.name} failed: {str(e)}")

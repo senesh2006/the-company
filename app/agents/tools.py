@@ -186,7 +186,7 @@ class StartAgentTool(BaseTool):
 
 # --- Registration Helper ---
 
-def register_default_tools(business_id: str, role: str = "assistant"):
+def register_default_tools(business_id: str, role: str = "assistant", agent_id: str = None, task_id: str = None):
     """
     Registers the default tools for the specified agent role.
     This should be called when initializing the agent's runner.
@@ -199,7 +199,6 @@ def register_default_tools(business_id: str, role: str = "assistant"):
         SendEmailTool(),
         CreateCalendarEventTool()
     ]
-    registry.register_tools(role, base_tools)
     
     # Coordinator exclusive tools
     if role == "coordinator":
@@ -209,4 +208,13 @@ def register_default_tools(business_id: str, role: str = "assistant"):
             AssignTaskTool(business_id=business_id),
             StartAgentTool(business_id=business_id)
         ]
-        registry.register_tools(role, coordinator_tools)
+        base_tools.extend(coordinator_tools)
+
+    # Inject metadata for cost tracking
+    for tool in base_tools:
+        tool.business_id = business_id
+        tool.agent_id = agent_id
+        tool.task_id = task_id
+
+    # Register in memory (replaces existing list for that role to prevent duplicates in singleton if called repeatedly)
+    registry._tools[role] = base_tools

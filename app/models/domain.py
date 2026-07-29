@@ -46,4 +46,7 @@ class CostRecord(DBModel):
     task_id: Optional[UUID] = None
     amount: float
     description: Optional[str] = None
+    input_tokens: Optional[int] = 0
+    output_tokens: Optional[int] = 0
+    record_type: str = "unknown"
     created_at: datetime

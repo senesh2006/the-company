@@ -7,13 +7,16 @@ from app.agents.state import AgentState
 from app.agents.tools import register_default_tools
 from app.agents.tool_registry import registry
 from app.core.config import settings
+from app.services.cost_service import CostService
 
-def create_agent_graph(business_id: str, role: str = "assistant"):
+cost_service = CostService()
+
+def create_agent_graph(business_id: str, role: str = "assistant", agent_id: str = None, task_id: str = None):
     """
     Creates and compiles the LangGraph StateGraph for the given business and role.
     """
     # Register default tools for the specified role
-    register_default_tools(business_id, role)
+    register_default_tools(business_id, role, agent_id, task_id)
     
     # Retrieve LangChain-compatible tools from the registry
     tools = registry.get_langchain_tools(role)
@@ -39,6 +42,28 @@ def create_agent_graph(business_id: str, role: str = "assistant"):
         )
         
         response = llm.invoke([system_msg] + messages)
+        
+        # Log LLM Cost
+        if response.response_metadata and "token_usage" in response.response_metadata:
+            usage = response.response_metadata["token_usage"]
+            in_tokens = usage.get("prompt_tokens", 0)
+            out_tokens = usage.get("completion_tokens", 0)
+            
+            # GPT-4o pricing approximation
+            cost = (in_tokens * 0.000005) + (out_tokens * 0.000015)
+            
+            if cost > 0:
+                cost_service.log_cost(
+                    business_id=business_id,
+                    agent_id=agent_id,
+                    task_id=task_id,
+                    amount=cost,
+                    record_type="llm",
+                    description="LLM Inference",
+                    input_tokens=in_tokens,
+                    output_tokens=out_tokens
+                )
+        
         return {
             "messages": [response],
             "step_count": step_count + 1
