@@ -100,6 +100,90 @@ class CreateCalendarEventTool(BaseTool):
         # MOCK IMPLEMENTATION
         return f"Calendar event '{title}' scheduled from {start_time} to {end_time} with {len(attendees)} attendees."
 
+# --- Coordinator Tools ---
+
+from app.services.task_service import TaskService
+import concurrent.futures
+
+task_service = TaskService()
+thread_pool = concurrent.futures.ThreadPoolExecutor(max_workers=10)
+
+class ListAgentsTool(BaseTool):
+    name = "list_agents"
+    description = "Lists all available agents for the current business."
+    args_schema = BaseModel # No inputs needed, but BaseModel required by Pydantic
+    cost_estimate = 0.001
+    
+    def __init__(self, business_id: str):
+        self.business_id = business_id
+        
+    def _run(self) -> str:
+        agents = task_service.list_agents(self.business_id)
+        return json.dumps(agents)
+
+class CreateTaskInput(BaseModel):
+    description: str = Field(description="The description of the task to be done.")
+
+class CreateTaskTool(BaseTool):
+    name = "create_task"
+    description = "Creates a new task in the database."
+    args_schema = CreateTaskInput
+    cost_estimate = 0.005
+    
+    def __init__(self, business_id: str):
+        self.business_id = business_id
+
+    def _run(self, description: str) -> str:
+        task = task_service.create_task(self.business_id, description)
+        return f"Created task successfully: {json.dumps(task)}"
+
+class AssignTaskInput(BaseModel):
+    task_id: str = Field(description="The UUID of the task")
+    agent_id: str = Field(description="The UUID of the agent")
+
+class AssignTaskTool(BaseTool):
+    name = "assign_task"
+    description = "Assigns an agent to a specific task."
+    args_schema = AssignTaskInput
+    cost_estimate = 0.002
+    
+    def __init__(self, business_id: str):
+        self.business_id = business_id
+
+    def _run(self, task_id: str, agent_id: str) -> str:
+        task = task_service.assign_task(task_id, agent_id)
+        return f"Assigned task successfully: {json.dumps(task)}"
+
+class StartAgentInput(BaseModel):
+    agent_id: str = Field(description="The UUID of the agent to start")
+    task_id: str = Field(description="The UUID of the task for the agent to work on")
+    instruction: str = Field(description="The initial instruction for the agent")
+
+class StartAgentTool(BaseTool):
+    name = "start_agent"
+    description = "Starts an agent's execution loop in the background. Use this after assigning a task."
+    args_schema = StartAgentInput
+    cost_estimate = 0.01
+    
+    def __init__(self, business_id: str):
+        self.business_id = business_id
+
+    def _run(self, agent_id: str, task_id: str, instruction: str) -> str:
+        # Import inside to prevent circular dependency
+        from app.agents.runner import AgentRunner
+        
+        def run_agent_in_background():
+            try:
+                # We assume the agent role is 'specialist' for spawned agents
+                runner = AgentRunner(self.business_id, agent_id, task_id, role="specialist")
+                runner.start(instruction)
+            except Exception as e:
+                logger.error(f"Background agent run failed: {e}")
+
+        # Start the thread and return immediately so the coordinator isn't blocked
+        thread_pool.submit(run_agent_in_background)
+        return f"Started agent {agent_id} on task {task_id} in the background."
+
 # --- Registration Helper ---
 
 def register_default_tools(business_id: str, role: str = "assistant"):
@@ -107,10 +191,22 @@ def register_default_tools(business_id: str, role: str = "assistant"):
     Registers the default tools for the specified agent role.
     This should be called when initializing the agent's runner.
     """
-    registry.register_tools(role, [
+    # Standard tools available to all roles
+    base_tools = [
         ReadSharedMemoryTool(business_id=business_id),
         WriteSharedMemoryTool(business_id=business_id),
         SearchWebTool(),
         SendEmailTool(),
         CreateCalendarEventTool()
-    ])
+    ]
+    registry.register_tools(role, base_tools)
+    
+    # Coordinator exclusive tools
+    if role == "coordinator":
+        coordinator_tools = [
+            ListAgentsTool(business_id=business_id),
+            CreateTaskTool(business_id=business_id),
+            AssignTaskTool(business_id=business_id),
+            StartAgentTool(business_id=business_id)
+        ]
+        registry.register_tools(role, coordinator_tools)

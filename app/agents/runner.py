@@ -7,13 +7,14 @@ from app.core.config import settings
 from app.agents.graph import create_agent_graph
 
 class AgentRunner:
-    def __init__(self, business_id: str, agent_id: str, task_id: str):
+    def __init__(self, business_id: str, agent_id: str, task_id: str, role: str = "assistant"):
         self.business_id = business_id
         self.agent_id = agent_id
         self.task_id = task_id
+        self.role = role
         self.thread_id = f"{business_id}:{agent_id}:{task_id}"
         
-        self.graph = create_agent_graph(self.business_id)
+        self.graph = create_agent_graph(self.business_id, self.role)
         
         # We need a psycopg connection pool for the PostgresSaver
         # In a real app, this pool should be global and passed in to avoid reconnects
