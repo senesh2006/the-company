@@ -78,6 +78,28 @@ class TaskService:
             logger.error(f"Error assigning task {task_id} to agent {agent_id}: {e}")
             raise e
 
+    def get_active_task_for_agent(self, agent_id: str) -> Optional[dict[str, Any]]:
+        """Finds the currently running task for a given agent_id."""
+        try:
+            response = self.client.table("tasks")\
+                .select("*")\
+                .eq("agent_id", agent_id)\
+                .eq("status", "running")\
+                .execute()
+            
+            if not response.data:
+                # Fallback to assigned tasks if none are strictly running
+                response = self.client.table("tasks")\
+                    .select("*")\
+                    .eq("agent_id", agent_id)\
+                    .eq("status", "assigned")\
+                    .execute()
+                    
+            return response.data[0] if response.data else None
+        except Exception as e:
+            logger.error(f"Error fetching active task for agent {agent_id}: {e}")
+            raise e
+
     def update_task_status(self, task_id: str, status: str) -> dict[str, Any]:
         """Updates the status of a task."""
         try:

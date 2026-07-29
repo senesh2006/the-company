@@ -108,3 +108,19 @@ class AgentRunner:
             # Continue execution from the last checkpoint
             result = app.invoke(None, config=config)
             return result
+
+    def inject_instruction(self, instruction: str):
+        """
+        Injects a new human instruction directly into the state of a running loop.
+        LangGraph will pick this up automatically during its next evaluation step.
+        """
+        with PostgresSaver(self.pool) as checkpointer:
+            app = self.graph.compile(checkpointer=checkpointer)
+            config = self._get_config()
+            
+            state = app.get_state(config)
+            if not state.values:
+                raise ValueError("Thread state not found.")
+                
+            app.update_state(config, {"messages": [HumanMessage(content=f"[SYSTEM INJECTION]: {instruction}")]})
+            return True

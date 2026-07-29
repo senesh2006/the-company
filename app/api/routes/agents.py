@@ -101,3 +101,50 @@ def kill_agent(business_id: str, agent_id: str, task_id: str):
     except Exception as e:
         logger.error(f"Failed to kill agent {agent_id}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+class InjectInstructionPayload(BaseModel):
+    instruction: str
+
+@router.post("/{agent_id}/inject-instruction")
+def inject_instruction(agent_id: str, payload: InjectInstructionPayload):
+    """
+    Injects a human instruction directly into a running agent loop.
+    """
+    try:
+        task = task_service.get_active_task_for_agent(agent_id)
+        if not task:
+            raise HTTPException(status_code=404, detail=f"No active task found for agent {agent_id}")
+            
+        runner = AgentRunner(task["business_id"], agent_id, task["id"])
+        success = runner.inject_instruction(payload.instruction)
+        if not success:
+            raise HTTPException(status_code=400, detail="Failed to inject instruction.")
+            
+        return {"status": "success", "message": "Instruction injected successfully."}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to inject instruction for agent {agent_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/{agent_id}/force-stop")
+def force_stop_agent(agent_id: str):
+    """
+    Immediately kills a running agent loop.
+    """
+    try:
+        task = task_service.get_active_task_for_agent(agent_id)
+        if not task:
+            raise HTTPException(status_code=404, detail=f"No active task found for agent {agent_id}")
+            
+        runner = AgentRunner(task["business_id"], agent_id, task["id"])
+        success = runner.kill()
+        if not success:
+            raise HTTPException(status_code=404, detail="Agent thread state not found.")
+            
+        return {"status": "success", "message": f"Agent {agent_id} force stopped."}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to force stop agent {agent_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
