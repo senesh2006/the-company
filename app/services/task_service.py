@@ -26,6 +26,20 @@ class TaskService:
             logger.error(f"Error listing agents for business {business_id}: {e}")
             raise e
 
+    def create_agent(self, business_id: str, name: str, role: str) -> dict[str, Any]:
+        """Creates a new agent."""
+        try:
+            data = {
+                "business_id": business_id,
+                "name": name,
+                "role": role
+            }
+            response = self.client.table("agents").insert(data).execute()
+            return response.data[0] if response.data else {}
+        except Exception as e:
+            logger.error(f"Error creating agent for business {business_id}: {e}")
+            raise e
+
     def create_task(self, business_id: str, description: str, status: str = "pending") -> dict[str, Any]:
         """Creates a new task."""
         try:
