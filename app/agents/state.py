@@ -2,20 +2,19 @@ import operator
 from typing import TypedDict, Annotated, Sequence, Any, Optional
 from langchain_core.messages import BaseMessage
 
-class AgentState(TypedDict):
+class TeamState(TypedDict):
     """
-    The state for the LangGraph agent runner.
+    The state for the LangGraph multi-agent supervisor team runner.
     """
     # Identifiers
     business_id: str
-    agent_id: str
     task_id: str
     
     # Message history
     messages: Annotated[Sequence[BaseMessage], operator.add]
     
-    # Current plan or reasoning scratchpad
-    plan: str
+    # The next worker to route to
+    next: str
     
     # Execution metrics
     step_count: int

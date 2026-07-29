@@ -3,15 +3,12 @@ from fastapi import APIRouter, HTTPException, BackgroundTasks
 from pydantic import BaseModel
 from typing import Optional
 
-from app.agents.runner import AgentRunner
+from app.agents.runner import TeamRunner
 from app.core.logging import logger
-
 from app.services.task_service import TaskService
 
 router = APIRouter()
 task_service = TaskService()
-
-# Thread pool for resuming agents in the background
 thread_pool = concurrent.futures.ThreadPoolExecutor(max_workers=10)
 
 class ResumePayload(BaseModel):
@@ -25,26 +22,24 @@ class HireAgentPayload(BaseModel):
 @router.post("/{business_id}")
 def hire_agent(business_id: str, payload: HireAgentPayload, background_tasks: BackgroundTasks):
     """
-    Hires a new agent, optionally creating an initial task and starting its loop.
+    Hires a new agent for the business team.
+    If a goal is provided, it submits a task to the team and starts the supervisor.
     """
     try:
         agent = task_service.create_agent(business_id, payload.name, payload.role)
         
         task = None
         if payload.goal:
-            # Create an assigned task for this new agent
-            task = task_service.create_task(business_id, payload.goal, status="assigned")
-            task_service.assign_task(task["id"], agent["id"])
+            task = task_service.create_task(business_id, payload.goal, status="running")
             
-            def start_agent_loop():
+            def start_team_loop():
                 try:
-                    runner = AgentRunner(business_id, agent["id"], task["id"], role=payload.role)
+                    runner = TeamRunner(business_id, task["id"])
                     runner.start(f"Your goal is: {payload.goal}")
                 except Exception as e:
-                    logger.error(f"Failed to start hired agent loop: {e}")
+                    logger.error(f"Failed to start team loop: {e}")
             
-            # Start loop in a background thread
-            background_tasks.add_task(lambda: thread_pool.submit(start_agent_loop))
+            background_tasks.add_task(lambda: thread_pool.submit(start_team_loop))
             
         return {
             "status": "success",
@@ -55,67 +50,69 @@ def hire_agent(business_id: str, payload: HireAgentPayload, background_tasks: Ba
         logger.error(f"Failed to hire agent: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.post("/{business_id}/{agent_id}/{task_id}/pause")
-def pause_agent(business_id: str, agent_id: str, task_id: str):
+@router.post("/{business_id}/team/pause")
+def pause_team(business_id: str):
     """
-    Pauses an active agent run. It will gracefully finish its current step.
+    Pauses the active team run.
     """
     try:
-        runner = AgentRunner(business_id, agent_id, task_id)
+        task = task_service.get_active_task_for_business(business_id)
+        if not task:
+            raise HTTPException(status_code=404, detail="No active task found for business.")
+            
+        runner = TeamRunner(business_id, task["id"])
         success = runner.pause()
         if not success:
-            raise HTTPException(status_code=404, detail="Agent thread state not found.")
-        return {"status": "success", "message": f"Agent {agent_id} paused."}
+            raise HTTPException(status_code=404, detail="Team thread state not found.")
+        return {"status": "success", "message": "Team paused."}
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"Failed to pause agent {agent_id}: {e}")
+        logger.error(f"Failed to pause team: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.post("/{business_id}/{agent_id}/{task_id}/resume")
-def resume_agent(business_id: str, agent_id: str, task_id: str, payload: ResumePayload, background_tasks: BackgroundTasks):
+@router.post("/{business_id}/team/resume")
+def resume_team(business_id: str, payload: ResumePayload, background_tasks: BackgroundTasks):
     """
-    Resumes a paused agent run in the background.
-    """
-    def background_resume():
-        try:
-            runner = AgentRunner(business_id, agent_id, task_id)
-            runner.resume(additional_instruction=payload.instruction)
-        except Exception as e:
-            logger.error(f"Failed to resume agent {agent_id} in background: {e}")
-
-    # Using FastAPI BackgroundTasks to offload the thread execution
-    background_tasks.add_task(lambda: thread_pool.submit(background_resume))
-    
-    return {"status": "success", "message": f"Agent {agent_id} resume initiated in the background."}
-
-@router.post("/{business_id}/{agent_id}/{task_id}/kill")
-def kill_agent(business_id: str, agent_id: str, task_id: str):
-    """
-    Kills an active or paused agent and marks the task as failed.
+    Resumes a paused team run in the background.
     """
     try:
-        runner = AgentRunner(business_id, agent_id, task_id)
-        success = runner.kill()
-        if not success:
-            raise HTTPException(status_code=404, detail="Agent thread state not found.")
-        return {"status": "success", "message": f"Agent {agent_id} killed and task failed."}
+        # For paused tasks, the status might still be running in the DB, just paused in state
+        task = task_service.get_active_task_for_business(business_id)
+        if not task:
+             response = task_service.client.table("tasks").select("*").eq("business_id", business_id).execute()
+             if response.data:
+                 task = response.data[-1]
+             else:
+                 raise HTTPException(status_code=404, detail="No tasks found for business.")
+                 
+        def background_resume():
+            try:
+                runner = TeamRunner(business_id, task["id"])
+                runner.resume(additional_instruction=payload.instruction)
+            except Exception as e:
+                logger.error(f"Failed to resume team in background: {e}")
+
+        background_tasks.add_task(lambda: thread_pool.submit(background_resume))
+        
+        return {"status": "success", "message": "Team resume initiated in the background."}
     except Exception as e:
-        logger.error(f"Failed to kill agent {agent_id}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 class InjectInstructionPayload(BaseModel):
     instruction: str
 
-@router.post("/{agent_id}/inject-instruction")
-def inject_instruction(agent_id: str, payload: InjectInstructionPayload):
+@router.post("/{business_id}/team/inject-instruction")
+def inject_instruction(business_id: str, payload: InjectInstructionPayload):
     """
-    Injects a human instruction directly into a running agent loop.
+    Injects a human instruction into the running team supervisor loop.
     """
     try:
-        task = task_service.get_active_task_for_agent(agent_id)
+        task = task_service.get_active_task_for_business(business_id)
         if not task:
-            raise HTTPException(status_code=404, detail=f"No active task found for agent {agent_id}")
+            raise HTTPException(status_code=404, detail="No active task found for business.")
             
-        runner = AgentRunner(task["business_id"], agent_id, task["id"])
+        runner = TeamRunner(business_id, task["id"])
         success = runner.inject_instruction(payload.instruction)
         if not success:
             raise HTTPException(status_code=400, detail="Failed to inject instruction.")
@@ -124,27 +121,27 @@ def inject_instruction(agent_id: str, payload: InjectInstructionPayload):
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Failed to inject instruction for agent {agent_id}: {e}")
+        logger.error(f"Failed to inject instruction: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.post("/{agent_id}/force-stop")
-def force_stop_agent(agent_id: str):
+@router.post("/{business_id}/team/force-stop")
+def force_stop_team(business_id: str):
     """
-    Immediately kills a running agent loop.
+    Immediately kills the running team loop.
     """
     try:
-        task = task_service.get_active_task_for_agent(agent_id)
+        task = task_service.get_active_task_for_business(business_id)
         if not task:
-            raise HTTPException(status_code=404, detail=f"No active task found for agent {agent_id}")
+            raise HTTPException(status_code=404, detail="No active task found for business.")
             
-        runner = AgentRunner(task["business_id"], agent_id, task["id"])
+        runner = TeamRunner(business_id, task["id"])
         success = runner.kill()
         if not success:
-            raise HTTPException(status_code=404, detail="Agent thread state not found.")
+            raise HTTPException(status_code=404, detail="Team thread state not found.")
             
-        return {"status": "success", "message": f"Agent {agent_id} force stopped."}
+        return {"status": "success", "message": "Team force stopped."}
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Failed to force stop agent {agent_id}: {e}")
+        logger.error(f"Failed to force stop team: {e}")
         raise HTTPException(status_code=500, detail=str(e))

@@ -1,125 +1,114 @@
-from typing import Literal
-from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
+from typing import Literal, Sequence, Dict, Any
+from langchain_core.messages import HumanMessage, AIMessage, SystemMessage, BaseMessage
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_openai import ChatOpenAI
-from langgraph.graph import StateGraph, END
-from langgraph.prebuilt import ToolNode
-from app.agents.state import AgentState
+from langgraph.graph import StateGraph, START, END
+from langgraph.prebuilt import create_react_agent
+from pydantic import BaseModel
+from app.agents.state import TeamState
 from app.agents.tools import register_default_tools
 from app.agents.tool_registry import registry
 from app.core.config import settings
 from app.services.cost_service import CostService
+from app.services.task_service import TaskService
 
 cost_service = CostService()
+task_service = TaskService()
 
-def create_agent_graph(business_id: str, role: str = "assistant", agent_id: str = None, task_id: str = None):
+def create_team_graph(business_id: str, task_id: str):
     """
-    Creates and compiles the LangGraph StateGraph for the given business and role.
+    Creates and compiles the LangGraph Multi-Agent Supervisor StateGraph.
     """
-    # Register default tools for the specified role
-    register_default_tools(business_id, role, agent_id, task_id)
+    # Fetch active agents for the business
+    agents = task_service.list_agents(business_id)
+    if not agents:
+        raise ValueError("No agents found for this business. Please hire agents first.")
+        
+    members = [f"{agent['name']}_{agent['role']}" for agent in agents]
+    options = ["FINISH"] + members
     
-    # Retrieve LangChain-compatible tools from the registry
-    tools = registry.get_langchain_tools(role)
-    llm = ChatOpenAI(model="gpt-4o", api_key=settings.OPENAI_API_KEY).bind_tools(tools)
+    # Register default tools for all agents
+    for agent in agents:
+        register_default_tools(business_id, agent["role"], agent["id"], task_id)
+        
+    # Build Supervisor Node
+    llm = ChatOpenAI(model="gpt-4o", api_key=settings.OPENAI_API_KEY)
     
-    # Node: Plan
-    def plan_node(state: AgentState):
-        messages = state.get("messages", [])
-        step_count = state.get("step_count", 0)
+    class Router(BaseModel):
+        """Worker to route to next. If no workers needed, route to FINISH."""
+        next: Literal[tuple(options)]
         
-        # Stop conditions check
-        if step_count > 15:
-            return {"status": "failed", "messages": [AIMessage(content="Max steps reached.")]}
-            
-        if state.get("status") in ["completed", "failed", "killed"]:
-            return {} # Do nothing if already terminal
-            
-        system_msg = SystemMessage(
-            content="You are an autonomous agent for 'The Company'. "
-                    "You have access to shared memory. "
-                    "Determine your next action, use tools if needed, or reply directly if the task is complete. "
-                    "If you achieve the goal, ensure you state that clearly."
-        )
-        
-        response = llm.invoke([system_msg] + messages)
-        
-        # Log LLM Cost
-        if response.response_metadata and "token_usage" in response.response_metadata:
-            usage = response.response_metadata["token_usage"]
-            in_tokens = usage.get("prompt_tokens", 0)
-            out_tokens = usage.get("completion_tokens", 0)
-            
-            # GPT-4o pricing approximation
-            cost = (in_tokens * 0.000005) + (out_tokens * 0.000015)
-            
-            if cost > 0:
-                cost_service.log_cost(
-                    business_id=business_id,
-                    agent_id=agent_id,
-                    task_id=task_id,
-                    amount=cost,
-                    record_type="llm",
-                    description="LLM Inference",
-                    input_tokens=in_tokens,
-                    output_tokens=out_tokens
-                )
-        
-        return {
-            "messages": [response],
-            "step_count": step_count + 1
-        }
-        
-    # Edge Router: Should we act or end?
-    def should_continue(state: AgentState) -> Literal["act", "observe", "update_memory", "END"]:
-        messages = state.get("messages", [])
-        if state.get("status") in ["completed", "failed", "killed", "paused"]:
-            return "END"
-            
-        last_message = messages[-1]
-        
-        # If there are tool calls, we act
-        if hasattr(last_message, "tool_calls") and len(last_message.tool_calls) > 0:
-            return "act"
-            
-        # Otherwise, the LLM has responded directly (goal achieved or asking for input)
-        return "update_memory"
-        
-    # Node: Act (Tools)
-    tool_node = ToolNode(tools)
-    
-    # Node: Update Memory (Sync to Supabase if anything is queued, or finalize)
-    def update_memory_node(state: AgentState):
-        # Here we could batch sync state.memory_updates to Supabase if we wanted to.
-        # Since tools do it immediately, we might just check if the task is complete.
-        status = state.get("status", "running")
-        last_message = state["messages"][-1]
-        
-        if not hasattr(last_message, "tool_calls") or len(last_message.tool_calls) == 0:
-            # If the LLM stopped calling tools, it might be done.
-            # A more robust system would check for a specific structured output tool like `complete_task`.
-            status = "completed"
-            
-        return {"status": status}
-
-    workflow = StateGraph(AgentState)
-    
-    workflow.add_node("plan", plan_node)
-    workflow.add_node("act", tool_node)
-    workflow.add_node("update_memory", update_memory_node)
-    
-    workflow.set_entry_point("plan")
-    
-    workflow.add_conditional_edges(
-        "plan",
-        should_continue,
-        {
-            "act": "act",
-            "update_memory": "update_memory",
-            "END": END
-        }
+    system_prompt = (
+        "You are a supervisor managing a conversation between the following workers: {members}. "
+        "Given the following user request or task, respond with the worker to act next. "
+        "Each worker will perform a task and respond with their results and status. "
+        "When the overarching task is finished, respond with FINISH."
     )
     
-    workflow.add_edge("act", "plan")
-    workflow.add_edge("update_memory", END)
+    prompt = ChatPromptTemplate.from_messages([
+        ("system", system_prompt),
+        MessagesPlaceholder(variable_name="messages"),
+        ("system", "Given the conversation above, who should act next? Or should we FINISH? Select one of: {options}"),
+    ])
+    
+    supervisor_chain = prompt | llm.with_structured_output(Router)
+    
+    def supervisor_node(state: TeamState):
+        if state.get("step_count", 0) > 20:
+            return {"next": "FINISH", "status": "failed", "messages": [AIMessage(content="Max steps reached.")]}
+            
+        if state.get("status") in ["completed", "failed", "killed", "paused"]:
+            return {"next": "FINISH"}
+            
+        result = supervisor_chain.invoke({
+            "messages": state["messages"],
+            "members": ", ".join(members),
+            "options": ", ".join(options)
+        })
+        
+        status = state.get("status", "running")
+        if result.next == "FINISH":
+            status = "completed"
+            
+        return {
+            "next": result.next,
+            "step_count": state.get("step_count", 0) + 1,
+            "status": status
+        }
+        
+    # Build Worker Nodes
+    def make_worker_node(agent_data: dict):
+        role = agent_data["role"]
+        name_role = f"{agent_data['name']}_{role}"
+        tools = registry.get_langchain_tools(role)
+        
+        worker_agent = create_react_agent(llm, tools, state_modifier=f"You are {agent_data['name']}, acting as a {role}.")
+        
+        def worker_node(state: TeamState):
+            result = worker_agent.invoke({"messages": state["messages"]})
+            last_message = result["messages"][-1]
+            return {
+                "messages": [HumanMessage(content=last_message.content, name=name_role)]
+            }
+            
+        return worker_node
+
+    workflow = StateGraph(TeamState)
+    
+    workflow.add_node("supervisor", supervisor_node)
+    
+    for agent in agents:
+        name_role = f"{agent['name']}_{agent['role']}"
+        workflow.add_node(name_role, make_worker_node(agent))
+        # Workers always return to supervisor
+        workflow.add_edge(name_role, "supervisor")
+        
+    workflow.add_conditional_edges(
+        "supervisor",
+        lambda x: x["next"],
+        {**{m: m for m in members}, "FINISH": END}
+    )
+    
+    workflow.add_edge(START, "supervisor")
     
     return workflow
