@@ -47,7 +47,7 @@ def create_agent_graph(business_id: str, role: str = "assistant"):
     # Edge Router: Should we act or end?
     def should_continue(state: AgentState) -> Literal["act", "observe", "update_memory", "END"]:
         messages = state.get("messages", [])
-        if state.get("status") in ["completed", "failed", "killed"]:
+        if state.get("status") in ["completed", "failed", "killed", "paused"]:
             return "END"
             
         last_message = messages[-1]

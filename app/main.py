@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
-from app.api.routes import health
+from app.api.routes import health, agents
 from app.core.logging import logger
 
 app = FastAPI(
@@ -20,6 +20,7 @@ app.add_middleware(
 
 # Include routers
 app.include_router(health.router, tags=["health"])
+app.include_router(agents.router, prefix=f"{settings.API_V1_STR}/agents", tags=["agents"])
 
 @app.on_event("startup")
 async def startup_event():

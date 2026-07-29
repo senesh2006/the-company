@@ -67,6 +67,25 @@ class AgentRunner:
                 return True
         return False
 
+    def kill(self):
+        """
+        Forces an agent run to stop by marking it as killed, and updates
+        the task status in Supabase to failed.
+        """
+        from app.services.task_service import TaskService
+        task_service = TaskService()
+        
+        with PostgresSaver(self.pool) as checkpointer:
+            app = self.graph.compile(checkpointer=checkpointer)
+            config = self._get_config()
+            state = app.get_state(config)
+            
+            if state.values:
+                app.update_state(config, {"status": "killed"})
+                task_service.update_task_status(self.task_id, "failed")
+                return True
+        return False
+
     def resume(self, additional_instruction: Optional[str] = None):
         """
         Resumes a paused agent run.
