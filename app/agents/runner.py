@@ -6,6 +6,7 @@ from langchain_core.messages import HumanMessage
 from app.core.config import settings
 from app.agents.graph import create_team_graph
 from app.services.task_service import TaskService
+from app.agents.state import AgentStatus
 
 class TeamRunner:
     def __init__(self, business_id: str, task_id: str):
@@ -44,9 +45,19 @@ class TeamRunner:
             "business_id": self.business_id,
             "task_id": self.task_id,
             "messages": [HumanMessage(content=initial_instruction)],
-            "next": "supervisor",
-            "step_count": 0,
-            "status": "running"
+            "active_agents": {a["id"]: AgentStatus(id=a["id"], role=a["role"], name=a["name"]) for a in self.task_service.list_agents(self.business_id)},
+            "task_graph": {},
+            "shared_context": {},
+            "pending_approvals": [],
+            "execution_mode": "autonomous",
+            "supervisor_thoughts": [],
+            "worker_results": [],
+            "risk_flags": [],
+            "cost_tracker": {},
+            "iteration": 0,
+            "max_iterations": 20,
+            "status": "running",
+            "active_sub_orchestrations": {}
         }
         
         # Mark the main task as running in the DB
