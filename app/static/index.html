@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Accentic OS - Multi-Agent DAG Visualizer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar glass-panel">
+            <div class="logo">
+                <h1>Accentic OS</h1>
+                <span class="badge">Multi-Agent DAG</span>
+            </div>
+            
+            <div class="control-panel">
+                <div class="input-group">
+                    <label for="task-input">Master Task</label>
+                    <textarea id="task-input" placeholder="e.g. Research the top 3 open source LLMs and write a summary..."></textarea>
+                </div>
+                
+                <button id="btn-launch" class="btn-primary">
+                    <span class="btn-text">Launch Agents</span>
+                    <div class="loader hidden" id="launch-loader"></div>
+                </button>
+            </div>
+            
+            <div class="status-panel">
+                <h3>System Status</h3>
+                <div class="status-item">
+                    <span class="status-dot online"></span>
+                    <span>Event Bus Connected</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-dot online"></span>
+                    <span id="business-id-display">Initializing...</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="topbar glass-panel">
+                <h2>Task Graph Visualizer</h2>
+                <div class="legend">
+                    <span class="legend-item"><span class="dot queued"></span> Queued</span>
+                    <span class="legend-item"><span class="dot running"></span> Running</span>
+                    <span class="legend-item"><span class="dot completed"></span> Completed</span>
+                    <span class="legend-item"><span class="dot failed"></span> Failed</span>
+                </div>
+            </header>
+            
+            <div class="canvas-container" id="canvas-container">
+                <!-- Task nodes will be injected here -->
+                <div class="empty-state" id="empty-state">
+                    <div class="glow-orb"></div>
+                    <h2>No Active Tasks</h2>
+                    <p>Enter a master task in the sidebar to spawn the agent swarm.</p>
+                </div>
+                <div id="dag-container" class="dag-container hidden">
+                    <!-- Tree view of tasks -->
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <script src="/static/script.js"></script>
+</body>
+</html>
