@@ -153,11 +153,11 @@ def create_team_graph(business_id: str, main_task_id: str):
     workflow.add_node("planner", planner_node)
     workflow.add_node("router", router_node)
     
-    # Add a worker node for each role
-    role_nodes = []
+    # Add a worker node for each agent
+    agent_nodes = []
     for agent in agents:
-        node_name = f"worker_{agent['role']}"
-        role_nodes.append(node_name)
+        node_name = f"worker_{agent['id']}"
+        agent_nodes.append(node_name)
         workflow.add_node(node_name, make_worker_node(agent))
         # Workers return to router to check for next tasks
         workflow.add_edge(node_name, "router")
@@ -195,16 +195,24 @@ def create_team_graph(business_id: str, main_task_id: str):
             # The worker node will mutate state when it completes.
             task_service.update_task_status(task.id, "running")
             
-            # Ensure the assignee role exists in our nodes
-            node_name = f"worker_{task.assignee_role}"
-            if node_name not in role_nodes:
+            # Find an agent with this role
+            candidate_agents = [a for a in agents if a['role'] == task.assignee_role]
+            if candidate_agents:
+                # Just pick the first one for now
+                agent_id = candidate_agents[0]['id']
+                node_name = f"worker_{agent_id}"
+            else:
                 # Fallback to first available worker if LLM hallucinates a role
-                node_name = role_nodes[0]
+                node_name = agent_nodes[0]
+                agent_id = agents[0]['id']
+                
+            # Optionally update agent_id in db
+            task_service.assign_task(task.id, agent_id)
                 
             sends.append(Send(node_name, {"task": task, "messages": state.get("messages", [])}))
             
         return sends
 
-    workflow.add_conditional_edges("router", conditional_dispatch, role_nodes + [END])
+    workflow.add_conditional_edges("router", conditional_dispatch, agent_nodes + [END])
     
     return workflow
