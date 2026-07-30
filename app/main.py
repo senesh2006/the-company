@@ -54,13 +54,19 @@ def setup_test_environment():
             biz_id = new_biz.data[0]["id"]
             
         # Ensure default agents exist for this business
-        agents = client.table("agents").select("id").eq("business_id", biz_id).execute()
-        if not agents.data:
-            default_agents = [
-                {"business_id": biz_id, "name": "Alice (Researcher)", "role": "Researcher"},
-                {"business_id": biz_id, "name": "Bob (Coder)", "role": "Coder"}
-            ]
-            client.table("agents").insert(default_agents).execute()
+        agents = client.table("agents").select("id, name, role").eq("business_id", biz_id).execute()
+        existing_roles = [a["role"] for a in agents.data] if agents.data else []
+        
+        default_agents_to_insert = []
+        if "Researcher" not in existing_roles:
+            default_agents_to_insert.append({"business_id": biz_id, "name": "Alice (Researcher)", "role": "Researcher"})
+        if "Coder" not in existing_roles:
+            default_agents_to_insert.append({"business_id": biz_id, "name": "Bob (Coder)", "role": "Coder"})
+        if "Accountant" not in existing_roles:
+            default_agents_to_insert.append({"business_id": biz_id, "name": "Charlie (Accountant)", "role": "Accountant"})
+            
+        if default_agents_to_insert:
+            client.table("agents").insert(default_agents_to_insert).execute()
             
         return {"business_id": biz_id}
     except Exception as e:

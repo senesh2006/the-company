@@ -126,6 +126,24 @@ class SpawnSubtaskTool(BaseTool):
         )
         return f"Spawned subtask successfully: ID {task['id']}. It will be routed by the dispatcher."
 
+class CalculateFinancialsInput(BaseModel):
+    revenue: float = Field(description="Total revenue")
+    expenses: float = Field(description="Total expenses")
+    tax_rate: float = Field(default=0.2, description="Tax rate as a decimal (e.g. 0.2 for 20%)")
+
+class CalculateFinancialsTool(BaseTool):
+    name = "calculate_financials"
+    description = "Calculates net profit, tax liability, and profit margin."
+    args_schema = CalculateFinancialsInput
+    cost_estimate = 0.05
+
+    def _run(self, revenue: float, expenses: float, tax_rate: float) -> str:
+        gross_profit = revenue - expenses
+        tax = max(0, gross_profit * tax_rate)
+        net_profit = gross_profit - tax
+        margin = (net_profit / revenue * 100) if revenue > 0 else 0
+        return f"Financial Report: Gross Profit: ${gross_profit:,.2f} | Tax Liability: ${tax:,.2f} | Net Profit: ${net_profit:,.2f} | Profit Margin: {margin:.1f}%"
+
 # --- Registration Helper ---
 
 def register_default_tools(business_id: str, role: str = "assistant", agent_id: str = None, task_id: str = None):
@@ -142,6 +160,9 @@ def register_default_tools(business_id: str, role: str = "assistant", agent_id: 
         CreateCalendarEventTool(),
         SpawnSubtaskTool(business_id=business_id, main_task_id=task_id)
     ]
+    
+    if role == "Accountant":
+        base_tools.append(CalculateFinancialsTool())
 
     # Inject metadata for cost tracking
     for tool in base_tools:
