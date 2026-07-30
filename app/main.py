@@ -77,11 +77,11 @@ def get_public_config():
     import os
     sb_url = settings.SUPABASE_URL or os.getenv("SUPABASE_URL")
     sb_key = (
-        settings.SUPABASE_KEY or 
+        os.getenv("SUPABASE_ANON_KEY") or 
         os.getenv("SUPABASE_KEY") or 
+        settings.SUPABASE_KEY or 
         os.getenv("SUPABASE_SECRET_KEY") or 
-        os.getenv("SUPABASE_SERVICE_ROLE_KEY") or 
-        os.getenv("SUPABASE_ANON_KEY")
+        os.getenv("SUPABASE_SERVICE_ROLE_KEY")
     )
     return {
         "supabaseUrl": sb_url,
