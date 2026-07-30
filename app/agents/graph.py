@@ -39,9 +39,10 @@ def create_team_graph(business_id: str, main_task_id: str):
     
     # Planner Models
     class TaskPlan(BaseModel):
+        id: str = Field(description="A unique temporary ID for this task (e.g. 'task_1')")
         description: str = Field(description="Clear description of the sub-task")
         assignee_role: str = Field(description=f"The role to assign this task to. Must be one of: {roles}")
-        dependencies: List[str] = Field(default=[], description="List of task IDs that must be completed before this one")
+        dependencies: List[str] = Field(default=[], description="List of temporary task IDs (e.g. ['task_1']) that must be completed before this one")
         
     class PlannerOutput(BaseModel):
         new_tasks: List[TaskPlan] = Field(description="New tasks to add to the plan")
@@ -49,8 +50,9 @@ def create_team_graph(business_id: str, main_task_id: str):
     planner_prompt = ChatPromptTemplate.from_messages([
         ("system", "You are the Lead Planner. Your goal is to break down the user's overarching objective into a DAG of specific tasks. "
                    "Assign each task to the most appropriate role from: {roles}. "
+                   "Give each task a temporary string 'id' (e.g. 'task_1'). "
                    "If tasks can be done in parallel, give them empty dependencies. "
-                   "If a task relies on the output of another, list the other task's ID in dependencies. "
+                   "If a task relies on the output of another, list the other task's temporary 'id' in dependencies. "
                    "Here is the current task graph: {current_tasks}. "
                    "Only generate NEW tasks if they are needed to complete the objective."),
         MessagesPlaceholder(variable_name="messages")
@@ -72,15 +74,22 @@ def create_team_graph(business_id: str, main_task_id: str):
             "current_tasks": str([t.model_dump() for t in current_tasks.values()])
         })
         
+        # 1st Pass: Map temporary LLM IDs to real UUIDs
+        id_mapping = {}
+        for tp in plan.new_tasks:
+            id_mapping[tp.id] = str(uuid.uuid4())
+            
         new_tasks_dict = {}
         for tp in plan.new_tasks:
-            # Map the string ID the LLM generated (or generate a real one if it didn't)
-            t_id = str(uuid.uuid4())
+            real_id = id_mapping[tp.id]
+            # Map dependencies to real UUIDs (ignore if LLM hallucinates an unknown ID)
+            real_dependencies = [id_mapping[dep] for dep in tp.dependencies if dep in id_mapping]
+            
             new_task = Task(
-                id=t_id,
+                id=real_id,
                 description=tp.description,
                 assignee_role=tp.assignee_role,
-                dependencies=tp.dependencies,
+                dependencies=real_dependencies,
                 status="queued"
             )
             # Sync to DB
@@ -89,11 +98,16 @@ def create_team_graph(business_id: str, main_task_id: str):
                 description=tp.description,
                 status="queued",
                 parent_id=main_task_id,
-                dependencies=tp.dependencies,
-                assignee_role=tp.assignee_role
+                dependencies=real_dependencies,
+                assignee_role=tp.assignee_role,
+                id=real_id
             )
-            new_task.id = db_task["id"] # Use DB ID
-            new_tasks_dict[new_task.id] = new_task
+            # Use the DB's UUID just in case it overrides
+            final_id = db_task.get("id", real_id)
+            new_task.id = final_id
+            
+            id_mapping[tp.id] = final_id
+            new_tasks_dict[final_id] = new_task
             
         return {"tasks": new_tasks_dict, "step_count": state.get("step_count", 0) + 1}
 

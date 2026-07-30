@@ -44,7 +44,7 @@ class TaskService:
             logger.error(f"Error creating agent for business {business_id}: {e}")
             raise e
 
-    def create_task(self, business_id: str, description: str, status: str = "pending", parent_id: Optional[str] = None, dependencies: List[str] = [], assignee_role: Optional[str] = None) -> dict[str, Any]:
+    def create_task(self, business_id: str, description: str, status: str = "pending", parent_id: Optional[str] = None, dependencies: List[str] = [], assignee_role: Optional[str] = None, id: Optional[str] = None) -> dict[str, Any]:
         """Creates a new task."""
         try:
             data = {
@@ -55,6 +55,9 @@ class TaskService:
                 "dependencies": dependencies,
                 "assignee_role": assignee_role
             }
+            if id:
+                data["id"] = id
+                
             response = self.client.table("tasks").insert(data).execute()
             return response.data[0] if response.data else {}
         except Exception as e:
