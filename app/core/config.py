@@ -10,39 +10,24 @@ class Settings(BaseSettings):
     FIREWORKS_API_KEY: Optional[str] = None
 
     # Security
-    SECRET_KEY: str
+    SECRET_KEY: str = "your-super-secret-key-change-in-production"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 8  # 8 days
 
-    # Postgres
-    POSTGRES_SERVER: str
-    POSTGRES_USER: str
-    POSTGRES_PASSWORD: str
-    POSTGRES_DB: str
+    # Postgres (Optional if using Supabase client)
+    POSTGRES_SERVER: Optional[str] = None
+    POSTGRES_USER: Optional[str] = None
+    POSTGRES_PASSWORD: Optional[str] = None
+    POSTGRES_DB: Optional[str] = None
     POSTGRES_PORT: int = 5432
-    SQLALCHEMY_DATABASE_URI: Optional[PostgresDsn] = None
-
-    @field_validator("SQLALCHEMY_DATABASE_URI", mode="before")
-    @classmethod
-    def assemble_db_connection(cls, v: Optional[str], info: ValidationInfo) -> Any:
-        if isinstance(v, str):
-            return v
-        values = info.data
-        return PostgresDsn.build(
-            scheme="postgresql+asyncpg",
-            username=values.get("POSTGRES_USER"),
-            password=values.get("POSTGRES_PASSWORD"),
-            host=values.get("POSTGRES_SERVER"),
-            port=values.get("POSTGRES_PORT"),
-            path=f"{values.get('POSTGRES_DB') or ''}",
-        )
+    SQLALCHEMY_DATABASE_URI: Optional[Any] = None
 
     # Supabase Client
     SUPABASE_URL: Optional[str] = None
     SUPABASE_KEY: Optional[str] = None
 
     # Redis
-    REDIS_URL: RedisDsn
+    REDIS_URL: Optional[str] = None
 
     ENVIRONMENT: str = "local"
 
