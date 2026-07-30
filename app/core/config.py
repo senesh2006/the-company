@@ -40,6 +40,11 @@ import os
 if not settings.SUPABASE_URL:
     settings.SUPABASE_URL = os.getenv("SUPABASE_URL")
 if not settings.SUPABASE_KEY:
-    settings.SUPABASE_KEY = os.getenv("SUPABASE_KEY") or os.getenv("SUPABASE_SECRET_KEY")
+    settings.SUPABASE_KEY = (
+        os.getenv("SUPABASE_KEY") or 
+        os.getenv("SUPABASE_SECRET_KEY") or 
+        os.getenv("SUPABASE_SERVICE_ROLE_KEY") or 
+        os.getenv("SUPABASE_ANON_KEY")
+    )
 if not settings.FIREWORKS_API_KEY:
     settings.FIREWORKS_API_KEY = os.getenv("FIREWORKS_API_KEY")
