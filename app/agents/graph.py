@@ -63,7 +63,7 @@ def create_team_graph(business_id: str, main_task_id: str):
         
         # If tasks exist and are running/queued, skip planning to avoid duplicates
         if any(t.status in ["queued", "running"] for t in current_tasks.values()):
-            return {} # Skip planning
+            return {"step_count": state.get("step_count", 0) + 1} # Skip planning
             
         # Call LLM to see if we need new tasks
         plan = planner_chain.invoke({
@@ -95,11 +95,11 @@ def create_team_graph(business_id: str, main_task_id: str):
             new_task.id = db_task["id"] # Use DB ID
             new_tasks_dict[new_task.id] = new_task
             
-        return {"tasks": new_tasks_dict}
+        return {"tasks": new_tasks_dict, "step_count": state.get("step_count", 0) + 1}
 
     def router_node(state: TeamState):
-        # Dummy node to allow routing
-        return {}
+        # Dummy node to allow routing. LangGraph requires at least one state update.
+        return {"step_count": state.get("step_count", 0) + 1}
 
     # Define Worker Nodes
     class WorkerState(BaseModel):
