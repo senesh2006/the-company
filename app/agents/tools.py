@@ -100,89 +100,31 @@ class CreateCalendarEventTool(BaseTool):
         # MOCK IMPLEMENTATION
         return f"Calendar event '{title}' scheduled from {start_time} to {end_time} with {len(attendees)} attendees."
 
-# --- Coordinator Tools ---
+class SpawnSubtaskInput(BaseModel):
+    description: str = Field(description="Description of the task to be done")
+    assignee_role: str = Field(description="Role of the agent to assign this to")
+    dependencies: List[str] = Field(default=[], description="List of task IDs that must be completed first")
 
-from app.services.task_service import TaskService
-import concurrent.futures
-
-task_service = TaskService()
-thread_pool = concurrent.futures.ThreadPoolExecutor(max_workers=10)
-
-class ListAgentsTool(BaseTool):
-    name = "list_agents"
-    description = "Lists all available agents for the current business."
-    args_schema = BaseModel # No inputs needed, but BaseModel required by Pydantic
-    cost_estimate = 0.001
-    
-    def __init__(self, business_id: str):
-        self.business_id = business_id
-        
-    def _run(self) -> str:
-        agents = task_service.list_agents(self.business_id)
-        return json.dumps(agents)
-
-class CreateTaskInput(BaseModel):
-    description: str = Field(description="The description of the task to be done.")
-
-class CreateTaskTool(BaseTool):
-    name = "create_task"
-    description = "Creates a new task in the database."
-    args_schema = CreateTaskInput
+class SpawnSubtaskTool(BaseTool):
+    name = "spawn_subtask"
+    description = "Spawns a new sub-task for the team. Use this when you need another agent to do something before you can finish, or to delegate work."
+    args_schema = SpawnSubtaskInput
     cost_estimate = 0.005
     
-    def __init__(self, business_id: str):
+    def __init__(self, business_id: str, main_task_id: str):
         self.business_id = business_id
+        self.main_task_id = main_task_id
 
-    def _run(self, description: str) -> str:
-        task = task_service.create_task(self.business_id, description)
-        return f"Created task successfully: {json.dumps(task)}"
-
-class AssignTaskInput(BaseModel):
-    task_id: str = Field(description="The UUID of the task")
-    agent_id: str = Field(description="The UUID of the agent")
-
-class AssignTaskTool(BaseTool):
-    name = "assign_task"
-    description = "Assigns an agent to a specific task."
-    args_schema = AssignTaskInput
-    cost_estimate = 0.002
-    
-    def __init__(self, business_id: str):
-        self.business_id = business_id
-
-    def _run(self, task_id: str, agent_id: str) -> str:
-        task = task_service.assign_task(task_id, agent_id)
-        return f"Assigned task successfully: {json.dumps(task)}"
-
-class StartAgentInput(BaseModel):
-    agent_id: str = Field(description="The UUID of the agent to start")
-    task_id: str = Field(description="The UUID of the task for the agent to work on")
-    instruction: str = Field(description="The initial instruction for the agent")
-
-class StartAgentTool(BaseTool):
-    name = "start_agent"
-    description = "Starts an agent's execution loop in the background. Use this after assigning a task."
-    args_schema = StartAgentInput
-    cost_estimate = 0.01
-    
-    def __init__(self, business_id: str):
-        self.business_id = business_id
-
-    def _run(self, agent_id: str, task_id: str, instruction: str) -> str:
-        # Import inside to prevent circular dependency
-        from app.agents.runner import AgentRunner
-        
-        def run_agent_in_background():
-            try:
-                # We assume the agent role is 'specialist' for spawned agents
-                runner = AgentRunner(self.business_id, agent_id, task_id, role="specialist")
-                runner.start(instruction)
-            except Exception as e:
-                logger.error(f"Background agent run failed: {e}")
-
-        # Start the thread and return immediately so the coordinator isn't blocked
-        thread_pool.submit(run_agent_in_background)
-        return f"Started agent {agent_id} on task {task_id} in the background."
+    def _run(self, description: str, assignee_role: str, dependencies: List[str] = []) -> str:
+        task = task_service.create_task(
+            business_id=self.business_id, 
+            description=description, 
+            status="queued", 
+            parent_id=self.main_task_id, 
+            dependencies=dependencies,
+            assignee_role=assignee_role
+        )
+        return f"Spawned subtask successfully: ID {task['id']}. It will be routed by the dispatcher."
 
 # --- Registration Helper ---
 
@@ -197,18 +139,9 @@ def register_default_tools(business_id: str, role: str = "assistant", agent_id: 
         WriteSharedMemoryTool(business_id=business_id),
         SearchWebTool(),
         SendEmailTool(),
-        CreateCalendarEventTool()
+        CreateCalendarEventTool(),
+        SpawnSubtaskTool(business_id=business_id, main_task_id=task_id)
     ]
-    
-    # Coordinator exclusive tools
-    if role == "coordinator":
-        coordinator_tools = [
-            ListAgentsTool(business_id=business_id),
-            CreateTaskTool(business_id=business_id),
-            AssignTaskTool(business_id=business_id),
-            StartAgentTool(business_id=business_id)
-        ]
-        base_tools.extend(coordinator_tools)
 
     # Inject metadata for cost tracking
     for tool in base_tools:

@@ -1,11 +1,14 @@
-from typing import Literal, Sequence, Dict, Any
+from typing import Literal, Sequence, Dict, Any, List
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage, BaseMessage
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_openai import ChatOpenAI
 from langgraph.graph import StateGraph, START, END
 from langgraph.prebuilt import create_react_agent
-from pydantic import BaseModel
-from app.agents.state import TeamState
+from langgraph.constants import Send
+from pydantic import BaseModel, Field
+import uuid
+
+from app.agents.state import TeamState, Task
 from app.agents.tools import register_default_tools
 from app.agents.tool_registry import registry
 from app.core.config import settings
@@ -15,104 +18,210 @@ from app.services.task_service import TaskService
 cost_service = CostService()
 task_service = TaskService()
 
-def create_team_graph(business_id: str, task_id: str):
+def create_team_graph(business_id: str, main_task_id: str):
     """
-    Creates and compiles the LangGraph Multi-Agent Supervisor StateGraph.
+    Creates and compiles the LangGraph Multi-Agent Task DAG.
     """
-    # Fetch active agents for the business
     agents = task_service.list_agents(business_id)
     if not agents:
         raise ValueError("No agents found for this business. Please hire agents first.")
         
-    members = [f"{agent['name']}_{agent['role']}" for agent in agents]
-    options = ["FINISH"] + members
+    roles = [agent['role'] for agent in agents]
     
-    # Register default tools for all agents
     for agent in agents:
-        register_default_tools(business_id, agent["role"], agent["id"], task_id)
+        register_default_tools(business_id, agent["role"], agent["id"], main_task_id)
         
-    # Build Supervisor Node
     llm = ChatOpenAI(
         model="accounts/fireworks/models/llama-v3p1-70b-instruct" if settings.FIREWORKS_API_KEY else "gpt-4o", 
         api_key=settings.FIREWORKS_API_KEY or settings.OPENAI_API_KEY,
         base_url="https://api.fireworks.ai/inference/v1" if settings.FIREWORKS_API_KEY else None
     )
     
-    class Router(BaseModel):
-        """Worker to route to next. If no workers needed, route to FINISH."""
-        next: Literal[tuple(options)]
+    # Planner Models
+    class TaskPlan(BaseModel):
+        description: str = Field(description="Clear description of the sub-task")
+        assignee_role: str = Field(description=f"The role to assign this task to. Must be one of: {roles}")
+        dependencies: List[str] = Field(default=[], description="List of task IDs that must be completed before this one")
         
-    system_prompt = (
-        "You are a supervisor managing a conversation between the following workers: {members}. "
-        "Given the following user request or task, respond with the worker to act next. "
-        "Each worker will perform a task and respond with their results and status. "
-        "When the overarching task is finished, respond with FINISH."
-    )
-    
-    prompt = ChatPromptTemplate.from_messages([
-        ("system", system_prompt),
-        MessagesPlaceholder(variable_name="messages"),
-        ("system", "Given the conversation above, who should act next? Or should we FINISH? Select one of: {options}"),
+    class PlannerOutput(BaseModel):
+        new_tasks: List[TaskPlan] = Field(description="New tasks to add to the plan")
+        
+    planner_prompt = ChatPromptTemplate.from_messages([
+        ("system", "You are the Lead Planner. Your goal is to break down the user's overarching objective into a DAG of specific tasks. "
+                   "Assign each task to the most appropriate role from: {roles}. "
+                   "If tasks can be done in parallel, give them empty dependencies. "
+                   "If a task relies on the output of another, list the other task's ID in dependencies. "
+                   "Here is the current task graph: {current_tasks}. "
+                   "Only generate NEW tasks if they are needed to complete the objective."),
+        MessagesPlaceholder(variable_name="messages")
     ])
     
-    supervisor_chain = prompt | llm.with_structured_output(Router)
+    planner_chain = planner_prompt | llm.with_structured_output(PlannerOutput)
     
-    def supervisor_node(state: TeamState):
-        if state.get("step_count", 0) > 20:
-            return {"next": "FINISH", "status": "failed", "messages": [AIMessage(content="Max steps reached.")]}
+    def planner_node(state: TeamState):
+        current_tasks = state.get("tasks", {})
+        
+        # If tasks exist and are running/queued, skip planning to avoid duplicates
+        if any(t.status in ["queued", "running"] for t in current_tasks.values()):
+            return {} # Skip planning
             
-        if state.get("status") in ["completed", "failed", "killed", "paused"]:
-            return {"next": "FINISH"}
-            
-        result = supervisor_chain.invoke({
+        # Call LLM to see if we need new tasks
+        plan = planner_chain.invoke({
             "messages": state["messages"],
-            "members": ", ".join(members),
-            "options": ", ".join(options)
+            "roles": ", ".join(roles),
+            "current_tasks": str([t.model_dump() for t in current_tasks.values()])
         })
         
-        status = state.get("status", "running")
-        if result.next == "FINISH":
-            status = "completed"
+        new_tasks_dict = {}
+        for tp in plan.new_tasks:
+            # Map the string ID the LLM generated (or generate a real one if it didn't)
+            t_id = str(uuid.uuid4())
+            new_task = Task(
+                id=t_id,
+                description=tp.description,
+                assignee_role=tp.assignee_role,
+                dependencies=tp.dependencies,
+                status="queued"
+            )
+            # Sync to DB
+            db_task = task_service.create_task(
+                business_id=business_id,
+                description=tp.description,
+                status="queued",
+                parent_id=main_task_id,
+                dependencies=tp.dependencies,
+                assignee_role=tp.assignee_role
+            )
+            new_task.id = db_task["id"] # Use DB ID
+            new_tasks_dict[new_task.id] = new_task
             
-        return {
-            "next": result.next,
-            "step_count": state.get("step_count", 0) + 1,
-            "status": status
-        }
+        return {"tasks": new_tasks_dict}
+
+    def dispatcher_node(state: TeamState):
+        tasks = state.get("tasks", {})
+        ready_tasks = []
+        all_completed = True
         
-    # Build Worker Nodes
+        for t_id, task in tasks.items():
+            if task.status != "completed":
+                all_completed = False
+                
+            if task.status == "queued":
+                # Check if all dependencies are completed
+                deps_met = True
+                for dep_id in task.dependencies:
+                    if dep_id in tasks and tasks[dep_id].status != "completed":
+                        deps_met = False
+                        break
+                if deps_met:
+                    ready_tasks.append(task)
+                    
+        if not ready_tasks:
+            if all_completed and len(tasks) > 0:
+                return {"status": "completed"}
+            # Still waiting on running tasks, or planner didn't create any tasks
+            return {"status": "running"}
+            
+        sends = []
+        for task in ready_tasks:
+            # Mark as running
+            task.status = "running"
+            task_service.update_task_status(task.id, "running")
+            
+            node_name = f"worker_{task.assignee_role}"
+            sends.append(Send(node_name, {"task": task, "messages": state["messages"]}))
+            
+        # Update state with running tasks
+        return {"tasks": {t.id: t for t in ready_tasks}, "status": "running"}
+
+    # Define Worker Nodes
+    class WorkerState(BaseModel):
+        task: Task
+        messages: list[BaseMessage]
+        
     def make_worker_node(agent_data: dict):
         role = agent_data["role"]
-        name_role = f"{agent_data['name']}_{role}"
         tools = registry.get_langchain_tools(role)
-        
         worker_agent = create_react_agent(llm, tools, state_modifier=f"You are {agent_data['name']}, acting as a {role}.")
         
-        def worker_node(state: TeamState):
-            result = worker_agent.invoke({"messages": state["messages"]})
-            last_message = result["messages"][-1]
+        def worker_node(worker_state: dict):
+            task: Task = worker_state["task"]
+            messages = worker_state["messages"]
+            
+            # Formulate instructions for the worker
+            instructions = [HumanMessage(content=f"Your current task is: {task.description}. Please execute it using your tools.")]
+            result = worker_agent.invoke({"messages": messages + instructions})
+            
+            final_output = result["messages"][-1].content
+            
+            # Mark completed in DB
+            task_service.update_task_result(task.id, final_output)
+            
+            task.status = "completed"
+            task.result = final_output
+            
             return {
-                "messages": [HumanMessage(content=last_message.content, name=name_role)]
+                "tasks": {task.id: task},
+                "messages": [AIMessage(content=f"Task completed by {role}: {final_output}")]
             }
             
         return worker_node
 
     workflow = StateGraph(TeamState)
     
-    workflow.add_node("supervisor", supervisor_node)
+    workflow.add_node("planner", planner_node)
+    workflow.add_node("dispatcher", dispatcher_node)
     
+    # Add a worker node for each role (assume 1 agent per role for simplicity)
+    role_nodes = []
     for agent in agents:
-        name_role = f"{agent['name']}_{agent['role']}"
-        workflow.add_node(name_role, make_worker_node(agent))
-        # Workers always return to supervisor
-        workflow.add_edge(name_role, "supervisor")
+        node_name = f"worker_{agent['role']}"
+        role_nodes.append(node_name)
+        workflow.add_node(node_name, make_worker_node(agent))
+        # Workers return to dispatcher
+        workflow.add_edge(node_name, "dispatcher")
         
-    workflow.add_conditional_edges(
-        "supervisor",
-        lambda x: x["next"],
-        {**{m: m for m in members}, "FINISH": END}
-    )
+    workflow.add_edge(START, "planner")
+    workflow.add_edge("planner", "dispatcher")
     
-    workflow.add_edge(START, "supervisor")
+    # Conditional routing from dispatcher
+    def route_dispatcher(state: TeamState):
+        if state.get("status") == "completed":
+            return END
+        # Sends will handle routing if there are ready tasks.
+        # If no ready tasks, but we are just running (waiting), we actually need to yield?
+        # In LangGraph, if Send is used, returning a list of Sends routes dynamically.
+        # But wait, `dispatcher_node` returns a dict with state updates if no tasks ready.
+        # To use Send, the node itself must return a list of Sends, or a Send object. 
+        # But `dispatcher_node` needs to update the state to mark tasks as "running".
+        pass
+        
+    # Wait, in LangGraph, Send is returned directly or as part of a list by a conditional edge.
+    def conditional_dispatch(state: TeamState):
+        tasks = state.get("tasks", {})
+        ready_tasks = []
+        all_completed = True
+        for t_id, task in tasks.items():
+            if task.status != "completed":
+                all_completed = False
+            if task.status == "queued":
+                deps_met = all(tasks[dep].status == "completed" for dep in task.dependencies if dep in tasks)
+                if deps_met:
+                    ready_tasks.append(task)
+                    
+        if not ready_tasks:
+            if all_completed and len(tasks) > 0:
+                return END
+            # We can't just pause here in a loop. If we have running tasks, we are waiting for workers to return to dispatcher.
+            # So if nothing is ready, but things are running, we just return END for this step? No, workers will trigger dispatcher again.
+            return END
+            
+        sends = []
+        for task in ready_tasks:
+            node_name = f"worker_{task.assignee_role}"
+            sends.append(Send(node_name, {"task": task, "messages": state.get("messages", [])}))
+        return sends
+
+    workflow.add_conditional_edges("dispatcher", conditional_dispatch, role_nodes + [END])
     
     return workflow

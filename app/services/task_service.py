@@ -40,13 +40,16 @@ class TaskService:
             logger.error(f"Error creating agent for business {business_id}: {e}")
             raise e
 
-    def create_task(self, business_id: str, description: str, status: str = "pending") -> dict[str, Any]:
+    def create_task(self, business_id: str, description: str, status: str = "pending", parent_id: Optional[str] = None, dependencies: List[str] = [], assignee_role: Optional[str] = None) -> dict[str, Any]:
         """Creates a new task."""
         try:
             data = {
                 "business_id": business_id,
                 "description": description,
-                "status": status
+                "status": status,
+                "parent_id": parent_id,
+                "dependencies": dependencies,
+                "assignee_role": assignee_role
             }
             response = self.client.table("tasks").insert(data).execute()
             return response.data[0] if response.data else {}
@@ -124,6 +127,18 @@ class TaskService:
             return response.data[0] if response.data else {}
         except Exception as e:
             logger.error(f"Error updating task {task_id} status to {status}: {e}")
+            raise e
+
+    def update_task_result(self, task_id: str, result: str) -> dict[str, Any]:
+        """Updates the result of a task."""
+        try:
+            response = self.client.table("tasks")\
+                .update({"result": result, "status": "completed"})\
+                .eq("id", task_id)\
+                .execute()
+            return response.data[0] if response.data else {}
+        except Exception as e:
+            logger.error(f"Error updating task {task_id} result: {e}")
             raise e
 
     # --- Queue Specific Methods ---
