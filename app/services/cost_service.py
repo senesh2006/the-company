@@ -7,12 +7,16 @@ logger = logging.getLogger(__name__)
 
 class CostService:
     def __init__(self, supabase_client: Optional[Client] = None):
-        if supabase_client:
-            self.client = supabase_client
-        else:
-            if not settings.SUPABASE_URL or not settings.SUPABASE_KEY:
-                raise ValueError("SUPABASE_URL and SUPABASE_KEY must be set to use CostService")
-            self.client = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
+        self._client = supabase_client
+
+    @property
+    def client(self) -> Client:
+        if self._client:
+            return self._client
+        if not settings.SUPABASE_URL or not settings.SUPABASE_KEY:
+            raise ValueError("SUPABASE_URL and SUPABASE_KEY must be set in environment variables to use CostService.")
+        self._client = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
+        return self._client
 
     def log_cost(self, business_id: str, amount: float, record_type: str, 
                  agent_id: Optional[str] = None, task_id: Optional[str] = None, 
