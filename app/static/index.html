@@ -3,154 +3,98 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Power AI - Accentic OS</title>
+    <title>Accentic OS - Multi-Agent DAG Visualizer</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;700&display=swap" rel="stylesheet">
-    <link href="https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600,700&display=swap" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/@fontsource/geist-sans@5.0.1/index.css" rel="stylesheet">
     <link rel="stylesheet" href="/static/styles.css">
     <!-- Supabase JS -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-    
-    <div class="page-wrapper" id="page-wrapper">
-        <video id="bg-video" class="bg-video" src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260328_065045_c44942da-53c6-4804-b734-f9e07fc22e08.mp4" muted playsinline></video>
-        
-        <div id="hero-section" class="hero-section">
-            <div class="blur-shape"></div>
-            
-            <nav class="navbar">
-                <div class="nav-left">
-                    <img src="/src/assets/logo.png" alt="Logo" class="nav-logo" onerror="this.onerror=null; this.src='/static/assets/logo.png';">
+    <!-- Auth Overlay -->
+    <div id="auth-overlay" class="auth-overlay">
+        <div class="auth-box glass-panel">
+            <h2>Welcome to Accentic OS</h2>
+            <p>Login to orchestrate your agent swarm.</p>
+            <form id="auth-form">
+                <input type="email" id="auth-email" placeholder="Email Address" required>
+                <input type="password" id="auth-password" placeholder="Password" required>
+                <div class="auth-buttons">
+                    <button type="submit" id="btn-login" class="btn-primary">Login</button>
+                    <button type="button" id="btn-register" class="btn-secondary">Register</button>
                 </div>
-                <div class="nav-center">
-                    <button class="nav-item">Features <span class="chevron">▼</span></button>
-                    <button class="nav-item">Solutions</button>
-                    <button class="nav-item">Plans</button>
-                    <button class="nav-item">Learning <span class="chevron">▼</span></button>
-                </div>
-                <div class="nav-right">
-                    <button class="btn-hero-secondary btn-signup-trigger">Sign Up</button>
-                </div>
-            </nav>
-            <div class="nav-divider"></div>
-            
-            <div class="hero-content">
-                <h1 class="hero-headline">Power <span class="gradient-text">AI</span></h1>
-                <p class="hero-subtitle">The most powerful AI ever deployed<br>in talent acquisition</p>
-                <button class="btn-hero-secondary btn-cta btn-signup-trigger">Schedule a Consult</button>
-            </div>
-            
-            <div class="marquee-wrapper">
-                <div class="marquee-static">Relied on by brands<br>across the globe</div>
-                <div class="marquee-scroll-container">
-                    <div class="marquee-content">
-                        <!-- Group 1 -->
-                        <div class="marquee-item"><div class="liquid-glass icon">V</div> <span>Vortex</span></div>
-                        <div class="marquee-item"><div class="liquid-glass icon">N</div> <span>Nimbus</span></div>
-                        <div class="marquee-item"><div class="liquid-glass icon">P</div> <span>Prysma</span></div>
-                        <div class="marquee-item"><div class="liquid-glass icon">C</div> <span>Cirrus</span></div>
-                        <div class="marquee-item"><div class="liquid-glass icon">K</div> <span>Kynder</span></div>
-                        <div class="marquee-item"><div class="liquid-glass icon">H</div> <span>Halcyn</span></div>
-                        <!-- Group 2 (Duplicate for infinite scroll) -->
-                        <div class="marquee-item"><div class="liquid-glass icon">V</div> <span>Vortex</span></div>
-                        <div class="marquee-item"><div class="liquid-glass icon">N</div> <span>Nimbus</span></div>
-                        <div class="marquee-item"><div class="liquid-glass icon">P</div> <span>Prysma</span></div>
-                        <div class="marquee-item"><div class="liquid-glass icon">C</div> <span>Cirrus</span></div>
-                        <div class="marquee-item"><div class="liquid-glass icon">K</div> <span>Kynder</span></div>
-                        <div class="marquee-item"><div class="liquid-glass icon">H</div> <span>Halcyn</span></div>
-                    </div>
-                </div>
-            </div>
+                <div id="auth-error" class="auth-error hidden"></div>
+            </form>
         </div>
+    </div>
 
-        <!-- Auth Overlay (Hidden by default) -->
-        <div id="auth-overlay" class="auth-overlay hidden">
-            <div class="auth-box glass-panel">
-                <button class="btn-close" id="btn-close-auth" style="position:absolute; top:10px; right:15px; font-size:24px; background:none; border:none; color:white; cursor:pointer;">&times;</button>
-                <h2>Welcome to Power AI</h2>
-                <p>Login to orchestrate your agent swarm.</p>
-                <form id="auth-form">
-                    <input type="email" id="auth-email" placeholder="Email Address" required>
-                    <input type="password" id="auth-password" placeholder="Password" required>
-                    <div class="auth-buttons">
-                        <button type="submit" id="btn-login" class="btn-primary">Login</button>
-                        <button type="button" id="btn-register" class="btn-secondary">Register</button>
-                    </div>
-                    <div id="auth-error" class="auth-error hidden"></div>
-                </form>
+    <!-- Main App Structure -->
+    <div class="app-container hidden" id="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar glass-panel">
+            <div class="logo">
+                <h1>Accentic OS</h1>
+                <span class="badge">Multi-Agent DAG</span>
             </div>
-        </div>
-
-        <!-- Main App Structure -->
-        <div class="app-container hidden" id="app-container">
-            <!-- Sidebar -->
-            <aside class="sidebar glass-panel">
-                <div class="logo">
-                    <h1>Power AI</h1>
-                    <span class="badge">Multi-Agent DAG</span>
+            
+            <div class="control-panel">
+                <div class="input-group">
+                    <label for="task-input">Master Task</label>
+                    <textarea id="task-input" placeholder="e.g. Research the top 3 open source LLMs and write a summary..."></textarea>
                 </div>
                 
-                <div class="control-panel">
-                    <div class="input-group">
-                        <label for="task-input">Master Task</label>
-                        <textarea id="task-input" placeholder="e.g. Research the top 3 open source LLMs and write a summary..."></textarea>
-                    </div>
-                    
-                    <button id="btn-launch" class="btn-primary">
-                        <span class="btn-text">Launch Agents</span>
-                        <div class="loader hidden" id="launch-loader"></div>
-                    </button>
-                </div>
-                
-                <div class="status-panel">
-                    <h3>System Status</h3>
-                    <div class="status-item">
-                        <span class="status-dot online"></span>
-                        <span>Event Bus Connected</span>
-                    </div>
-                    <div class="status-item">
-                        <span class="status-dot online"></span>
-                        <span id="business-id-display">Initializing...</span>
-                    </div>
-                </div>
-
-                <!-- Hire Market Button -->
-                <button id="btn-open-market" class="btn-secondary market-btn" style="margin-top:auto;">
-                    🛒 Hire Market
+                <button id="btn-launch" class="btn-primary">
+                    <span class="btn-text">Launch Agents</span>
+                    <div class="loader hidden" id="launch-loader"></div>
                 </button>
-                
-                <button id="btn-logout" class="btn-ghost" style="margin-top:10px;">
-                    Logout
-                </button>
-            </aside>
-
-            <!-- Main Content -->
-            <main class="main-content">
-                <header class="topbar glass-panel">
-                    <h2>Task Graph Visualizer</h2>
-                    <div class="legend">
-                        <span class="legend-item"><span class="dot queued"></span> Queued</span>
-                        <span class="legend-item"><span class="dot running"></span> Running</span>
-                        <span class="legend-item"><span class="dot completed"></span> Completed</span>
-                        <span class="legend-item"><span class="dot failed"></span> Failed</span>
-                    </div>
-                </header>
-                
-                <div class="canvas-container" id="canvas-container">
-                    <!-- Task nodes will be injected here -->
-                    <div class="empty-state" id="empty-state">
-                        <div class="glow-orb"></div>
-                        <h2>No Active Tasks</h2>
-                        <p>Enter a master task in the sidebar to spawn the agent swarm.</p>
-                    </div>
-                    <div id="dag-container" class="dag-container hidden">
-                        <!-- Tree view of tasks -->
-                    </div>
+            </div>
+            
+            <div class="status-panel">
+                <h3>System Status</h3>
+                <div class="status-item">
+                    <span class="status-dot online"></span>
+                    <span>Event Bus Connected</span>
                 </div>
-            </main>
-        </div>
-    </div> <!-- end page-wrapper -->
+                <div class="status-item">
+                    <span class="status-dot online"></span>
+                    <span id="business-id-display">Initializing...</span>
+                </div>
+            </div>
+
+            <!-- Hire Market Button -->
+            <button id="btn-open-market" class="btn-secondary market-btn" style="margin-top:auto;">
+                🛒 Hire Market
+            </button>
+            
+            <button id="btn-logout" class="btn-ghost" style="margin-top:10px;">
+                Logout
+            </button>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="topbar glass-panel">
+                <h2>Task Graph Visualizer</h2>
+                <div class="legend">
+                    <span class="legend-item"><span class="dot queued"></span> Queued</span>
+                    <span class="legend-item"><span class="dot running"></span> Running</span>
+                    <span class="legend-item"><span class="dot completed"></span> Completed</span>
+                    <span class="legend-item"><span class="dot failed"></span> Failed</span>
+                </div>
+            </header>
+            
+            <div class="canvas-container" id="canvas-container">
+                <!-- Task nodes will be injected here -->
+                <div class="empty-state" id="empty-state">
+                    <div class="glow-orb"></div>
+                    <h2>No Active Tasks</h2>
+                    <p>Enter a master task in the sidebar to spawn the agent swarm.</p>
+                </div>
+                <div id="dag-container" class="dag-container hidden">
+                    <!-- Tree view of tasks -->
+                </div>
+            </div>
+        </main>
+    </div>
 
     <!-- Modals -->
 
