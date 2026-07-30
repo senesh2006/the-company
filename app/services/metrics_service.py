@@ -1,5 +1,5 @@
 import logging
-from typing import Any, List, Dict
+from typing import Any, List, Dict, Optional
 from datetime import datetime, timedelta, timezone
 from supabase import create_client, Client
 from app.core.config import settings
@@ -8,12 +8,16 @@ logger = logging.getLogger(__name__)
 
 class MetricsService:
     def __init__(self, supabase_client: Optional[Client] = None):
-        if supabase_client:
-            self.client = supabase_client
-        else:
-            if not settings.SUPABASE_URL or not settings.SUPABASE_KEY:
-                raise ValueError("SUPABASE_URL and SUPABASE_KEY must be set to use MetricsService")
-            self.client = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
+        self._client = supabase_client
+
+    @property
+    def client(self) -> Client:
+        if self._client:
+            return self._client
+        if not settings.SUPABASE_URL or not settings.SUPABASE_KEY:
+            raise ValueError("SUPABASE_URL and SUPABASE_KEY must be set in environment variables to use MetricsService.")
+        self._client = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
+        return self._client
 
     def get_agent_success_rates(self, business_id: str) -> List[Dict[str, Any]]:
         """Calculates success and error rates for each agent based on terminal task statuses."""
