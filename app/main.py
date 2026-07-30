@@ -32,11 +32,18 @@ app.include_router(metrics.router, prefix=f"{settings.API_V1_STR}/metrics", tags
 @app.get("/api/v1/setup")
 def setup_test_environment():
     """Gets or creates a default business for the test UI."""
+    import os
     try:
-        if not settings.SUPABASE_URL or not settings.SUPABASE_KEY:
-            return {"error": "SUPABASE_URL or SUPABASE_KEY is missing from environment variables."}
+        sb_url = settings.SUPABASE_URL or os.getenv("SUPABASE_URL")
+        sb_key = settings.SUPABASE_KEY or os.getenv("SUPABASE_KEY")
 
-        client = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
+        if not sb_url or not sb_key:
+            safe_keys = [k for k in os.environ.keys() if "KEY" not in k.upper() and "SECRET" not in k.upper() and "TOKEN" not in k.upper()]
+            return {
+                "error": f"SUPABASE keys missing. Found env vars: {', '.join(safe_keys)}"
+            }
+
+        client = create_client(sb_url, sb_key)
         response = client.table("businesses").select("*").limit(1).execute()
         if response.data:
             return {"business_id": response.data[0]["id"]}

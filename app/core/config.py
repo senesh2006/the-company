@@ -31,7 +31,15 @@ class Settings(BaseSettings):
 
     ENVIRONMENT: str = "local"
 
-    model_config = SettingsConfigDict(env_file=".env", case_sensitive=True)
-
+    model_config = SettingsConfigDict(env_file=".env", case_sensitive=False, extra="ignore")
 
 settings = Settings()
+
+import os
+# Force overrides if Pydantic misses them due to env_file conflicts in Railway
+if not settings.SUPABASE_URL:
+    settings.SUPABASE_URL = os.getenv("SUPABASE_URL")
+if not settings.SUPABASE_KEY:
+    settings.SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+if not settings.FIREWORKS_API_KEY:
+    settings.FIREWORKS_API_KEY = os.getenv("FIREWORKS_API_KEY")
