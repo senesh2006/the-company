@@ -9,6 +9,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     const btnRegister = document.getElementById("btn-register");
     const authError = document.getElementById("auth-error");
     const btnLogout = document.getElementById("btn-logout");
+    const btnCloseAuth = document.getElementById("btn-close-auth");
+
+    const heroSection = document.getElementById("hero-section");
+    const bgVideo = document.getElementById("bg-video");
 
     const taskInput = document.getElementById("task-input");
     const btnLaunch = document.getElementById("btn-launch");
@@ -51,14 +55,65 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     function showAuth() {
-        authOverlay.classList.remove("hidden");
+        authOverlay.classList.add("hidden");
         appContainer.classList.add("hidden");
+        heroSection.classList.remove("hidden");
+        bgVideo.classList.remove("hidden");
     }
 
     async function showApp() {
         authOverlay.classList.add("hidden");
+        heroSection.classList.add("hidden");
+        bgVideo.classList.add("hidden");
         appContainer.classList.remove("hidden");
         await initBusiness();
+    }
+
+    // Auth Overlay triggers
+    document.querySelectorAll('.btn-signup-trigger').forEach(btn => {
+        btn.addEventListener('click', () => {
+            authOverlay.classList.remove("hidden");
+        });
+    });
+
+    if (btnCloseAuth) {
+        btnCloseAuth.addEventListener('click', () => {
+            authOverlay.classList.add("hidden");
+        });
+    }
+
+    // Video Fade Logic
+    if (bgVideo) {
+        function fadeLoop() {
+            if (!bgVideo.duration) {
+                requestAnimationFrame(fadeLoop);
+                return;
+            }
+            
+            const currentTime = bgVideo.currentTime;
+            const duration = bgVideo.duration;
+            
+            if (currentTime < 0.5) {
+                bgVideo.style.opacity = (currentTime / 0.5).toString();
+            } else if (currentTime > duration - 0.5) {
+                const timeLeft = duration - currentTime;
+                bgVideo.style.opacity = Math.max(0, (timeLeft / 0.5)).toString();
+            } else {
+                bgVideo.style.opacity = "1";
+            }
+            requestAnimationFrame(fadeLoop);
+        }
+        
+        bgVideo.addEventListener('ended', () => {
+            bgVideo.style.opacity = "0";
+            setTimeout(() => {
+                bgVideo.play().catch(e => console.log(e));
+            }, 100);
+        });
+        
+        bgVideo.play().then(() => {
+            requestAnimationFrame(fadeLoop);
+        }).catch(e => console.log("Autoplay prevented:", e));
     }
 
     // 2. Auth Handlers
