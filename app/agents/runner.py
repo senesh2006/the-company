@@ -52,16 +52,23 @@ class TeamRunner:
         # Mark the main task as running in the DB
         self.task_service.update_task_status(self.task_id, "running")
         
-        with self._get_checkpointer() as checkpointer:
-            app = self.graph.compile(checkpointer=checkpointer)
-            result = app.invoke(initial_state, config=self._get_config())
-            
-            if result.get("status") == "completed":
-                self.task_service.complete_task(self.task_id)
-            elif result.get("status") == "failed":
-                self.task_service.fail_task(self.task_id)
+        try:
+            with self._get_checkpointer() as checkpointer:
+                app = self.graph.compile(checkpointer=checkpointer)
+                result = app.invoke(initial_state, config=self._get_config())
                 
-            return result
+                if result.get("status") == "completed":
+                    self.task_service.complete_task(self.task_id)
+                elif result.get("status") == "failed":
+                    self.task_service.fail_task(self.task_id)
+                    
+                return result
+        except Exception as e:
+            import traceback
+            error_msg = f"FATAL ERROR: {str(e)}\n{traceback.format_exc()}"
+            self.task_service.update_task_result(self.task_id, error_msg)
+            self.task_service.fail_task(self.task_id)
+            return {"status": "failed", "error": str(e)}
 
     def pause(self):
         with self._get_checkpointer() as checkpointer:

@@ -97,42 +97,9 @@ def create_team_graph(business_id: str, main_task_id: str):
             
         return {"tasks": new_tasks_dict}
 
-    def dispatcher_node(state: TeamState):
-        tasks = state.get("tasks", {})
-        ready_tasks = []
-        all_completed = True
-        
-        for t_id, task in tasks.items():
-            if task.status != "completed":
-                all_completed = False
-                
-            if task.status == "queued":
-                # Check if all dependencies are completed
-                deps_met = True
-                for dep_id in task.dependencies:
-                    if dep_id in tasks and tasks[dep_id].status != "completed":
-                        deps_met = False
-                        break
-                if deps_met:
-                    ready_tasks.append(task)
-                    
-        if not ready_tasks:
-            if all_completed and len(tasks) > 0:
-                return {"status": "completed"}
-            # Still waiting on running tasks, or planner didn't create any tasks
-            return {"status": "running"}
-            
-        sends = []
-        for task in ready_tasks:
-            # Mark as running
-            task.status = "running"
-            task_service.update_task_status(task.id, "running")
-            
-            node_name = f"worker_{task.assignee_role}"
-            sends.append(Send(node_name, {"task": task, "messages": state["messages"]}))
-            
-        # Update state with running tasks
-        return {"tasks": {t.id: t for t in ready_tasks}, "status": "running"}
+    def router_node(state: TeamState):
+        # Dummy node to allow routing
+        return {}
 
     # Define Worker Nodes
     class WorkerState(BaseModel):
@@ -170,58 +137,60 @@ def create_team_graph(business_id: str, main_task_id: str):
     workflow = StateGraph(TeamState)
     
     workflow.add_node("planner", planner_node)
-    workflow.add_node("dispatcher", dispatcher_node)
+    workflow.add_node("router", router_node)
     
-    # Add a worker node for each role (assume 1 agent per role for simplicity)
+    # Add a worker node for each role
     role_nodes = []
     for agent in agents:
         node_name = f"worker_{agent['role']}"
         role_nodes.append(node_name)
         workflow.add_node(node_name, make_worker_node(agent))
-        # Workers return to dispatcher
-        workflow.add_edge(node_name, "dispatcher")
+        # Workers return to router to check for next tasks
+        workflow.add_edge(node_name, "router")
         
     workflow.add_edge(START, "planner")
-    workflow.add_edge("planner", "dispatcher")
+    workflow.add_edge("planner", "router")
     
-    # Conditional routing from dispatcher
-    def route_dispatcher(state: TeamState):
-        if state.get("status") == "completed":
-            return END
-        # Sends will handle routing if there are ready tasks.
-        # If no ready tasks, but we are just running (waiting), we actually need to yield?
-        # In LangGraph, if Send is used, returning a list of Sends routes dynamically.
-        # But wait, `dispatcher_node` returns a dict with state updates if no tasks ready.
-        # To use Send, the node itself must return a list of Sends, or a Send object. 
-        # But `dispatcher_node` needs to update the state to mark tasks as "running".
-        pass
-        
-    # Wait, in LangGraph, Send is returned directly or as part of a list by a conditional edge.
     def conditional_dispatch(state: TeamState):
         tasks = state.get("tasks", {})
         ready_tasks = []
         all_completed = True
+        
         for t_id, task in tasks.items():
             if task.status != "completed":
                 all_completed = False
+                
             if task.status == "queued":
-                deps_met = all(tasks[dep].status == "completed" for dep in task.dependencies if dep in tasks)
+                # Check dependencies
+                deps_met = True
+                for dep_id in task.dependencies:
+                    if dep_id in tasks and tasks[dep_id].status != "completed":
+                        deps_met = False
+                        break
                 if deps_met:
                     ready_tasks.append(task)
                     
         if not ready_tasks:
             if all_completed and len(tasks) > 0:
                 return END
-            # We can't just pause here in a loop. If we have running tasks, we are waiting for workers to return to dispatcher.
-            # So if nothing is ready, but things are running, we just return END for this step? No, workers will trigger dispatcher again.
             return END
             
         sends = []
         for task in ready_tasks:
+            # We update DB here, but DO NOT mutate the LangGraph state.
+            # The worker node will mutate state when it completes.
+            task_service.update_task_status(task.id, "running")
+            
+            # Ensure the assignee role exists in our nodes
             node_name = f"worker_{task.assignee_role}"
+            if node_name not in role_nodes:
+                # Fallback to first available worker if LLM hallucinates a role
+                node_name = role_nodes[0]
+                
             sends.append(Send(node_name, {"task": task, "messages": state.get("messages", [])}))
+            
         return sends
 
-    workflow.add_conditional_edges("dispatcher", conditional_dispatch, role_nodes + [END])
+    workflow.add_conditional_edges("router", conditional_dispatch, role_nodes + [END])
     
     return workflow
