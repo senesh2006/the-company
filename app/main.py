@@ -29,28 +29,25 @@ app.include_router(tasks.router, prefix=f"{settings.API_V1_STR}/tasks", tags=["t
 app.include_router(costs.router, prefix=f"{settings.API_V1_STR}/costs", tags=["costs"])
 app.include_router(metrics.router, prefix=f"{settings.API_V1_STR}/metrics", tags=["metrics"])
 
+from fastapi import Depends
+from app.api.deps import get_current_user
+
 @app.get("/api/v1/setup")
-def setup_test_environment():
-    """Gets or creates a default business for the test UI."""
+def setup_test_environment(user = Depends(get_current_user)):
+    """Gets or creates a default business for the authenticated user."""
     import os
     try:
         sb_url = settings.SUPABASE_URL or os.getenv("SUPABASE_URL")
         sb_key = settings.SUPABASE_KEY or os.getenv("SUPABASE_KEY") or os.getenv("SUPABASE_SECRET_KEY")
 
-        if not sb_url or not sb_key:
-            safe_keys = [k for k in os.environ.keys() if "KEY" not in k.upper() and "SECRET" not in k.upper() and "TOKEN" not in k.upper()]
-            return {
-                "error": f"SUPABASE keys missing. Found env vars: {', '.join(safe_keys)}"
-            }
-
         client = create_client(sb_url, sb_key)
         
-        # Gets or creates a default business
-        response = client.table("businesses").select("*").limit(1).execute()
+        # Gets or creates a default business for this specific user
+        response = client.table("businesses").select("*").eq("owner_id", user.id).limit(1).execute()
         if response.data:
             biz_id = response.data[0]["id"]
         else:
-            new_biz = client.table("businesses").insert({"name": "Test Business"}).execute()
+            new_biz = client.table("businesses").insert({"name": f"{user.email}'s Business", "owner_id": user.id}).execute()
             biz_id = new_biz.data[0]["id"]
             
         # Ensure default agents exist for this business
@@ -74,6 +71,16 @@ def setup_test_environment():
         import traceback
         traceback.print_exc()
         return {"error": str(e), "type": str(type(e))}
+
+@app.get("/api/v1/config")
+def get_public_config():
+    import os
+    sb_url = settings.SUPABASE_URL or os.getenv("SUPABASE_URL")
+    sb_key = settings.SUPABASE_KEY or os.getenv("SUPABASE_KEY") or os.getenv("SUPABASE_SECRET_KEY")
+    return {
+        "supabaseUrl": sb_url,
+        "supabaseKey": sb_key
+    }
 
 # Mount Static Files
 app.mount("/static", StaticFiles(directory="app/static"), name="static")

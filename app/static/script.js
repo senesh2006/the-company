@@ -1,4 +1,15 @@
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
+    // UI Elements
+    const authOverlay = document.getElementById("auth-overlay");
+    const appContainer = document.getElementById("app-container");
+    const authForm = document.getElementById("auth-form");
+    const authEmail = document.getElementById("auth-email");
+    const authPassword = document.getElementById("auth-password");
+    const btnLogin = document.getElementById("btn-login");
+    const btnRegister = document.getElementById("btn-register");
+    const authError = document.getElementById("auth-error");
+    const btnLogout = document.getElementById("btn-logout");
+
     const taskInput = document.getElementById("task-input");
     const btnLaunch = document.getElementById("btn-launch");
     const launchLoader = document.getElementById("launch-loader");
@@ -7,53 +18,167 @@ document.addEventListener("DOMContentLoaded", () => {
     const emptyState = document.getElementById("empty-state");
     const dagContainer = document.getElementById("dag-container");
 
+    const btnOpenMarket = document.getElementById("btn-open-market");
+    const marketModal = document.getElementById("market-modal");
+    const btnCloseMarket = document.getElementById("btn-close-market");
+
+    const resultModal = document.getElementById("result-modal");
+    const fullResultText = document.getElementById("full-result-text");
+    const btnCloseResult = document.getElementById("btn-close-result");
+
     let businessId = null;
     let pollInterval = null;
+    let supabaseClient = null;
+    let sessionToken = null;
 
-    // Initialize application
-    async function init() {
+    // 1. Initialize Supabase
+    async function initSupabase() {
         try {
-            const res = await fetch("/api/v1/setup");
-            const data = await res.json();
+            const res = await fetch("/api/v1/config");
+            const config = await res.json();
+            supabaseClient = window.supabase.createClient(config.supabaseUrl, config.supabaseKey);
             
-            if (data.error) {
-                throw new Error(data.error);
+            const { data, error } = await supabaseClient.auth.getSession();
+            if (data.session) {
+                sessionToken = data.session.access_token;
+                showApp();
+            } else {
+                showAuth();
             }
-            
-            businessId = data.business_id;
-            businessIdDisplay.textContent = `Business ID: ${businessId.substring(0, 8)}...`;
-            
-            // Start polling right away in case there are active tasks
-            startPolling();
         } catch (err) {
-            businessIdDisplay.textContent = "Failed to connect";
-            businessIdDisplay.style.color = "var(--status-failed)";
-            console.error("Initialization failed:", err.message);
-            alert("Setup Error: " + err.message);
+            console.error("Failed to load config", err);
         }
     }
 
-    // Launch a new task
+    function showAuth() {
+        authOverlay.classList.remove("hidden");
+        appContainer.classList.add("hidden");
+    }
+
+    async function showApp() {
+        authOverlay.classList.add("hidden");
+        appContainer.classList.remove("hidden");
+        await initBusiness();
+    }
+
+    // 2. Auth Handlers
+    authForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const email = authEmail.value;
+        const password = authPassword.value;
+        const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+        if (error) {
+            authError.textContent = error.message;
+            authError.classList.remove("hidden");
+        } else {
+            sessionToken = data.session.access_token;
+            showApp();
+        }
+    });
+
+    btnRegister.addEventListener("click", async () => {
+        const email = authEmail.value;
+        const password = authPassword.value;
+        const { data, error } = await supabaseClient.auth.signUp({ email, password });
+        if (error) {
+            authError.textContent = error.message;
+            authError.classList.remove("hidden");
+        } else {
+            authError.textContent = "Registration successful! Please login.";
+            authError.classList.remove("hidden");
+            authError.style.color = "lightgreen";
+        }
+    });
+
+    btnLogout.addEventListener("click", async () => {
+        await supabaseClient.auth.signOut();
+        sessionToken = null;
+        if (pollInterval) clearInterval(pollInterval);
+        showAuth();
+    });
+
+    // Helper for authenticated API calls
+    async function apiFetch(url, options = {}) {
+        const headers = { ...options.headers };
+        if (sessionToken) {
+            headers["Authorization"] = `Bearer ${sessionToken}`;
+        }
+        return fetch(url, { ...options, headers });
+    }
+
+    // 3. App Initialization
+    async function initBusiness() {
+        try {
+            const res = await apiFetch("/api/v1/setup");
+            const data = await res.json();
+            
+            if (data.error) throw new Error(data.error);
+            
+            businessId = data.business_id;
+            businessIdDisplay.textContent = `Business ID: ${businessId.substring(0, 8)}...`;
+            startPolling();
+        } catch (err) {
+            businessIdDisplay.textContent = "Setup Failed";
+            businessIdDisplay.style.color = "var(--status-failed)";
+            console.error("Initialization failed:", err.message);
+        }
+    }
+
+    // 4. Modals and Interactions
+    btnOpenMarket.addEventListener("click", () => marketModal.classList.remove("hidden"));
+    btnCloseMarket.addEventListener("click", () => marketModal.classList.add("hidden"));
+    btnCloseResult.addEventListener("click", () => resultModal.classList.add("hidden"));
+
+    document.querySelectorAll(".hire-btn").forEach(btn => {
+        btn.addEventListener("click", async (e) => {
+            const role = e.target.getAttribute("data-role");
+            const name = prompt(`Enter a name for your new ${role}:`, `New ${role}`);
+            if (!name) return;
+            
+            e.target.disabled = true;
+            e.target.textContent = "Hiring...";
+            
+            try {
+                const res = await apiFetch(`/api/v1/agents/${businessId}`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ role, name })
+                });
+                if (res.ok) {
+                    alert(`${name} has been hired!`);
+                }
+            } catch (err) {
+                alert("Failed to hire agent");
+            } finally {
+                e.target.disabled = false;
+                e.target.textContent = `Hire for $${role === 'Coder' ? '75' : '50'}`;
+            }
+        });
+    });
+
+    window.openResultModal = function(fullText) {
+        fullResultText.textContent = decodeURIComponent(fullText);
+        resultModal.classList.remove("hidden");
+    }
+
+    // 5. Task Launch and Polling
     btnLaunch.addEventListener("click", async () => {
         const description = taskInput.value.trim();
         if (!description || !businessId) return;
 
         setLoading(true);
-        
         try {
-            const res = await fetch(`/api/v1/tasks/${businessId}/queue`, {
+            const res = await apiFetch(`/api/v1/tasks/${businessId}/queue`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ description, priority: 10 })
             });
-            
             if (res.ok) {
                 taskInput.value = "";
-                startPolling(); // Ensure polling is active
+                startPolling();
             }
         } catch (err) {
-            console.error("Failed to launch task:", err);
-            alert("Failed to launch task. Check console.");
+            console.error(err);
         } finally {
             setLoading(false);
         }
@@ -70,18 +195,17 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    // Polling mechanism
     function startPolling() {
         if (pollInterval) clearInterval(pollInterval);
-        fetchTasks(); // immediate fetch
-        pollInterval = setInterval(fetchTasks, 2000); // poll every 2s
+        fetchTasks();
+        pollInterval = setInterval(fetchTasks, 2000);
     }
 
     async function fetchTasks() {
         if (!businessId) return;
-        
         try {
-            const res = await fetch(`/api/v1/tasks/${businessId}`);
+            const res = await apiFetch(`/api/v1/tasks/${businessId}`);
+            if (!res.ok) return;
             const data = await res.json();
             
             if (data.tasks && data.tasks.length > 0) {
@@ -93,21 +217,16 @@ document.addEventListener("DOMContentLoaded", () => {
                 dagContainer.classList.add("hidden");
             }
         } catch (err) {
-            console.error("Failed to fetch tasks:", err);
+            console.error("Poll error:", err);
         }
     }
 
-    // Rendering Logic
+    // 6. Rendering Logic
     function renderDAG(tasks) {
-        // Build a hierarchical tree
         const taskMap = {};
         const roots = [];
 
-        tasks.forEach(task => {
-            task.children = [];
-            taskMap[task.id] = task;
-        });
-
+        tasks.forEach(task => { task.children = []; taskMap[task.id] = task; });
         tasks.forEach(task => {
             if (task.parent_id && taskMap[task.parent_id]) {
                 taskMap[task.parent_id].children.push(task);
@@ -116,32 +235,31 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         });
 
-        // Sort roots by created_at desc (newest first)
         roots.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-
         dagContainer.innerHTML = "";
-        roots.forEach(root => {
-            dagContainer.appendChild(createTaskNodeElement(root, 0));
-        });
+        roots.forEach(root => dagContainer.appendChild(createTaskNodeElement(root, 0)));
     }
 
     function createTaskNodeElement(task, depth) {
         const node = document.createElement("div");
         node.className = "task-node";
-        
-        // CSS variables for structure
         node.style.setProperty("--indent", `${depth * 40}px`);
-        if (depth > 0) {
-            node.style.setProperty("--has-parent", "block");
-        }
+        if (depth > 0) node.style.setProperty("--has-parent", "block");
 
         const agentDisplay = task.agent_id ? `<span class="agent-icon">A</span> ${task.agent_id.substring(0,8)}` : "Unassigned";
         
         let resultHtml = "";
         if (task.result) {
-            // Truncate long results for UI
-            const shortResult = task.result.length > 300 ? task.result.substring(0, 300) + "..." : task.result;
-            resultHtml = `<div class="task-result">${shortResult}</div>`;
+            const isTruncated = task.result.length > 300;
+            const shortResult = isTruncated ? task.result.substring(0, 300) + "..." : task.result;
+            const encodedResult = encodeURIComponent(task.result);
+            
+            resultHtml = `
+                <div class="task-result">
+                    ${shortResult}
+                    ${isTruncated ? `<button class="btn-ghost btn-small" onclick="openResultModal('${encodedResult}')">Read More</button>` : ''}
+                </div>
+            `;
         }
 
         node.innerHTML = `
@@ -157,20 +275,14 @@ document.addEventListener("DOMContentLoaded", () => {
             </div>
         `;
 
-        // Create a wrapper for children if they exist
         const wrapper = document.createElement("div");
         wrapper.appendChild(node);
-        
-        // Sort children by created_at asc (oldest first for execution order)
         task.children.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
-        
-        task.children.forEach(child => {
-            wrapper.appendChild(createTaskNodeElement(child, depth + 1));
-        });
+        task.children.forEach(child => wrapper.appendChild(createTaskNodeElement(child, depth + 1)));
 
         return wrapper;
     }
 
     // Start
-    init();
+    initSupabase();
 });

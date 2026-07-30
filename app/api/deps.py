@@ -1,23 +1,20 @@
-from typing import AsyncGenerator
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy.orm import sessionmaker
+from fastapi import Depends, HTTPException, Security
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from supabase import create_client, Client
 from app.core.config import settings
 
-# Since we might not have the DB fully setup, this is a skeleton
-if settings.SQLALCHEMY_DATABASE_URI:
-    engine = create_async_engine(str(settings.SQLALCHEMY_DATABASE_URI), echo=True)
-    async_session = sessionmaker(
-        engine, class_=AsyncSession, expire_on_commit=False
-    )
-else:
-    engine = None
-    async_session = None
+security = HTTPBearer()
 
-async def get_db() -> AsyncGenerator[AsyncSession, None]:
-    if not async_session:
-        raise NotImplementedError("Database connection not configured")
-    async with async_session() as session:
-        yield session
+def get_supabase_client() -> Client:
+    return create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
 
-# Note: In a real app, you would add `get_current_user` dependency here 
-# that depends on `fastapi.security.OAuth2PasswordBearer` and `app.core.security.verify_token`.
+def get_current_user(credentials: HTTPAuthorizationCredentials = Security(security)):
+    token = credentials.credentials
+    supabase = get_supabase_client()
+    try:
+        user_response = supabase.auth.get_user(token)
+        if not user_response or not user_response.user:
+            raise HTTPException(status_code=401, detail="Invalid token")
+        return user_response.user
+    except Exception as e:
+        raise HTTPException(status_code=401, detail=f"Authentication failed: {str(e)}")

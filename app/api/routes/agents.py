@@ -1,11 +1,12 @@
 import concurrent.futures
-from fastapi import APIRouter, HTTPException, BackgroundTasks
+from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends
 from pydantic import BaseModel
 from typing import Optional
 
 from app.agents.runner import TeamRunner
 from app.core.logging import logger
 from app.services.task_service import TaskService
+from app.api.deps import get_current_user
 
 router = APIRouter()
 task_service = TaskService()
@@ -20,7 +21,7 @@ class HireAgentPayload(BaseModel):
     goal: Optional[str] = None
 
 @router.post("/{business_id}")
-def hire_agent(business_id: str, payload: HireAgentPayload, background_tasks: BackgroundTasks):
+def hire_agent(business_id: str, payload: HireAgentPayload, background_tasks: BackgroundTasks, user = Depends(get_current_user)):
     """
     Hires a new agent for the business team.
     If a goal is provided, it submits a task to the team and starts the supervisor.

@@ -6,9 +6,29 @@
     <title>Accentic OS - Multi-Agent DAG Visualizer</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/styles.css">
+    <!-- Supabase JS -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-    <div class="app-container">
+    <!-- Auth Overlay -->
+    <div id="auth-overlay" class="auth-overlay">
+        <div class="auth-box glass-panel">
+            <h2>Welcome to Accentic OS</h2>
+            <p>Login to orchestrate your agent swarm.</p>
+            <form id="auth-form">
+                <input type="email" id="auth-email" placeholder="Email Address" required>
+                <input type="password" id="auth-password" placeholder="Password" required>
+                <div class="auth-buttons">
+                    <button type="submit" id="btn-login" class="btn-primary">Login</button>
+                    <button type="button" id="btn-register" class="btn-secondary">Register</button>
+                </div>
+                <div id="auth-error" class="auth-error hidden"></div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Main App Structure -->
+    <div class="app-container hidden" id="app-container">
         <!-- Sidebar -->
         <aside class="sidebar glass-panel">
             <div class="logo">
@@ -39,6 +59,15 @@
                     <span id="business-id-display">Initializing...</span>
                 </div>
             </div>
+
+            <!-- Hire Market Button -->
+            <button id="btn-open-market" class="btn-secondary market-btn" style="margin-top:auto;">
+                🛒 Hire Market
+            </button>
+            
+            <button id="btn-logout" class="btn-ghost" style="margin-top:10px;">
+                Logout
+            </button>
         </aside>
 
         <!-- Main Content -->
@@ -65,6 +94,55 @@
                 </div>
             </div>
         </main>
+    </div>
+
+    <!-- Modals -->
+
+    <!-- Result Modal -->
+    <div id="result-modal" class="modal hidden">
+        <div class="modal-content glass-panel">
+            <div class="modal-header">
+                <h3>Task Result</h3>
+                <button class="btn-close" id="btn-close-result">&times;</button>
+            </div>
+            <div class="modal-body">
+                <pre id="full-result-text"></pre>
+            </div>
+        </div>
+    </div>
+
+    <!-- Market Modal -->
+    <div id="market-modal" class="modal hidden">
+        <div class="modal-content glass-panel market-content">
+            <div class="modal-header">
+                <h3>Hire New Agents</h3>
+                <button class="btn-close" id="btn-close-market">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="agent-grid">
+                    <div class="agent-card">
+                        <h4>Researcher</h4>
+                        <p>Scours the web for information.</p>
+                        <button class="btn-primary hire-btn" data-role="Researcher">Hire for $50</button>
+                    </div>
+                    <div class="agent-card">
+                        <h4>Coder</h4>
+                        <p>Writes and refactors code.</p>
+                        <button class="btn-primary hire-btn" data-role="Coder">Hire for $75</button>
+                    </div>
+                    <div class="agent-card">
+                        <h4>Accountant</h4>
+                        <p>Calculates taxes and financials.</p>
+                        <button class="btn-primary hire-btn" data-role="Accountant">Hire for $60</button>
+                    </div>
+                    <div class="agent-card">
+                        <h4>Writer</h4>
+                        <p>Drafts polished articles.</p>
+                        <button class="btn-primary hire-btn" data-role="Writer">Hire for $40</button>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
     
     <script src="/static/script.js"></script>
