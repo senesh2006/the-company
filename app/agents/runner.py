@@ -15,23 +15,31 @@ class TeamRunner:
         
         self.graph = create_team_graph(self.business_id, self.task_id)
         
-        if not settings.POSTGRES_SERVER:
-            raise ValueError("PostgreSQL configuration missing.")
+        self.use_postgres = bool(settings.POSTGRES_SERVER)
+        if self.use_postgres:
+            conn_string = f"postgresql://{settings.POSTGRES_USER}:{settings.POSTGRES_PASSWORD}@{settings.POSTGRES_SERVER}:{settings.POSTGRES_PORT}/{settings.POSTGRES_DB}"
+            self.pool = ConnectionPool(conninfo=conn_string, max_size=10)
+        else:
+            from langgraph.checkpoint.memory import MemorySaver
+            self.memory_saver = MemorySaver()
             
-        conn_string = f"postgresql://{settings.POSTGRES_USER}:{settings.POSTGRES_PASSWORD}@{settings.POSTGRES_SERVER}:{settings.POSTGRES_PORT}/{settings.POSTGRES_DB}"
-        self.pool = ConnectionPool(
-            conninfo=conn_string,
-            max_size=10,
-        )
         self.task_service = TaskService()
         
+    from contextlib import contextmanager
+
+    @contextmanager
+    def _get_checkpointer(self):
+        if self.use_postgres:
+            with PostgresSaver(self.pool) as checkpointer:
+                checkpointer.setup()
+                yield checkpointer
+        else:
+            yield self.memory_saver
+
     def _get_config(self) -> dict:
         return {"configurable": {"thread_id": self.thread_id}}
         
     def start(self, initial_instruction: str) -> dict:
-        """
-        Starts a new team task run with the initial instruction.
-        """
         initial_state = {
             "business_id": self.business_id,
             "task_id": self.task_id,
@@ -41,8 +49,7 @@ class TeamRunner:
             "status": "running"
         }
         
-        with PostgresSaver(self.pool) as checkpointer:
-            checkpointer.setup()
+        with self._get_checkpointer() as checkpointer:
             app = self.graph.compile(checkpointer=checkpointer)
             result = app.invoke(initial_state, config=self._get_config())
             
@@ -54,10 +61,7 @@ class TeamRunner:
             return result
 
     def pause(self):
-        """
-        Pauses a team run by updating its state status in the checkpointer.
-        """
-        with PostgresSaver(self.pool) as checkpointer:
+        with self._get_checkpointer() as checkpointer:
             app = self.graph.compile(checkpointer=checkpointer)
             config = self._get_config()
             state = app.get_state(config)
@@ -68,11 +72,7 @@ class TeamRunner:
         return False
 
     def kill(self):
-        """
-        Forces a team run to stop by marking it as killed, and updates
-        the task status in Supabase to failed.
-        """
-        with PostgresSaver(self.pool) as checkpointer:
+        with self._get_checkpointer() as checkpointer:
             app = self.graph.compile(checkpointer=checkpointer)
             config = self._get_config()
             state = app.get_state(config)
@@ -84,10 +84,7 @@ class TeamRunner:
         return False
 
     def resume(self, additional_instruction: Optional[str] = None):
-        """
-        Resumes a paused team run.
-        """
-        with PostgresSaver(self.pool) as checkpointer:
+        with self._get_checkpointer() as checkpointer:
             app = self.graph.compile(checkpointer=checkpointer)
             config = self._get_config()
             
@@ -110,10 +107,7 @@ class TeamRunner:
             return result
 
     def inject_instruction(self, instruction: str):
-        """
-        Injects a new human instruction directly into the state of a running supervisor.
-        """
-        with PostgresSaver(self.pool) as checkpointer:
+        with self._get_checkpointer() as checkpointer:
             app = self.graph.compile(checkpointer=checkpointer)
             config = self._get_config()
             

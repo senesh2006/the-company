@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, BackgroundTasks
 from pydantic import BaseModel
 from typing import Optional, List, Any
 
@@ -16,13 +16,22 @@ class ClaimTaskPayload(BaseModel):
     agent_id: str
 
 @router.post("/{business_id}/queue")
-def queue_task(business_id: str, payload: QueueTaskPayload):
-    """Adds a new task to the queue."""
+def queue_task(business_id: str, payload: QueueTaskPayload, background_tasks: BackgroundTasks):
+    """Adds a new task to the queue and starts processing it."""
     try:
         task = task_service.queue_task(business_id, payload.description, payload.priority)
+        background_tasks.add_task(run_team_task_bg, business_id, task["id"], payload.description)
         return {"status": "success", "task": task}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+def run_team_task_bg(business_id: str, task_id: str, description: str):
+    try:
+        from app.agents.runner import TeamRunner
+        runner = TeamRunner(business_id, task_id)
+        runner.start(description)
+    except Exception as e:
+        logger.error(f"Background task failed for {task_id}: {e}")
 
 @router.post("/{business_id}/claim")
 def claim_task(business_id: str, payload: ClaimTaskPayload):
