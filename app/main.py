@@ -35,7 +35,7 @@ def setup_test_environment():
     import os
     try:
         sb_url = settings.SUPABASE_URL or os.getenv("SUPABASE_URL")
-        sb_key = settings.SUPABASE_KEY or os.getenv("SUPABASE_KEY")
+        sb_key = settings.SUPABASE_KEY or os.getenv("SUPABASE_KEY") or os.getenv("SUPABASE_SECRET_KEY")
 
         if not sb_url or not sb_key:
             safe_keys = [k for k in os.environ.keys() if "KEY" not in k.upper() and "SECRET" not in k.upper() and "TOKEN" not in k.upper()]
