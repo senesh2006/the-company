@@ -33,6 +33,16 @@ def run_team_task_bg(business_id: str, task_id: str, description: str):
         runner.start(description)
     except Exception as e:
         logger.error(f"Background task failed for {task_id}: {e}")
+        import traceback
+        error_msg = f"FATAL ERROR: {str(e)}\n{traceback.format_exc()}"
+        # Try to manually update the task to failed so it doesn't get stuck in queued
+        try:
+            from app.services.task_service import TaskService
+            ts = TaskService()
+            ts.update_task_result(task_id, error_msg)
+            ts.fail_task(task_id)
+        except Exception as db_e:
+            logger.error(f"Failed to update task status in DB: {db_e}")
 
 @router.post("/{business_id}/claim")
 def claim_task(business_id: str, payload: ClaimTaskPayload, user = Depends(get_current_user)):
