@@ -32,14 +32,23 @@ app.include_router(metrics.router, prefix=f"{settings.API_V1_STR}/metrics", tags
 @app.get("/api/v1/setup")
 def setup_test_environment():
     """Gets or creates a default business for the test UI."""
-    client = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
-    response = client.table("businesses").select("*").limit(1).execute()
-    if response.data:
-        return {"business_id": response.data[0]["id"]}
-    
-    # Create one if none exists
-    new_biz = client.table("businesses").insert({"name": "Test Business"}).execute()
-    return {"business_id": new_biz.data[0]["id"]}
+    try:
+        if not settings.SUPABASE_URL or not settings.SUPABASE_KEY:
+            return {"error": "SUPABASE_URL or SUPABASE_KEY is missing from environment variables."}
+
+        client = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
+        response = client.table("businesses").select("*").limit(1).execute()
+        if response.data:
+            return {"business_id": response.data[0]["id"]}
+        
+        # Create one if none exists
+        new_biz = client.table("businesses").insert({"name": "Test Business"}).execute()
+        return {"business_id": new_biz.data[0]["id"]}
+    except Exception as e:
+        logger.error(f"Setup error: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return {"error": str(e), "type": str(type(e))}
 
 # Mount Static Files
 app.mount("/static", StaticFiles(directory="app/static"), name="static")

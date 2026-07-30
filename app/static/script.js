@@ -15,6 +15,11 @@ document.addEventListener("DOMContentLoaded", () => {
         try {
             const res = await fetch("/api/v1/setup");
             const data = await res.json();
+            
+            if (data.error) {
+                throw new Error(data.error);
+            }
+            
             businessId = data.business_id;
             businessIdDisplay.textContent = `Business ID: ${businessId.substring(0, 8)}...`;
             
@@ -23,7 +28,8 @@ document.addEventListener("DOMContentLoaded", () => {
         } catch (err) {
             businessIdDisplay.textContent = "Failed to connect";
             businessIdDisplay.style.color = "var(--status-failed)";
-            console.error("Initialization failed:", err);
+            console.error("Initialization failed:", err.message);
+            alert("Setup Error: " + err.message);
         }
     }
 
