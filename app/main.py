@@ -44,13 +44,25 @@ def setup_test_environment():
             }
 
         client = create_client(sb_url, sb_key)
+        
+        # Gets or creates a default business
         response = client.table("businesses").select("*").limit(1).execute()
         if response.data:
-            return {"business_id": response.data[0]["id"]}
-        
-        # Create one if none exists
-        new_biz = client.table("businesses").insert({"name": "Test Business"}).execute()
-        return {"business_id": new_biz.data[0]["id"]}
+            biz_id = response.data[0]["id"]
+        else:
+            new_biz = client.table("businesses").insert({"name": "Test Business"}).execute()
+            biz_id = new_biz.data[0]["id"]
+            
+        # Ensure default agents exist for this business
+        agents = client.table("agents").select("id").eq("business_id", biz_id).execute()
+        if not agents.data:
+            default_agents = [
+                {"business_id": biz_id, "name": "Alice (Researcher)", "role": "Researcher"},
+                {"business_id": biz_id, "name": "Bob (Coder)", "role": "Coder"}
+            ]
+            client.table("agents").insert(default_agents).execute()
+            
+        return {"business_id": biz_id}
     except Exception as e:
         logger.error(f"Setup error: {str(e)}")
         import traceback

@@ -49,6 +49,9 @@ class TeamRunner:
             "status": "running"
         }
         
+        # Mark the main task as running in the DB
+        self.task_service.update_task_status(self.task_id, "running")
+        
         with self._get_checkpointer() as checkpointer:
             app = self.graph.compile(checkpointer=checkpointer)
             result = app.invoke(initial_state, config=self._get_config())
