@@ -1,19 +1,6 @@
 document.addEventListener("DOMContentLoaded", async () => {
     // UI Elements
-    const authOverlay = document.getElementById("auth-overlay");
     const appContainer = document.getElementById("app-container");
-    const authForm = document.getElementById("auth-form");
-    const authEmail = document.getElementById("auth-email");
-    const authPassword = document.getElementById("auth-password");
-    const btnLogin = document.getElementById("btn-login");
-    const btnRegister = document.getElementById("btn-register");
-    const authError = document.getElementById("auth-error");
-    const btnLogout = document.getElementById("btn-logout");
-    const btnCloseAuth = document.getElementById("btn-close-auth");
-
-    const heroSection = document.getElementById("hero-section");
-    const bgVideo = document.getElementById("bg-video");
-
     const taskInput = document.getElementById("task-input");
     const btnLaunch = document.getElementById("btn-launch");
     const launchLoader = document.getElementById("launch-loader");
@@ -21,123 +8,15 @@ document.addEventListener("DOMContentLoaded", async () => {
     const businessIdDisplay = document.getElementById("business-id-display");
     const emptyState = document.getElementById("empty-state");
     const dagContainer = document.getElementById("dag-container");
-
     const btnOpenMarket = document.getElementById("btn-open-market");
     const marketModal = document.getElementById("market-modal");
     const btnCloseMarket = document.getElementById("btn-close-market");
-
     const resultModal = document.getElementById("result-modal");
     const fullResultText = document.getElementById("full-result-text");
     const btnCloseResult = document.getElementById("btn-close-result");
 
     let businessId = null;
     let pollInterval = null;
-    let supabaseClient = null;
-    let sessionToken = null;
-
-    // 1. Initialize Supabase
-    async function initSupabase() {
-        // Auth removed per user request
-        showApp();
-    }
-
-    function showAuth() {
-        authOverlay.classList.add("hidden");
-        appContainer.classList.add("hidden");
-        heroSection.classList.remove("hidden");
-        bgVideo.classList.remove("hidden");
-    }
-
-    async function showApp() {
-        authOverlay.classList.add("hidden");
-        heroSection.classList.add("hidden");
-        bgVideo.classList.add("hidden");
-        appContainer.classList.remove("hidden");
-        await initBusiness();
-    }
-
-    // Auth Overlay triggers
-    document.querySelectorAll('.btn-signup-trigger').forEach(btn => {
-        btn.addEventListener('click', () => {
-            authOverlay.classList.remove("hidden");
-        });
-    });
-
-    if (btnCloseAuth) {
-        btnCloseAuth.addEventListener('click', () => {
-            authOverlay.classList.add("hidden");
-        });
-    }
-
-    // Video Fade Logic
-    if (bgVideo) {
-        function fadeLoop() {
-            if (!bgVideo.duration) {
-                requestAnimationFrame(fadeLoop);
-                return;
-            }
-            
-            const currentTime = bgVideo.currentTime;
-            const duration = bgVideo.duration;
-            
-            if (currentTime < 0.5) {
-                bgVideo.style.opacity = (currentTime / 0.5).toString();
-            } else if (currentTime > duration - 0.5) {
-                const timeLeft = duration - currentTime;
-                bgVideo.style.opacity = Math.max(0, (timeLeft / 0.5)).toString();
-            } else {
-                bgVideo.style.opacity = "1";
-            }
-            requestAnimationFrame(fadeLoop);
-        }
-        
-        bgVideo.addEventListener('ended', () => {
-            bgVideo.style.opacity = "0";
-            setTimeout(() => {
-                bgVideo.play().catch(e => console.log(e));
-            }, 100);
-        });
-        
-        bgVideo.play().then(() => {
-            requestAnimationFrame(fadeLoop);
-        }).catch(e => console.log("Autoplay prevented:", e));
-    }
-
-    // 2. Auth Handlers
-    authForm.addEventListener("submit", async (e) => {
-        e.preventDefault();
-        const email = authEmail.value;
-        const password = authPassword.value;
-        const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
-        if (error) {
-            authError.textContent = error.message;
-            authError.classList.remove("hidden");
-        } else {
-            sessionToken = data.session.access_token;
-            showApp();
-        }
-    });
-
-    btnRegister.addEventListener("click", async () => {
-        const email = authEmail.value;
-        const password = authPassword.value;
-        const { data, error } = await supabaseClient.auth.signUp({ email, password });
-        if (error) {
-            authError.textContent = error.message;
-            authError.classList.remove("hidden");
-        } else {
-            authError.textContent = "Registration successful! Please login.";
-            authError.classList.remove("hidden");
-            authError.style.color = "lightgreen";
-        }
-    });
-
-    btnLogout.addEventListener("click", async () => {
-        await supabaseClient.auth.signOut();
-        sessionToken = null;
-        if (pollInterval) clearInterval(pollInterval);
-        showAuth();
-    });
 
     // Helper for authenticated API calls
     async function apiFetch(url, options = {}) {
@@ -145,7 +24,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         return fetch(url, { ...options, headers });
     }
 
-    // 3. App Initialization
+    // App Initialization
     async function initBusiness() {
         try {
             const res = await apiFetch("/api/v1/setup");
@@ -163,7 +42,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
     }
 
-    // 4. Modals and Interactions
+    // Modals and Interactions
     btnOpenMarket.addEventListener("click", () => marketModal.classList.remove("hidden"));
     btnCloseMarket.addEventListener("click", () => marketModal.classList.add("hidden"));
     btnCloseResult.addEventListener("click", () => resultModal.classList.add("hidden"));
@@ -200,7 +79,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         resultModal.classList.remove("hidden");
     }
 
-    // 5. Task Launch and Polling
+    // Task Launch and Polling
     btnLaunch.addEventListener("click", async () => {
         const description = taskInput.value.trim();
         if (!description || !businessId) return;
@@ -260,7 +139,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
     }
 
-    // 6. Rendering Logic
+    // Rendering Logic
     function renderDAG(tasks) {
         const taskMap = {};
         const roots = [];
@@ -323,5 +202,5 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     // Start
-    initSupabase();
+    initBusiness();
 });
