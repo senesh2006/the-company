@@ -47,7 +47,10 @@ def make_level3_worker_node(role: str):
         results = {}
         for t_id, task in state.sub_tasks.items():
             if task.assignee_role == role and task.status == "running":
-                res = worker_agent.invoke({"messages": [HumanMessage(content=f"Subtask: {task.description}")]})
+                res = worker_agent.invoke(
+                    {"messages": [HumanMessage(content=f"Subtask: {task.description}")]},
+                    config={"recursion_limit": 100}
+                )
                 output = res["messages"][-1].content
                 
                 # Copy task to modify
@@ -172,7 +175,10 @@ def make_specialist_worker_node(agent_data: dict):
                 })
                 final_output = execute_sub_orchestration(state.get("business_id", "unknown"), task, plan)
             else:
-                res = worker_agent.invoke({"messages": state.get("messages", []) + [HumanMessage(content=task.description)]})
+                res = worker_agent.invoke(
+                    {"messages": state.get("messages", []) + [HumanMessage(content=task.description)]},
+                    config={"recursion_limit": 100}
+                )
                 final_output = res["messages"][-1].content
                 
             task_service.update_task_result(task.id, final_output)
