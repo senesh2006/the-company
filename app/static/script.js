@@ -17,6 +17,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     let businessId = null;
     let pollInterval = null;
+    let lastTasksHash = "";
 
     // Helper for authenticated API calls
     async function apiFetch(url, options = {}) {
@@ -129,10 +130,16 @@ document.addEventListener("DOMContentLoaded", async () => {
             if (data.tasks && data.tasks.length > 0) {
                 emptyState.classList.add("hidden");
                 dagContainer.classList.remove("hidden");
-                renderDAG(data.tasks);
+                
+                const newHash = JSON.stringify(data.tasks);
+                if (newHash !== lastTasksHash) {
+                    renderDAG(data.tasks);
+                    lastTasksHash = newHash;
+                }
             } else {
                 emptyState.classList.remove("hidden");
                 dagContainer.classList.add("hidden");
+                lastTasksHash = "";
             }
         } catch (err) {
             console.error("Poll error:", err);
