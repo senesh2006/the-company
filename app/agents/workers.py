@@ -170,7 +170,7 @@ def make_specialist_worker_node(agent_data: dict):
                     "task_description": task.description, 
                     "context": str(state.get("shared_context", {}))
                 })
-                final_output = execute_sub_orchestration(state["business_id"], task, plan)
+                final_output = execute_sub_orchestration(state.get("business_id", "unknown"), task, plan)
             else:
                 res = worker_agent.invoke({"messages": state.get("messages", []) + [HumanMessage(content=task.description)]})
                 final_output = res["messages"][-1].content
