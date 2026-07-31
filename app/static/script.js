@@ -170,7 +170,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (task.result) {
             const isTruncated = task.result.length > 300;
             const shortResult = isTruncated ? task.result.substring(0, 300) + "..." : task.result;
-            const encodedResult = encodeURIComponent(task.result);
+            // encodeURIComponent does not escape single quotes, which breaks the onclick handler
+            const encodedResult = encodeURIComponent(task.result).replace(/'/g, "%27");
             
             resultHtml = `
                 <div class="task-result">
