@@ -161,37 +161,51 @@ def make_specialist_worker_node(agent_data: dict):
         if not task:
             return {}
             
-        decision = analyzer.invoke({"task_description": task.description})
-        
-        final_output = ""
-        if decision.decision == "spawn_subworkers":
-            plan = researcher.invoke({
-                "task_description": task.description, 
-                "context": str(state.get("shared_context", {}))
-            })
-            final_output = execute_sub_orchestration(state["business_id"], task, plan)
-        else:
-            res = worker_agent.invoke({"messages": state.get("messages", []) + [HumanMessage(content=task.description)]})
-            final_output = res["messages"][-1].content
+        try:
+            decision = analyzer.invoke({"task_description": task.description})
             
-        task_service.update_task_result(task.id, final_output)
-        
-        updated_task = task.copy()
-        updated_task.status = "completed"
-        updated_task.result = final_output
-        
+            final_output = ""
+            if decision.decision == "spawn_subworkers":
+                plan = researcher.invoke({
+                    "task_description": task.description, 
+                    "context": str(state.get("shared_context", {}))
+                })
+                final_output = execute_sub_orchestration(state["business_id"], task, plan)
+            else:
+                res = worker_agent.invoke({"messages": state.get("messages", []) + [HumanMessage(content=task.description)]})
+                final_output = res["messages"][-1].content
+                
+            task_service.update_task_result(task.id, final_output)
+            
+            updated_task = task.copy()
+            updated_task.status = "completed"
+            updated_task.result = final_output
+            status_to_return = "completed"
+            
+        except Exception as e:
+            import traceback
+            err_msg = traceback.format_exc()
+            task_service.update_task_status(task.id, "failed")
+            task_service.update_task_result(task.id, f"Worker crashed: {str(e)}\n\n{err_msg}")
+            
+            updated_task = task.copy()
+            updated_task.status = "failed"
+            updated_task.result = f"Worker crashed: {str(e)}"
+            final_output = updated_task.result
+            status_to_return = "failed"
+            
         worker_result = WorkerResult(
             task_id=task.id,
             agent_id=agent_id,
             role=role,
-            status="completed",
+            status=status_to_return,
             output=final_output
         )
         
         return {
             "task_graph": {task.id: updated_task},
             "worker_results": [worker_result],
-            "messages": [AIMessage(content=f"Worker {role} completed task '{task.description}': {final_output}")]
+            "messages": [AIMessage(content=f"Worker {role} finished task '{task.description}': {final_output}")]
         }
         
     return node_func
