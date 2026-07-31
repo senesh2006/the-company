@@ -42,12 +42,15 @@ def setup_test_environment(user = Depends(get_current_user)):
 
         client = create_client(sb_url, sb_key)
         
-        # Gets or creates a default business for this specific user
-        response = client.table("businesses").select("*").eq("owner_id", user.id).limit(1).execute()
+        # Since auth is disabled, just grab the first available business in the database
+        response = client.table("businesses").select("*").limit(1).execute()
+        
         if response.data:
             biz_id = response.data[0]["id"]
         else:
-            new_biz = client.table("businesses").insert({"name": f"{user.email}'s Business", "owner_id": user.id}).execute()
+            # If no business exists at all, try creating one without an owner_id if possible
+            # Or with a null owner_id
+            new_biz = client.table("businesses").insert({"name": "Default Business"}).execute()
             biz_id = new_biz.data[0]["id"]
             
         # Ensure default agents exist for this business
