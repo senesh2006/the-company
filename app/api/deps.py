@@ -21,7 +21,8 @@ def get_supabase_client() -> Client:
 
 class MockUser:
     def __init__(self):
-        self.id = "default-user-id"
+        # Must be a valid UUID for Supabase owner_id column
+        self.id = "00000000-0000-0000-0000-000000000000"
         self.email = "default@accentic.os"
 
 def get_current_user():
