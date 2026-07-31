@@ -16,74 +16,11 @@
     <div class="page-wrapper" id="page-wrapper">
         <video id="bg-video" class="bg-video" src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260328_065045_c44942da-53c6-4804-b734-f9e07fc22e08.mp4" muted playsinline></video>
         
-        <div id="hero-section" class="hero-section">
-            <div class="blur-shape"></div>
-            
-            <nav class="navbar">
-                <div class="nav-left">
-                    <img src="/src/assets/logo.png" alt="Logo" class="nav-logo" onerror="this.onerror=null; this.src='/static/assets/logo.png';">
-                </div>
-                <div class="nav-center">
-                    <button class="nav-item">Features <span class="chevron">▼</span></button>
-                    <button class="nav-item">Solutions</button>
-                    <button class="nav-item">Plans</button>
-                    <button class="nav-item">Learning <span class="chevron">▼</span></button>
-                </div>
-                <div class="nav-right">
-                    <button class="btn-hero-secondary btn-signup-trigger">Sign Up</button>
-                </div>
-            </nav>
-            <div class="nav-divider"></div>
-            
-            <div class="hero-content">
-                <h1 class="hero-headline">Accentic <span class="gradient-text">OS</span></h1>
-                <p class="hero-subtitle">The most powerful multi-agent DAG orchestrator<br>ever deployed for autonomous workflows</p>
-                <button class="btn-hero-secondary btn-cta btn-signup-trigger">Start Orchestrating</button>
-            </div>
-            
-            <div class="marquee-wrapper">
-                <div class="marquee-static">Relied on by brands<br>across the globe</div>
-                <div class="marquee-scroll-container">
-                    <div class="marquee-content">
-                        <!-- Group 1 -->
-                        <div class="marquee-item"><div class="liquid-glass icon">V</div> <span>Vortex</span></div>
-                        <div class="marquee-item"><div class="liquid-glass icon">N</div> <span>Nimbus</span></div>
-                        <div class="marquee-item"><div class="liquid-glass icon">P</div> <span>Prysma</span></div>
-                        <div class="marquee-item"><div class="liquid-glass icon">C</div> <span>Cirrus</span></div>
-                        <div class="marquee-item"><div class="liquid-glass icon">K</div> <span>Kynder</span></div>
-                        <div class="marquee-item"><div class="liquid-glass icon">H</div> <span>Halcyn</span></div>
-                        <!-- Group 2 (Duplicate for infinite scroll) -->
-                        <div class="marquee-item"><div class="liquid-glass icon">V</div> <span>Vortex</span></div>
-                        <div class="marquee-item"><div class="liquid-glass icon">N</div> <span>Nimbus</span></div>
-                        <div class="marquee-item"><div class="liquid-glass icon">P</div> <span>Prysma</span></div>
-                        <div class="marquee-item"><div class="liquid-glass icon">C</div> <span>Cirrus</span></div>
-                        <div class="marquee-item"><div class="liquid-glass icon">K</div> <span>Kynder</span></div>
-                        <div class="marquee-item"><div class="liquid-glass icon">H</div> <span>Halcyn</span></div>
-                    </div>
-                </div>
-            </div>
-        </div>
 
-        <!-- Auth Overlay (Hidden by default) -->
-        <div id="auth-overlay" class="auth-overlay hidden">
-            <div class="auth-box glass-panel">
-                <button class="btn-close" id="btn-close-auth" style="position:absolute; top:10px; right:15px; font-size:24px; background:none; border:none; color:white; cursor:pointer;">&times;</button>
-                <h2>Welcome to Accentic OS</h2>
-                <p>Login to orchestrate your agent swarm.</p>
-                <form id="auth-form">
-                    <input type="email" id="auth-email" placeholder="Email Address" required>
-                    <input type="password" id="auth-password" placeholder="Password" required>
-                    <div class="auth-buttons">
-                        <button type="submit" id="btn-login" class="btn-primary">Login</button>
-                        <button type="button" id="btn-register" class="btn-secondary">Register</button>
-                    </div>
-                    <div id="auth-error" class="auth-error hidden"></div>
-                </form>
-            </div>
-        </div>
+
 
         <!-- Main App Structure -->
-        <div class="app-container hidden" id="app-container">
+        <div class="app-container" id="app-container">
             <!-- Sidebar -->
             <aside class="sidebar glass-panel">
                 <div class="logo">
