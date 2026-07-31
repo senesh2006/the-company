@@ -54,9 +54,17 @@ def global_supervisor_node(state: OrchestratorState):
     })
     
     new_task_dict = {}
+    id_mapping = {}
+    
+    # Map LLM-generated IDs to real UUIDs
     for t in decision.new_tasks:
-        if not t.id:
-            t.id = str(uuid.uuid4())
+        new_id = str(uuid.uuid4())
+        if t.id:
+            id_mapping[t.id] = new_id
+        t.id = new_id
+        
+    for t in decision.new_tasks:
+        t.dependencies = [id_mapping.get(d, d) for d in t.dependencies]
         new_task_dict[t.id] = t
         
         # Sync to DB
@@ -65,7 +73,8 @@ def global_supervisor_node(state: OrchestratorState):
             description=t.description,
             status="queued",
             assignee_role=t.assignee_role,
-            id=t.id
+            id=t.id,
+            dependencies=t.dependencies
         )
     
     return {
