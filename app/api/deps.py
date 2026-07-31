@@ -19,13 +19,11 @@ def get_supabase_client() -> Client:
         raise HTTPException(status_code=500, detail="SUPABASE_KEY is missing from environment")
     return create_client(sb_url, sb_key)
 
-def get_current_user(credentials: HTTPAuthorizationCredentials = Security(security)):
-    token = credentials.credentials
-    supabase = get_supabase_client()
-    try:
-        user_response = supabase.auth.get_user(token)
-        if not user_response or not user_response.user:
-            raise HTTPException(status_code=401, detail="Invalid token")
-        return user_response.user
-    except Exception as e:
-        raise HTTPException(status_code=401, detail=f"Authentication failed: {str(e)}")
+class MockUser:
+    def __init__(self):
+        self.id = "default-user-id"
+        self.email = "default@accentic.os"
+
+def get_current_user():
+    # Auth disabled globally per user request
+    return MockUser()

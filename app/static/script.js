@@ -37,21 +37,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     // 1. Initialize Supabase
     async function initSupabase() {
-        try {
-            const res = await fetch("/api/v1/config");
-            const config = await res.json();
-            supabaseClient = window.supabase.createClient(config.supabaseUrl, config.supabaseKey);
-            
-            const { data, error } = await supabaseClient.auth.getSession();
-            if (data.session) {
-                sessionToken = data.session.access_token;
-                showApp();
-            } else {
-                showAuth();
-            }
-        } catch (err) {
-            console.error("Failed to load config", err);
-        }
+        // Auth removed per user request
+        showApp();
     }
 
     function showAuth() {
@@ -155,9 +142,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     // Helper for authenticated API calls
     async function apiFetch(url, options = {}) {
         const headers = { ...options.headers };
-        if (sessionToken) {
-            headers["Authorization"] = `Bearer ${sessionToken}`;
-        }
         return fetch(url, { ...options, headers });
     }
 
