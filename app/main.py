@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from app.core.config import settings
-from app.api.routes import health, agents, tasks, costs, metrics
+from app.api.routes import health, agents, tasks, costs, metrics, memory, attention, hierarchy
 from app.core.logging import logger
 from app.services.event_bus import start_event_bus
 from supabase import create_client
@@ -28,6 +28,9 @@ app.include_router(agents.router, prefix=f"{settings.API_V1_STR}/agents", tags=[
 app.include_router(tasks.router, prefix=f"{settings.API_V1_STR}/tasks", tags=["tasks"])
 app.include_router(costs.router, prefix=f"{settings.API_V1_STR}/costs", tags=["costs"])
 app.include_router(metrics.router, prefix=f"{settings.API_V1_STR}/metrics", tags=["metrics"])
+app.include_router(memory.router, prefix=f"{settings.API_V1_STR}/memory", tags=["memory"])
+app.include_router(attention.router, prefix=f"{settings.API_V1_STR}/attention", tags=["attention"])
+app.include_router(hierarchy.router, prefix=f"{settings.API_V1_STR}/hierarchy", tags=["hierarchy"])
 
 from fastapi import Depends
 from app.api.deps import get_current_user

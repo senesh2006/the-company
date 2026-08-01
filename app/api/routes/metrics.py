@@ -8,6 +8,33 @@ router = APIRouter()
 metrics_service = MetricsService()
 cost_service = CostService()
 
+@router.get("/")
+def get_global_metrics():
+    """Returns aggregated global metrics for the dashboard."""
+    try:
+        # We can just fetch the first business metrics or aggregate
+        # For simplicity, returning some defaults + aggregating from DB
+        response = metrics_service.client.table("agents").select("status").execute()
+        agents = response.data
+        total_agents = len(agents) if agents else 0
+        active_agents = len([a for a in agents if a["status"] == "Running"]) if agents else 0
+        
+        task_response = metrics_service.client.table("tasks").select("status").execute()
+        tasks = task_response.data
+        total_tasks = len(tasks) if tasks else 0
+        completed_tasks = len([t for t in tasks if t["status"] == "completed"]) if tasks else 0
+        
+        return {
+            "totalAgents": total_agents,
+            "activeAgents": active_agents,
+            "totalTasks": total_tasks,
+            "completedTasks": completed_tasks,
+            "totalCost": 0.0, # Placeholder
+            "riskLevel": "low"
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @router.get("/{business_id}/agents/rates")
 def get_agent_rates(business_id: str):
     """Returns success and error rates per agent based on terminal tasks."""

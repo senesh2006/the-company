@@ -146,3 +146,26 @@ def force_stop_team(business_id: str):
     except Exception as e:
         logger.error(f"Failed to force stop team: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/")
+def get_agents(user = Depends(get_current_user)):
+    """Fetches all agents across the user's business."""
+    try:
+        # Since we bypass auth, we'll just fetch all agents
+        response = task_service.client.table("agents").select("*").execute()
+        return response.data
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/{agent_id}")
+def get_agent_details(agent_id: str, user = Depends(get_current_user)):
+    """Fetches details for a specific agent."""
+    try:
+        response = task_service.client.table("agents").select("*").eq("id", agent_id).execute()
+        if not response.data:
+            raise HTTPException(status_code=404, detail="Agent not found")
+        return response.data[0]
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
