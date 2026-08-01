@@ -59,7 +59,10 @@ export interface AttentionItem {
   timestamp: string;
 }
 
-const rawBaseUrl = typeof window !== 'undefined' ? (process.env.NEXT_PUBLIC_API_URL || '') : '';
+// Use relative path in production since frontend and backend are served together
+const rawBaseUrl = process.env.NODE_ENV === 'development' 
+  ? (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000') 
+  : '';
 const BASE_URL = rawBaseUrl.endsWith('/') ? rawBaseUrl.slice(0, -1) : rawBaseUrl;
 
 export const api = {

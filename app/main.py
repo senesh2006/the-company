@@ -95,11 +95,34 @@ def get_public_config():
     }
 
 # Mount Static Files
-app.mount("/static", StaticFiles(directory="app/static"), name="static")
+import os
+from fastapi.responses import JSONResponse
+os.makedirs("app/static", exist_ok=True)
+os.makedirs("app/static/_next", exist_ok=True)
 
-@app.get("/")
-async def root():
-    return FileResponse("app/static/index.html")
+app.mount("/_next", StaticFiles(directory="app/static/_next"), name="next-assets")
+
+@app.get("/{full_path:path}")
+async def serve_frontend(full_path: str):
+    if full_path == "":
+        full_path = "index"
+        
+    # Check for direct file match (like favicon.ico)
+    file_path = os.path.join("app/static", full_path)
+    if os.path.isfile(file_path):
+        return FileResponse(file_path)
+        
+    # Next.js maps routes to .html files
+    html_path = os.path.join("app/static", f"{full_path}.html")
+    if os.path.isfile(html_path):
+        return FileResponse(html_path)
+        
+    # Fallback to index.html for SPA feeling (though Next generates distinct HTMLs)
+    index_path = os.path.join("app/static", "index.html")
+    if os.path.isfile(index_path):
+        return FileResponse(index_path)
+        
+    return JSONResponse(status_code=404, content={"detail": "Not Found"})
 
 @app.on_event("startup")
 async def startup_event():

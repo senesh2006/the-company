@@ -1,4 +1,15 @@
-# Use an official Python runtime as a parent image
+# Stage 1: Build Next.js frontend
+FROM node:20-slim AS frontend-builder
+
+WORKDIR /app/frontend
+
+COPY frontend/package*.json ./
+RUN npm install
+
+COPY frontend/ ./
+RUN npm run build
+
+# Stage 2: Build Python backend and serve frontend
 FROM python:3.11-slim
 
 # Set environment variables
@@ -27,6 +38,9 @@ RUN poetry config virtualenvs.create false \
 
 # Copy project
 COPY . .
+
+# Copy frontend static build from builder stage to FastAPI static directory
+COPY --from=frontend-builder /app/frontend/out ./app/static
 
 # Expose port
 EXPOSE 8000
