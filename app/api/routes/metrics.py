@@ -1,8 +1,11 @@
+import logging
 from fastapi import APIRouter, HTTPException
 from typing import Any, Dict
 
 from app.services.metrics_service import MetricsService
 from app.services.cost_service import CostService
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 metrics_service = MetricsService()
