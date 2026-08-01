@@ -2,8 +2,11 @@
 
 
 import { ShieldAlert, Zap, DollarSign } from 'lucide-react';
+import { useMetrics } from '@/lib/queries';
 
 export function Topbar() {
+  const { data: metrics } = useMetrics();
+  
   return (
     <header className="h-16 border-b border-zinc-800 bg-zinc-950/80 backdrop-blur-md flex items-center justify-between px-6 shrink-0 z-10">
       <div className="flex items-center gap-6">
@@ -15,7 +18,7 @@ export function Topbar() {
           <span className="text-[10px] font-mono text-zinc-500">BURN RATE (TODAY)</span>
           <span className="text-sm font-mono text-rose-400 flex items-center">
             <DollarSign className="w-3 h-3" />
-            14.28
+            {metrics ? metrics.totalCost.toFixed(2) : '0.00'}
           </span>
         </div>
         
@@ -23,9 +26,9 @@ export function Topbar() {
         
         <div className="flex flex-col items-end">
           <span className="text-[10px] font-mono text-zinc-500">GLOBAL RISK</span>
-          <span className="text-sm font-mono text-emerald-400 flex items-center gap-1">
+          <span className="text-sm font-mono uppercase text-emerald-400 flex items-center gap-1">
             <ShieldAlert className="w-3 h-3" />
-            LOW
+            {metrics ? metrics.riskLevel : 'LOW'}
           </span>
         </div>
       </div>
