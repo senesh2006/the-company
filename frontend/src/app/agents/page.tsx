@@ -4,9 +4,9 @@ import { useAgents, useUpdateAgentStatus } from "@/lib/queries";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Pause, Play, Trash2, Edit2, ChevronRight } from "lucide-react";
+import { Pause, Play, Trash2, ChevronRight } from "lucide-react";
 import Link from "next/link";
-import { AgentStatus } from "@/lib/api";
+import { type AgentStatus } from "@/lib/api";
 
 const statusColors: Record<AgentStatus, string> = {
   Running: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20",
@@ -54,15 +54,15 @@ export default function AgentsPage() {
             <CardContent className="pt-4 flex-1 space-y-4">
               <div>
                 <p className="text-xs text-zinc-500 uppercase tracking-wider mb-1">Current Goal</p>
-                <p className="text-sm text-zinc-300 line-clamp-2">{agent.currentGoal}</p>
+                <p className="text-sm text-zinc-300 line-clamp-2">{agent.currentGoal || 'No goal assigned'}</p>
               </div>
               <div>
                 <p className="text-xs text-zinc-500 uppercase tracking-wider mb-1">Last Action</p>
-                <p className="text-sm text-zinc-300 truncate">{agent.lastAction}</p>
+                <p className="text-sm text-zinc-300 truncate">{agent.actions?.[agent.actions.length - 1] || 'No actions yet'}</p>
               </div>
               <div>
                 <p className="text-xs text-zinc-500 uppercase tracking-wider mb-1">Cost</p>
-                <p className="text-sm font-mono text-amber-500">${agent.costSoFar.toFixed(2)}</p>
+                <p className="text-sm font-mono text-amber-500">${agent.costSoFar?.toFixed(2) ?? '0.00'}</p>
               </div>
             </CardContent>
             <CardFooter className="pt-4 border-t border-zinc-800/50 flex justify-between gap-2">
@@ -90,7 +90,7 @@ export default function AgentsPage() {
                   variant="outline" 
                   size="icon" 
                   className="h-8 w-8 bg-zinc-950 border-zinc-800 hover:bg-red-950/50 hover:border-red-900/50 hover:text-red-500"
-                  onClick={() => updateStatus.mutate({ id: agent.id, status: 'Failed' })} // Mock Kill
+                  onClick={() => updateStatus.mutate({ id: agent.id, status: 'Failed' })}
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>

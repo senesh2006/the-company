@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { AgentStatus } from "@/lib/api";
+import { type AgentStatus } from "@/lib/api";
 import { Terminal, Lightbulb, Play, Pause, Trash2, Send } from "lucide-react";
 import { useState } from "react";
 
@@ -71,11 +71,11 @@ export default function AgentDetailPage() {
             <CardContent className="space-y-4">
               <div>
                 <p className="text-xs text-zinc-500 uppercase tracking-wider mb-1">Current Goal</p>
-                <p className="text-sm text-zinc-300">{agent.currentGoal}</p>
+                <p className="text-sm text-zinc-300">{agent.currentGoal || 'No goal assigned'}</p>
               </div>
               <div>
                 <p className="text-xs text-zinc-500 uppercase tracking-wider mb-1">Cost So Far</p>
-                <p className="text-lg font-mono text-amber-500">${agent.costSoFar.toFixed(2)}</p>
+                <p className="text-lg font-mono text-amber-500">${agent.costSoFar?.toFixed(2) ?? '0.00'}</p>
               </div>
             </CardContent>
           </Card>
@@ -108,7 +108,7 @@ export default function AgentDetailPage() {
             </CardHeader>
             <CardContent className="flex-1 overflow-y-auto p-0">
               <div className="divide-y divide-zinc-800/50">
-                {agent.thoughts.map((thought, i) => (
+                {(agent.thoughts ?? []).map((thought: string, i: number) => (
                   <div key={`thought-${i}`} className="p-4 flex gap-4 hover:bg-zinc-800/20">
                     <Lightbulb className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
                     <div>
@@ -117,7 +117,7 @@ export default function AgentDetailPage() {
                     </div>
                   </div>
                 ))}
-                {agent.actions.map((action, i) => (
+                {(agent.actions ?? []).map((action: string, i: number) => (
                   <div key={`action-${i}`} className="p-4 flex gap-4 hover:bg-zinc-800/20 bg-zinc-950/30">
                     <Terminal className="h-5 w-5 text-emerald-500 shrink-0 mt-0.5" />
                     <div>
@@ -126,7 +126,7 @@ export default function AgentDetailPage() {
                     </div>
                   </div>
                 ))}
-                {agent.thoughts.length === 0 && agent.actions.length === 0 && (
+                {(agent.thoughts ?? []).length === 0 && (agent.actions ?? []).length === 0 && (
                    <div className="p-8 text-center text-zinc-500">No activity logged yet.</div>
                 )}
               </div>

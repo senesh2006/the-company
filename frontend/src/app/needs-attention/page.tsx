@@ -31,19 +31,19 @@ export default function NeedsAttentionPage() {
                   <p className="text-sm text-zinc-400 mt-1">Agent ID: <Link href={`/agents/${item.agentId}`} className="hover:underline">{item.agentId}</Link></p>
                 </div>
                 <div className="text-right">
-                  <p className="text-xs text-zinc-500 uppercase tracking-wider mb-1">Cost Wasted</p>
-                  <p className="text-sm font-mono text-amber-500">${item.costSoFar.toFixed(2)}</p>
+                  <p className="text-xs text-zinc-500 uppercase tracking-wider mb-1">Type</p>
+                  <p className="text-sm font-mono text-amber-500">{item.type}</p>
                 </div>
               </div>
             </CardHeader>
             <CardContent className="space-y-4 pt-2">
               <div className="bg-zinc-950/50 rounded-md p-4 border border-zinc-800/50">
-                <p className="text-sm font-semibold text-zinc-300 mb-1">Reason for Block:</p>
-                <p className="text-sm text-zinc-400">{item.reason}</p>
+                <p className="text-sm font-semibold text-zinc-300 mb-1">Issue:</p>
+                <p className="text-sm text-zinc-400">{item.title}</p>
               </div>
               <div className="bg-zinc-950/50 rounded-md p-4 border border-zinc-800/50">
-                <p className="text-sm font-semibold text-zinc-300 mb-1">Agent's Proposed Action:</p>
-                <p className="text-sm text-zinc-400">{item.proposedAction}</p>
+                <p className="text-sm font-semibold text-zinc-300 mb-1">Details:</p>
+                <p className="text-sm text-zinc-400">{item.description}</p>
               </div>
             </CardContent>
             <CardFooter className="flex flex-wrap gap-2 border-t border-red-900/20 pt-4">
