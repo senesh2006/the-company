@@ -2,64 +2,83 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Activity, LayoutDashboard, Network, Database, Settings, ShieldAlert, Cpu } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export function Sidebar() {
   const pathname = usePathname();
   
-  const navItems = [
-    { name: 'Command Center', href: '/', icon: LayoutDashboard },
-    { name: 'Agents Fleet', href: '/agents', icon: Network },
-    { name: 'Shared Memory', href: '/memory', icon: Database },
-    { name: 'Cost Dashboard', href: '/dashboard', icon: Cpu },
-    { name: 'Needs Attention', href: '/needs-attention', icon: ShieldAlert },
-    { name: 'Hire Agent', href: '/hire', icon: Settings },
+  const mainNavItems = [
+    { name: 'Dashboard', href: '/', icon: 'dashboard' },
+    { name: 'Agents', href: '/agents', icon: 'smart_toy' },
+    { name: 'Tasks', href: '/tasks', icon: 'assignment' },
+    { name: 'Memory', href: '/memory', icon: 'memory' },
+    { name: 'Cost & Analytics', href: '/analytics', icon: 'analytics' },
+  ];
+
+  const opsNavItems = [
+    { name: 'Hire Agents', href: '/hire', icon: 'person_add' },
+    { name: 'Approvals', href: '/approvals', icon: 'verified_user' },
+    { name: 'Hierarchy', href: '/hierarchy', icon: 'account_tree' },
   ];
 
   return (
-    <aside className="w-64 border-r border-gray-200 bg-white flex flex-col relative z-10">
-      <div className="h-16 flex items-center px-6 border-b border-gray-100">
-        <div className="flex items-center gap-2">
-          <div className="font-bold text-xl tracking-tighter text-black flex items-center">
-            <span className="text-2xl mr-1">W</span>iNK
-          </div>
-        </div>
+    <aside className="fixed left-0 top-0 h-screen w-[280px] bg-surface-container-lowest dark:bg-inverse-surface shadow-sm flex flex-col p-lg gap-base z-50">
+      <div className="mb-xl px-md pt-lg">
+        <h1 className="font-headline-md text-headline-md font-bold text-primary dark:text-primary-fixed-dim">Company OS</h1>
+        <p className="font-body-md text-body-md text-secondary">AI Control Plane</p>
       </div>
       
-      <div className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
-        <div className="text-xs font-semibold text-gray-400 mb-2 px-3 uppercase tracking-wider">Menu</div>
-        {navItems.map((item) => {
+      <nav className="flex-1 space-y-1 overflow-y-auto no-scrollbar">
+        {mainNavItems.map((item) => {
           const isActive = pathname === item.href;
           return (
             <Link 
               key={item.name} 
               href={item.href}
               className={cn(
-                "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors",
+                "flex items-center gap-md p-md rounded-lg active:scale-95 transition-all",
                 isActive 
-                  ? "bg-gray-100 text-black shadow-sm" 
-                  : "text-gray-500 hover:text-black hover:bg-gray-50"
+                  ? "text-primary dark:text-primary-fixed-dim font-bold bg-secondary-container dark:bg-on-secondary-fixed-variant" 
+                  : "text-secondary dark:text-secondary-fixed-dim hover:bg-surface-container dark:hover:bg-surface-variant font-body-md transition-colors"
               )}
             >
-              <item.icon className={cn("w-4 h-4", isActive ? "text-black" : "text-gray-400")} />
-              {item.name}
+              <span className={cn("material-symbols-outlined", isActive && "fill")}>{item.icon}</span>
+              <span className="font-body-md">{item.name}</span>
             </Link>
           )
         })}
-      </div>
+
+        <div className="pt-xl pb-base px-md text-secondary opacity-50 uppercase text-[10px] font-bold tracking-widest">Operations</div>
+        
+        {opsNavItems.map((item) => {
+          const isActive = pathname === item.href;
+          return (
+            <Link 
+              key={item.name} 
+              href={item.href}
+              className={cn(
+                "flex items-center gap-md p-md rounded-lg active:scale-95 transition-all",
+                isActive 
+                  ? "text-primary dark:text-primary-fixed-dim font-bold bg-secondary-container dark:bg-on-secondary-fixed-variant" 
+                  : "text-secondary dark:text-secondary-fixed-dim hover:bg-surface-container dark:hover:bg-surface-variant font-body-md transition-colors"
+              )}
+            >
+              <span className={cn("material-symbols-outlined", isActive && "fill")}>{item.icon}</span>
+              <span className="font-body-md">{item.name}</span>
+            </Link>
+          )
+        })}
+      </nav>
       
-      <div className="p-4 border-t border-gray-100">
-        <div className="flex items-center gap-3 bg-gray-50 p-2 rounded-xl border border-gray-100">
-          <div className="w-8 h-8 rounded-full bg-gray-200 overflow-hidden flex items-center justify-center">
-            <img src="https://i.pravatar.cc/150?u=commander" alt="User" className="w-full h-full object-cover" />
-          </div>
-          <div className="flex flex-col flex-1">
-            <span className="text-sm font-semibold text-gray-900">Commander</span>
-            <span className="text-xs text-gray-500">cmd@thecompany.com</span>
-          </div>
+      <div className="mt-auto border-t border-outline-variant pt-lg px-md flex items-center gap-md pb-lg">
+        <div className="w-10 h-10 rounded-full bg-primary-container flex items-center justify-center text-on-primary-container font-bold shrink-0">JD</div>
+        <div className="flex-1 min-w-0">
+          <p className="font-label-caps text-label-caps text-on-surface truncate">John Doe</p>
+          <p className="text-[10px] text-secondary truncate">Administrator</p>
         </div>
+        <span className="material-symbols-outlined text-secondary cursor-pointer hover:text-primary shrink-0">settings</span>
       </div>
     </aside>
   );
 }
+

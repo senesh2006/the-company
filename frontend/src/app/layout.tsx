@@ -21,18 +21,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning className={cn("font-sans", geist.variable)}>
-      <body className={`${inter.className} bg-gray-50 text-gray-900 overflow-hidden`}>
+    <html lang="en" suppressHydrationWarning className={cn("font-sans", geist.variable, "light")}>
+      <body className={cn(inter.className, "bg-surface text-on-surface")}>
         <AppProvider attribute="class" defaultTheme="light" enableSystem={false}>
-          <div className="flex h-screen overflow-hidden">
-            <Sidebar />
-            <div className="flex flex-1 flex-col overflow-hidden">
-              <Topbar />
-              <main className="flex-1 overflow-y-auto bg-gray-50 p-6">
-                {children}
-              </main>
+          <Sidebar />
+          <Topbar />
+          <main className="ml-[280px] pt-24 px-xl pb-xl min-h-screen">
+            <div className="max-w-[1440px] mx-auto">
+              {children}
             </div>
-          </div>
+          </main>
         </AppProvider>
       </body>
     </html>

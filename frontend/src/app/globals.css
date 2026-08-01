@@ -1,77 +1,151 @@
 @import "tailwindcss";
 
 @theme {
-  --color-background: #f9fafb;
-  --color-foreground: #111827;
-  
-  --color-card: #ffffff;
-  --color-card-foreground: #111827;
-  
-  --color-popover: #ffffff;
-  --color-popover-foreground: #111827;
-  
-  --color-primary: #111827;
-  --color-primary-foreground: #ffffff;
-  
-  --color-secondary: #f3f4f6;
-  --color-secondary-foreground: #111827;
-  
-  --color-muted: #f3f4f6;
-  --color-muted-foreground: #6b7280;
-  
-  --color-accent: #f3f4f6;
-  --color-accent-foreground: #111827;
-  
-  --color-destructive: #ef4444;
-  --color-destructive-foreground: #fef2f2;
+  --color-tertiary-fixed-dim: #ffb3af;
+  --color-surface-container: #edeef0;
+  --color-outline-variant: #bbcabf;
+  --color-on-secondary-fixed-variant: #3f465c;
+  --color-background: #f8f9fb;
+  --color-primary-fixed: #6ffbbe;
+  --color-primary: #006c49;
+  --color-inverse-on-surface: #f0f1f3;
+  --color-inverse-surface: #2e3132;
+  --color-surface-variant: #e1e2e4;
+  --color-surface: #f8f9fb;
+  --color-error-container: #ffdad6;
+  --color-tertiary-fixed: #ffdad7;
+  --color-on-primary: #ffffff;
+  --color-on-tertiary-fixed-variant: #842225;
+  --color-on-error-container: #93000a;
+  --color-on-surface-variant: #3c4a42;
+  --color-on-background: #191c1e;
+  --color-surface-container-highest: #e1e2e4;
+  --color-inverse-primary: #4edea3;
+  --color-tertiary: #a43a3a;
+  --color-secondary-container: #dae2fd;
+  --color-surface-dim: #d9dadc;
+  --color-secondary-fixed-dim: #bec6e0;
+  --color-primary-fixed-dim: #4edea3;
+  --color-on-error: #ffffff;
+  --color-tertiary-container: #fc7c78;
+  --color-on-surface: #191c1e;
+  --color-surface-container-low: #f2f4f6;
+  --color-primary-container: #10b981;
+  --color-outline: #6c7a71;
+  --color-error: #ba1a1a;
+  --color-surface-bright: #f8f9fb;
+  --color-on-primary-fixed-variant: #005236;
+  --color-surface-tint: #006c49;
+  --color-on-secondary: #ffffff;
+  --color-surface-container-high: #e7e8ea;
+  --color-secondary-fixed: #dae2fd;
+  --color-secondary: #565e74;
+  --color-on-secondary-fixed: #131b2e;
+  --color-on-tertiary: #ffffff;
+  --color-on-tertiary-container: #711419;
+  --color-surface-container-lowest: #ffffff;
+  --color-on-primary-fixed: #002113;
+  --color-on-secondary-container: #5c647a;
+  --color-on-primary-container: #00422b;
+  --color-on-tertiary-fixed: #410005;
 
-  --color-emerald-500: #10b981;
-  --color-emerald-400: #34d399;
-  --color-emerald-900: #064e3b;
+  --font-label-caps: Inter, sans-serif;
+  --font-body-md: Inter, sans-serif;
+  --font-headline-sm: Inter, sans-serif;
+  --font-body-lg: Inter, sans-serif;
+  --font-headline-md: Inter, sans-serif;
+  --font-display-lg: Inter, sans-serif;
+  --font-code-sm: JetBrains Mono, monospace;
 
-  --color-rose-500: #f43f5e;
-  --color-rose-400: #fb7185;
-  --color-rose-900: #881337;
+  /* Font sizes - we map to standard tailwind naming conceptually, but tailwind uses text-label-caps etc */
+  --text-label-caps: 12px;
+  --text-label-caps--line-height: 16px;
+  --text-label-caps--letter-spacing: 0.05em;
+  --text-label-caps--font-weight: 600;
 
-  --color-amber-500: #f59e0b;
-  --color-amber-400: #fbbf24;
-  --color-amber-900: #78350f;
+  --text-body-md: 14px;
+  --text-body-md--line-height: 20px;
+  --text-body-md--font-weight: 400;
 
-  --color-blue-500: #3b82f6;
-  --color-purple-500: #a855f7;
-  
-  --color-border: #e5e7eb;
-  --color-input: #e5e7eb;
-  --color-ring: #d1d5db;
+  --text-headline-sm: 18px;
+  --text-headline-sm--line-height: 28px;
+  --text-headline-sm--font-weight: 500;
 
-  --radius-sm: 0.125rem;
-  --radius-md: 0.375rem;
-  --radius-lg: 0.75rem;
-  --radius-xl: 1rem;
+  --text-body-lg: 16px;
+  --text-body-lg--line-height: 24px;
+  --text-body-lg--font-weight: 400;
+
+  --text-headline-md: 24px;
+  --text-headline-md--line-height: 32px;
+  --text-headline-md--letter-spacing: -0.01em;
+  --text-headline-md--font-weight: 600;
+
+  --text-display-lg: 32px;
+  --text-display-lg--line-height: 40px;
+  --text-display-lg--letter-spacing: -0.02em;
+  --text-display-lg--font-weight: 600;
+
+  --text-code-sm: 13px;
+  --text-code-sm--line-height: 18px;
+  --text-code-sm--font-weight: 400;
+
+  --spacing-base: 4px;
+  --spacing-xs: 8px;
+  --spacing-sm: 12px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+  --spacing-xxl: 48px;
+  --spacing-gutter: 24px;
+  --spacing-container-max: 1440px;
 }
 
 @layer base {
-  * {
-    border-color: var(--color-border);
-  }
   body {
     background-color: var(--color-background);
-    color: var(--color-foreground);
-    font-family: Arial, Helvetica, sans-serif;
+    color: var(--color-on-background);
+    font-family: 'Inter', sans-serif;
   }
 }
 
-.terminal-text {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+.fill { font-variation-settings: 'FILL' 1; }
+
+.bento-card {
+  background: white;
+  border: 1px solid #E2E8F0;
+  border-radius: 16px;
+  box-shadow: 0px 1px 3px rgba(0,0,0,0.05), 0px 10px 15px -3px rgba(0,0,0,0.03);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-.pulse-emerald {
-  box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
-  animation: pulse-emerald 2s infinite;
+.bento-card:hover {
+  box-shadow: 0px 20px 25px -5px rgba(0,0,0,0.1), 0px 10px 10px -5px rgba(0,0,0,0.04);
 }
 
-@keyframes pulse-emerald {
+.pulse-dot {
+  width: 8px;
+  height: 8px;
+  background-color: #10B981;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 8px;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
   0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
   70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
   100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
 }
+
+.glass-header {
+  backdrop-filter: blur(8px);
+  background: rgba(255, 255, 255, 0.8);
+}
+
+/* Hide scrollbar for Chrome, Safari and Opera */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }

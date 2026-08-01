@@ -1,118 +1,185 @@
 "use client";
 
-import { useAgents, useUpdateAgentStatus } from "@/lib/queries";
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Pause, Play, Trash2, ChevronRight } from "lucide-react";
+import { useAgents, useUpdateAgentStatus, useMetrics } from "@/lib/queries";
 import Link from "next/link";
 import { type AgentStatus } from "@/lib/api";
 
-const statusColors: Record<AgentStatus, string> = {
-  Running: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20",
-  Paused: "bg-amber-500/10 text-amber-500 border-amber-500/20",
-  Idle: "bg-blue-500/10 text-blue-500 border-blue-500/20",
-  Failed: "bg-red-500/10 text-red-500 border-red-500/20",
+const statusConfig: Record<AgentStatus, { badgeBg: string; text: string; dot: string; label: string; border: string }> = {
+  Running: { badgeBg: "bg-primary/10", text: "text-primary", dot: "bg-primary animate-pulse-soft", label: "Running", border: "border-primary/20" },
+  Paused: { badgeBg: "bg-amber-50", text: "text-amber-600", dot: "bg-amber-500", label: "Paused", border: "border-amber-200" },
+  Idle: { badgeBg: "bg-surface-container-high", text: "text-secondary", dot: "bg-secondary", label: "Idle", border: "border-surface-variant" },
+  Failed: { badgeBg: "bg-error/10", text: "text-error", dot: "bg-error", label: "Failed", border: "border-error/20" },
 };
 
 export default function AgentsPage() {
   const { data: agents, isLoading } = useAgents();
+  const { data: metrics } = useMetrics();
   const updateStatus = useUpdateAgentStatus();
 
   if (isLoading) {
-    return <div className="text-zinc-500">Loading fleet data...</div>;
+    return <div className="text-secondary font-body-md">Loading fleet data...</div>;
   }
 
-  return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-gray-900">Agents Fleet</h1>
-          <p className="text-gray-500">Manage your autonomous workforce.</p>
-        </div>
-        <Link href="/hire">
-          <Button className="bg-black text-white hover:bg-gray-800 rounded-full px-6 font-medium">
-            Hire New Agent
-          </Button>
-        </Link>
-      </div>
+  const activeWorkers = metrics?.activeAgents || 0;
+  const totalCost = metrics?.totalCost || 0;
+  const completedTasks = metrics?.completedTasks || 0;
 
-      <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-        {agents?.map((agent) => (
-          <Card key={agent.id} className="bg-white border-gray-200 shadow-sm rounded-2xl flex flex-col hover:shadow-md transition-shadow">
-            <CardHeader className="pb-3 border-b border-gray-100 bg-gray-50/50 rounded-t-2xl">
-              <div className="flex justify-between items-start">
-                <div>
-                  <CardTitle className="text-lg font-bold text-gray-900">{agent.name}</CardTitle>
-                  <p className="text-sm font-medium text-gray-500 mt-1">{agent.role}</p>
-                </div>
-                <Badge variant="outline" className={statusColors[agent.status]}>
-                  {agent.status}
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent className="pt-4 flex-1 space-y-4">
-              <div>
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Current Goal</p>
-                <p className="text-sm font-medium text-gray-700 line-clamp-2">{agent.currentGoal || 'No goal assigned'}</p>
-              </div>
-              <div>
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Last Action</p>
-                <p className="text-sm font-medium text-gray-700 truncate">{agent.actions?.[agent.actions.length - 1] || 'No actions yet'}</p>
-              </div>
-              <div>
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Cost</p>
-                <p className="text-lg font-bold text-gray-900">${agent.costSoFar?.toFixed(2) ?? '0.00'}</p>
-              </div>
-            </CardContent>
-            <CardFooter className="pt-4 border-t border-gray-100 flex justify-between gap-2 bg-gray-50/50 rounded-b-2xl">
-              <div className="flex gap-2">
-                {agent.status === 'Running' ? (
-                  <Button 
-                    variant="outline" 
-                    size="icon" 
-                    className="h-8 w-8 bg-white border-gray-200 hover:bg-gray-100 text-gray-600"
-                    onClick={() => updateStatus.mutate({ id: agent.id, status: 'Paused' })}
-                  >
-                    <Pause className="h-4 w-4" />
-                  </Button>
-                ) : (
-                  <Button 
-                    variant="outline" 
-                    size="icon" 
-                    className="h-8 w-8 bg-white border-gray-200 hover:bg-gray-100 text-blue-600"
-                    onClick={() => updateStatus.mutate({ id: agent.id, status: 'Running' })}
-                  >
-                    <Play className="h-4 w-4" />
-                  </Button>
-                )}
-                <Button 
-                  variant="outline" 
-                  size="icon" 
-                  className="h-8 w-8 bg-white border-gray-200 hover:bg-red-50 hover:border-red-200 hover:text-red-600 text-gray-400"
-                  onClick={() => updateStatus.mutate({ id: agent.id, status: 'Failed' })}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-              <Link href={`/agents/${agent.id}`}>
-                <Button variant="ghost" size="sm" className="h-8 text-xs font-semibold text-gray-500 hover:text-gray-900 hover:bg-gray-200 rounded-full">
-                  Details <ChevronRight className="h-3 w-3 ml-1" />
-                </Button>
-              </Link>
-            </CardFooter>
-          </Card>
-        ))}
-      </div>
-      
-      {(!agents || agents.length === 0) && (
-        <div className="flex flex-col items-center justify-center p-12 text-center rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50">
-          <p className="text-gray-500 font-medium mb-4">No agents in the fleet.</p>
-          <Link href="/hire">
-            <Button className="bg-black text-white hover:bg-gray-800 rounded-full px-6">Hire your first agent</Button>
+  return (
+    <div className="space-y-lg max-w-[1400px] mx-auto w-full">
+      {/* Page Header */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-md">
+        <div>
+          <h2 className="font-display-lg text-display-lg text-on-background">Workers</h2>
+          <p className="text-secondary font-body-lg">Hire, monitor and control your AI workforce</p>
+        </div>
+        <div className="flex items-center gap-sm">
+          <Link href="/hire" className="flex items-center gap-xs px-md py-sm bg-primary text-white rounded-lg font-medium shadow-lg shadow-primary/10 hover:brightness-110 active:scale-95 transition-all">
+            <span className="material-symbols-outlined text-[20px]">add</span>
+            Hire Worker
           </Link>
         </div>
-      )}
+      </div>
+
+      {/* Action Controls */}
+      <div className="premium-card p-sm flex flex-wrap items-center justify-between gap-md">
+        <div className="flex items-center gap-xs">
+          <button className="px-md py-base bg-surface-container-high text-on-background rounded-lg text-sm flex items-center gap-xs hover:bg-surface-container-highest transition-colors">
+            <span className="material-symbols-outlined text-[18px]">filter_list</span>
+            Filter
+          </button>
+          <button className="px-md py-base bg-surface-container-high text-on-background rounded-lg text-sm flex items-center gap-xs hover:bg-surface-container-highest transition-colors">
+            <span className="material-symbols-outlined text-[18px]">sort</span>
+            Sort
+          </button>
+        </div>
+        <div className="flex bg-surface-container-low p-1 rounded-lg">
+          <button className="p-2 bg-white shadow-sm rounded-md text-primary">
+            <span className="material-symbols-outlined">view_list</span>
+          </button>
+          <button className="p-2 text-secondary hover:text-primary transition-colors">
+            <span className="material-symbols-outlined">grid_view</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Main Agent Table */}
+      <div className="premium-card overflow-x-auto">
+        <table className="w-full text-left border-collapse min-w-[800px]">
+          <thead>
+            <tr className="bg-surface-container-low border-b border-surface-variant">
+              <th className="px-lg py-md font-label-caps text-secondary">Worker</th>
+              <th className="px-lg py-md font-label-caps text-secondary">Department</th>
+              <th className="px-lg py-md font-label-caps text-secondary">Status</th>
+              <th className="px-lg py-md font-label-caps text-secondary">Current Task</th>
+              <th className="px-lg py-md font-label-caps text-secondary">Cost Today</th>
+              <th className="px-lg py-md font-label-caps text-secondary text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-surface-variant">
+            {agents?.map(agent => {
+              const conf = statusConfig[agent.status] || statusConfig.Idle;
+              return (
+                <tr key={agent.id} className="hover:bg-background/50 transition-colors">
+                  <td className="px-lg py-lg">
+                    <div className="flex items-center gap-md">
+                      <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center overflow-hidden">
+                         <span className="material-symbols-outlined text-primary">smart_toy</span>
+                      </div>
+                      <div>
+                        <p className="font-bold text-on-background">{agent.name}</p>
+                        <p className="text-xs text-secondary">{agent.role}</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-lg py-lg text-body-md">Department</td>
+                  <td className="px-lg py-lg">
+                    <span className={`inline-flex items-center px-3 py-1 text-xs font-semibold rounded-full border ${conf.badgeBg} ${conf.text} ${conf.border}`}>
+                      <span className={`status-pulse ${conf.dot}`}></span>
+                      {conf.label}
+                    </span>
+                  </td>
+                  <td className="px-lg py-lg max-w-xs">
+                    <p className="truncate text-body-md">{agent.currentGoal || "—"}</p>
+                  </td>
+                  <td className="px-lg py-lg font-mono text-body-md">${agent.costSoFar?.toFixed(2) || "0.00"}</td>
+                  <td className="px-lg py-lg text-right">
+                    <div className="flex items-center justify-end gap-base">
+                      <button className="p-2 text-secondary hover:text-primary hover:bg-primary/5 rounded-lg transition-all" title="View Details">
+                        <span className="material-symbols-outlined">visibility</span>
+                      </button>
+                      
+                      {agent.status === 'Running' ? (
+                        <button 
+                          className="p-2 text-secondary hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-all" 
+                          title="Pause"
+                          onClick={() => updateStatus.mutate({ id: agent.id, status: 'Paused' })}
+                        >
+                          <span className="material-symbols-outlined">pause</span>
+                        </button>
+                      ) : (
+                        <button 
+                          className="p-2 text-secondary hover:text-primary hover:bg-primary/5 rounded-lg transition-all" 
+                          title="Resume"
+                          onClick={() => updateStatus.mutate({ id: agent.id, status: 'Running' })}
+                        >
+                          <span className="material-symbols-outlined">play_arrow</span>
+                        </button>
+                      )}
+                      
+                      <button 
+                        className="p-2 text-secondary hover:text-error hover:bg-error/5 rounded-lg transition-all" 
+                        title="Kill Process"
+                        onClick={() => updateStatus.mutate({ id: agent.id, status: 'Failed' })}
+                      >
+                        <span className="material-symbols-outlined">delete</span>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+            {(!agents || agents.length === 0) && (
+              <tr>
+                <td colSpan={6} className="px-lg py-xl text-center text-secondary">
+                  No workers found.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Dashboard Stats Summary */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-lg mt-xl">
+        <div className="premium-card p-lg">
+          <div className="flex items-center justify-between mb-sm">
+            <span className="text-label-caps text-secondary">Active Workers</span>
+            <span className="material-symbols-outlined text-primary">sensors</span>
+          </div>
+          <p className="text-display-lg font-bold">{activeWorkers}</p>
+        </div>
+        <div className="premium-card p-lg">
+          <div className="flex items-center justify-between mb-sm">
+            <span className="text-label-caps text-secondary">Compute Used</span>
+            <span className="material-symbols-outlined text-secondary">memory</span>
+          </div>
+          <p className="text-display-lg font-bold">84%</p>
+        </div>
+        <div className="premium-card p-lg">
+          <div className="flex items-center justify-between mb-sm">
+            <span className="text-label-caps text-secondary">Total Cost Today</span>
+            <span className="material-symbols-outlined text-secondary">payments</span>
+          </div>
+          <p className="text-display-lg font-bold">${totalCost.toFixed(2)}</p>
+        </div>
+        <div className="premium-card p-lg">
+          <div className="flex items-center justify-between mb-sm">
+            <span className="text-label-caps text-secondary">Tasks Completed</span>
+            <span className="material-symbols-outlined text-secondary">task_alt</span>
+          </div>
+          <p className="text-display-lg font-bold">{completedTasks}</p>
+        </div>
+      </div>
     </div>
   );
 }
