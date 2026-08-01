@@ -59,7 +59,8 @@ export interface AttentionItem {
   timestamp: string;
 }
 
-const BASE_URL = typeof window !== 'undefined' ? (process.env.NEXT_PUBLIC_API_URL || '') : '';
+const rawBaseUrl = typeof window !== 'undefined' ? (process.env.NEXT_PUBLIC_API_URL || '') : '';
+const BASE_URL = rawBaseUrl.endsWith('/') ? rawBaseUrl.slice(0, -1) : rawBaseUrl;
 
 export const api = {
   // --- Hierarchy ---
