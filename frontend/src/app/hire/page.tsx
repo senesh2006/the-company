@@ -53,26 +53,17 @@ export default function HirePage() {
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             <div className="space-y-2">
-              <label className="text-sm font-medium text-zinc-300">Agent Name</label>
-              <Input 
-                {...register("name")} 
-                placeholder="e.g. Atlas" 
-                className="bg-zinc-950 border-zinc-800 text-zinc-200"
-              />
-              {errors.name && <p className="text-red-500 text-xs">{errors.name.message}</p>}
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-zinc-300">Role</label>
-              <Select onValueChange={(val) => setValue("role", val)}>
+              <label className="text-sm font-medium text-zinc-300">Role to Hire</label>
+              <Select onValueChange={(val) => {
+                setValue("role", val);
+                setValue("name", val); // Auto-set name to match role
+              }}>
                 <SelectTrigger className="bg-zinc-950 border-zinc-800 text-zinc-200">
-                  <SelectValue placeholder="Select a role..." />
+                  <SelectValue placeholder="Select a pre-built agent role..." />
                 </SelectTrigger>
                 <SelectContent className="bg-zinc-900 border-zinc-800 text-zinc-200">
-                  <SelectItem value="Researcher">Researcher ($50/hr)</SelectItem>
-                  <SelectItem value="Coder">Coder ($75/hr)</SelectItem>
-                  <SelectItem value="Writer">Writer ($40/hr)</SelectItem>
-                  <SelectItem value="Accountant">Accountant ($60/hr)</SelectItem>
+                  <SelectItem value="Marketing Manager">Marketing Manager</SelectItem>
+                  <SelectItem value="Finance Manager">Finance Manager</SelectItem>
                 </SelectContent>
               </Select>
               {errors.role && <p className="text-red-500 text-xs">{errors.role.message}</p>}
