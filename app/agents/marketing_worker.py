@@ -162,7 +162,7 @@ def spawn_subworkers(state: MarketingWorkerState):
 # Build the LangGraph for the Marketing Worker
 workflow = StateGraph(MarketingWorkerState)
 workflow.add_node("understand_and_context", understand_and_context)
-workflow.add_node("plan", plan)
+workflow.add_node("create_plan", plan)
 workflow.add_node("act", act)
 workflow.add_node("reflect", reflect)
 workflow.add_node("update_memory", update_memory)
@@ -171,9 +171,9 @@ workflow.add_node("spawn_subworkers", spawn_subworkers)
 workflow.add_edge(START, "understand_and_context")
 workflow.add_conditional_edges("understand_and_context", decide, {
     "spawn_subworkers": "spawn_subworkers",
-    "END": "plan"
+    "END": "create_plan"
 })
-workflow.add_edge("plan", "act")
+workflow.add_edge("create_plan", "act")
 workflow.add_edge("act", "reflect")
 workflow.add_edge("reflect", "update_memory")
 workflow.add_edge("update_memory", END)
