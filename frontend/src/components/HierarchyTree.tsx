@@ -24,10 +24,9 @@ function TreeNode({ node, isRoot = false }: { node: HierarchyNode, isRoot?: bool
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'running': return 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]';
-      case 'failed': return 'bg-rose-500';
-      case 'temp_supervisor': return 'bg-purple-500 shadow-[0_0_10px_rgba(168,85,247,0.5)]';
-      case 'paused': return 'bg-amber-500';
+      case 'Running': return 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]';
+      case 'Failed': return 'bg-rose-500';
+      case 'Paused': return 'bg-amber-500';
       default: return 'bg-blue-500';
     }
   };
@@ -48,7 +47,7 @@ function TreeNode({ node, isRoot = false }: { node: HierarchyNode, isRoot?: bool
           isSelected 
             ? "bg-zinc-900 border-zinc-500 shadow-md" 
             : "bg-zinc-950/80 border-zinc-800 hover:border-zinc-700 hover:bg-zinc-900",
-          node.agent.status === 'temp_supervisor' && !isSelected && "border-purple-500/30 bg-purple-950/10"
+          false
         )}
         onClick={() => setSelectedAgentId(node.agent.id)}
       >
@@ -64,7 +63,7 @@ function TreeNode({ node, isRoot = false }: { node: HierarchyNode, isRoot?: bool
           <p className="text-xs text-zinc-500 font-mono truncate">{node.agent.role}</p>
         </div>
 
-        {node.agent.status === 'temp_supervisor' && (
+        {node.agent.status === 'Running' && node.children.length > 0 && (
           <div className="px-2 py-0.5 rounded text-[10px] font-mono bg-purple-500/20 text-purple-400 border border-purple-500/30">
             SUP
           </div>
