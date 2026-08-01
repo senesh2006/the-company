@@ -20,6 +20,25 @@ class HireAgentPayload(BaseModel):
     name: str
     goal: Optional[str] = None
 
+@router.post("/hire")
+def hire_agent_default(payload: HireAgentPayload, background_tasks: BackgroundTasks, user = Depends(get_current_user)):
+    """
+    Hires a new agent for the default business team (used by frontend dashboard).
+    """
+    try:
+        # Get default business
+        response = task_service.client.table("businesses").select("*").limit(1).execute()
+        if not response.data:
+            raise HTTPException(status_code=404, detail="No business found in database.")
+        biz_id = response.data[0]["id"]
+        
+        return hire_agent(biz_id, payload, background_tasks, user)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to hire agent: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @router.post("/{business_id}")
 def hire_agent(business_id: str, payload: HireAgentPayload, background_tasks: BackgroundTasks, user = Depends(get_current_user)):
     """
