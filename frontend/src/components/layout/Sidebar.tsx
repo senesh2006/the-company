@@ -10,12 +10,11 @@ export function Sidebar() {
   
   const navItems = [
     { name: 'Command Center', href: '/', icon: LayoutDashboard },
-    { name: 'Org Hierarchy', href: '/hierarchy', icon: Network },
-    { name: 'Task Graph', href: '/tasks', icon: Activity },
+    { name: 'Agents Fleet', href: '/agents', icon: Network },
     { name: 'Shared Memory', href: '/memory', icon: Database },
     { name: 'Cost Dashboard', href: '/dashboard', icon: Cpu },
-    { name: 'Needs Attention', href: '/approvals', icon: ShieldAlert },
-    { name: 'Settings', href: '/settings', icon: Settings },
+    { name: 'Needs Attention', href: '/needs-attention', icon: ShieldAlert },
+    { name: 'Hire Agent', href: '/hire', icon: Settings },
   ];
 
   return (
