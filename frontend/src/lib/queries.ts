@@ -8,6 +8,8 @@ export const useAgents = () => {
         queryKey: ['agents'],
         queryFn: api.getAgents,
         refetchInterval: 5000,
+        retry: 1,
+        staleTime: 3000,
     });
 };
 
@@ -16,6 +18,8 @@ export const useAgent = (id: string) => {
         queryKey: ['agent', id],
         queryFn: () => api.getAgent(id),
         refetchInterval: 5000,
+        retry: 1,
+        staleTime: 3000,
     });
 };
 
@@ -24,6 +28,8 @@ export const useMetrics = () => {
         queryKey: ['metrics'],
         queryFn: api.getMetrics,
         refetchInterval: 5000,
+        retry: 1,
+        staleTime: 3000,
     });
 };
 
@@ -32,6 +38,8 @@ export const useMemory = () => {
         queryKey: ['memory'],
         queryFn: api.getMemory,
         refetchInterval: 5000,
+        retry: 1,
+        staleTime: 3000,
     });
 };
 
@@ -40,6 +48,8 @@ export const useNeedsAttention = () => {
         queryKey: ['needs-attention'],
         queryFn: api.getNeedsAttention,
         refetchInterval: 5000,
+        retry: 1,
+        staleTime: 3000,
     });
 };
 
@@ -48,6 +58,8 @@ export const useTasks = () => {
         queryKey: ['tasks'],
         queryFn: api.getTasks,
         refetchInterval: 5000,
+        retry: 1,
+        staleTime: 3000,
     });
 };
 

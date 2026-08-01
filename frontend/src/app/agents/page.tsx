@@ -5,15 +5,15 @@ import Link from "next/link";
 import { AgentStatus } from "@/lib/api";
 
 export default function AgentsPage() {
-  const { data: agents, isLoading: isLoadingAgents } = useAgents();
-  const { data: metrics, isLoading: isLoadingMetrics } = useMetrics();
+  const { data: agents, isLoading: isLoadingAgents, error: agentsError, refetch } = useAgents();
+  const { data: metrics } = useMetrics();
   const updateStatus = useUpdateAgentStatus();
 
-  if (isLoadingAgents || isLoadingMetrics) {
+  if (isLoadingAgents && !agents) {
     return (
-      <div className="p-xl flex items-center justify-center">
+      <div className="p-xl flex items-center justify-center min-h-[400px]">
         <div className="flex flex-col items-center gap-md">
-          <span className="material-symbols-outlined animate-spin text-display-lg text-secondary">sync</span>
+          <span className="material-symbols-outlined animate-spin text-display-lg text-primary">sync</span>
           <p className="text-body-md text-secondary">Loading workers...</p>
         </div>
       </div>

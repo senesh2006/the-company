@@ -170,11 +170,11 @@ def force_stop_team(business_id: str):
 def get_agents(user = Depends(get_current_user)):
     """Fetches all agents across the user's business."""
     try:
-        # Since we bypass auth, we'll just fetch all agents
         response = task_service.client.table("agents").select("*").execute()
-        return response.data
+        return response.data or []
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to fetch agents from database: {e}")
+        return []
 
 @router.get("/{agent_id}")
 def get_agent_details(agent_id: str, user = Depends(get_current_user)):
