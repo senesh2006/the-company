@@ -41,11 +41,12 @@ class TeamRunner:
         return {"configurable": {"thread_id": self.thread_id}}
         
     def start(self, initial_instruction: str) -> dict:
+        agents = self.task_service.list_agents(self.business_id)
         initial_state = {
             "business_id": self.business_id,
             "task_id": self.task_id,
             "messages": [HumanMessage(content=initial_instruction)],
-            "active_agents": {a["id"]: AgentStatus(id=a["id"], role=a["role"], name=a["name"]) for a in self.task_service.list_agents(self.business_id)},
+            "active_agents": {a["id"]: AgentStatus(id=a["id"], role=a["role"], name=a["name"]) for a in agents},
             "task_graph": {},
             "shared_context": {},
             "pending_approvals": [],
@@ -63,6 +64,10 @@ class TeamRunner:
         # Mark the main task as running in the DB
         self.task_service.update_task_status(self.task_id, "running")
         
+        # Mark all agents as Running
+        for agent in agents:
+            self.task_service.update_agent_status(agent["id"], "Running")
+        
         try:
             with self._get_checkpointer() as checkpointer:
                 app = self.graph.compile(checkpointer=checkpointer)
@@ -72,6 +77,10 @@ class TeamRunner:
                     self.task_service.complete_task(self.task_id)
                 elif result.get("status") == "failed":
                     self.task_service.fail_task(self.task_id)
+                
+                # Mark all agents back to Idle after completion
+                for agent in agents:
+                    self.task_service.update_agent_status(agent["id"], "Idle")
                     
                 return result
         except Exception as e:
@@ -79,6 +88,9 @@ class TeamRunner:
             error_msg = f"FATAL ERROR: {str(e)}\n{traceback.format_exc()}"
             self.task_service.update_task_result(self.task_id, error_msg)
             self.task_service.fail_task(self.task_id)
+            # Mark agents back to Idle even on crash (the task failed, not the agents)
+            for agent in agents:
+                self.task_service.update_agent_status(agent["id"], "Idle")
             return {"status": "failed", "error": str(e)}
 
     def pause(self):

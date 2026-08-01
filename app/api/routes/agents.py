@@ -50,6 +50,8 @@ def hire_agent(business_id: str, payload: HireAgentPayload, background_tasks: Ba
         
         task = None
         if payload.goal:
+            # Set agent to Running immediately so frontend sees it
+            task_service.update_agent_status(agent["id"], "Running")
             task = task_service.create_task(business_id, payload.goal, status="running")
             
             def start_team_loop():
@@ -58,6 +60,8 @@ def hire_agent(business_id: str, payload: HireAgentPayload, background_tasks: Ba
                     runner.start(f"Your goal is: {payload.goal}")
                 except Exception as e:
                     logger.error(f"Failed to start team loop: {e}")
+                    # Reset agent to Idle if team fails to start
+                    task_service.update_agent_status(agent["id"], "Idle")
             
             background_tasks.add_task(lambda: thread_pool.submit(start_team_loop))
             

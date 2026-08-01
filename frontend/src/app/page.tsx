@@ -3,10 +3,10 @@
 import { useMetrics, useAgents } from "@/lib/queries";
 
 export default function DashboardPage() {
-  const { data: metrics, isLoading: isMetricsLoading } = useMetrics();
+  const { data: metrics } = useMetrics();
   const { data: agents, isLoading: isAgentsLoading } = useAgents();
 
-  if (isMetricsLoading || isAgentsLoading) {
+  if (isAgentsLoading && !agents) {
     return (
       <div className="flex items-center justify-center min-h-[50vh]">
         <div className="flex flex-col items-center gap-md">

@@ -63,14 +63,21 @@ export const api = {
   getAgents: async (): Promise<Agent[]> => {
     const res = await fetch(`${BASE_URL}/api/v1/agents`);
     if (!res.ok) throw new Error('Failed to fetch agents');
-    return res.json();
+    const data = await res.json();
+    // Normalize: ensure every agent has a valid status (DB may have null)
+    return (data || []).map((agent: any) => ({
+      ...agent,
+      status: agent.status || 'Idle',
+    }));
   },
 
   // --- Single agent ---
   getAgent: async (id: string): Promise<Agent | null> => {
     const res = await fetch(`${BASE_URL}/api/v1/agents/${id}`);
     if (!res.ok) throw new Error('Failed to fetch agent details');
-    return res.json();
+    const data = await res.json();
+    if (!data) return null;
+    return { ...data, status: data.status || 'Idle' };
   },
 
   // --- Metrics ---

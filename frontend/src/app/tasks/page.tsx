@@ -4,9 +4,9 @@ import { useTasks, useMetrics } from "@/lib/queries";
 
 export default function TasksPage() {
   const { data: tasks, isLoading: isTasksLoading, error: tasksError } = useTasks();
-  const { data: metrics, isLoading: isMetricsLoading } = useMetrics();
+  const { data: metrics } = useMetrics();
 
-  if (isTasksLoading || isMetricsLoading) {
+  if (isTasksLoading && !tasks) {
     return (
       <div className="flex h-full items-center justify-center p-xl">
         <div className="flex flex-col items-center gap-md">
