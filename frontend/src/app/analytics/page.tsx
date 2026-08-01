@@ -6,8 +6,8 @@ export default function AnalyticsPage() {
   const { data: metrics } = useMetrics();
 
   // Placeholder data if metrics API doesn't provide cost data yet
-  const totalSpend = metrics?.costTotal || 1248.50;
-  const avgCost = metrics?.costPerTask || 0.42;
+  const totalSpend = metrics?.totalCost || 1248.50;
+  const avgCost = (metrics?.totalCost && metrics?.totalTasks) ? (metrics.totalCost / metrics.totalTasks) : 0.42;
 
   return (
     <div className="p-xl flex-1 max-w-[1440px] mx-auto w-full">
