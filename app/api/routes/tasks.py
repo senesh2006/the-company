@@ -69,6 +69,15 @@ def requeue_task(business_id: str, task_id: str, user = Depends(get_current_user
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@router.get("/")
+def list_all_tasks(user = Depends(get_current_user)):
+    """Lists all tasks across all businesses."""
+    try:
+        response = task_service.client.table("tasks").select("*").order("created_at", desc=True).execute()
+        return response.data or []
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @router.get("/{business_id}")
 def list_tasks(business_id: str, status: Optional[str] = Query(None, description="Filter by status"), user = Depends(get_current_user)):
     """Lists tasks for a business, optionally filtered by status."""

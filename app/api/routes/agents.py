@@ -188,3 +188,33 @@ def get_agent_details(agent_id: str, user = Depends(get_current_user)):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+class UpdateStatusPayload(BaseModel):
+    status: str
+
+@router.patch("/{agent_id}/status")
+def update_agent_status(agent_id: str, payload: UpdateStatusPayload, user = Depends(get_current_user)):
+    """Updates the status of an agent."""
+    try:
+        response = task_service.client.table("agents").update({"status": payload.status}).eq("id", agent_id).execute()
+        if not response.data:
+            raise HTTPException(status_code=404, detail="Agent not found")
+        return response.data[0]
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/{agent_id}/inject")
+def inject_instruction_by_agent(agent_id: str, payload: InjectInstructionPayload, user = Depends(get_current_user)):
+    """Injects instruction for a specific agent by finding its business."""
+    try:
+        agent_resp = task_service.client.table("agents").select("business_id").eq("id", agent_id).execute()
+        if not agent_resp.data:
+            raise HTTPException(status_code=404, detail="Agent not found")
+        business_id = agent_resp.data[0]["business_id"]
+        return inject_instruction(business_id, payload)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

@@ -102,7 +102,7 @@ os.makedirs("app/static/_next", exist_ok=True)
 
 app.mount("/_next", StaticFiles(directory="app/static/_next"), name="next-assets")
 
-@app.get("/{full_path:path}")
+@app.api_route("/{full_path:path}", methods=["GET", "HEAD"])
 async def serve_frontend(full_path: str):
     if full_path == "":
         full_path = "index"

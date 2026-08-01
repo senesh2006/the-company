@@ -12,7 +12,7 @@ export function AgentDetailPanel() {
   
   const { data: agent, isLoading } = useQuery({
     queryKey: ['agent', selectedAgentId],
-    queryFn: () => api.getAgentDetails(selectedAgentId!),
+    queryFn: () => api.getAgent(selectedAgentId!),
     enabled: !!selectedAgentId,
     refetchInterval: 2000,
   });
@@ -56,12 +56,12 @@ export function AgentDetailPanel() {
               {/* Stats Row */}
               <div className="grid grid-cols-2 border-b border-gray-200">
                 <div className="p-4 border-r border-gray-200 flex flex-col gap-1">
-                  <span className="text-[10px] text-gray-400 font-bold tracking-wider">CONFIDENCE</span>
-                  <span className="text-2xl font-bold text-gray-900">{agent.confidence || 0}%</span>
+                  <span className="text-[10px] text-gray-400 font-bold tracking-wider">STATUS</span>
+                  <span className="text-xl font-bold text-gray-900">{agent.status}</span>
                 </div>
                 <div className="p-4 flex flex-col gap-1">
-                  <span className="text-[10px] text-gray-400 font-bold tracking-wider">COST (RUN)</span>
-                  <span className="text-2xl font-bold text-gray-900">${agent.cost_today?.toFixed(2) || '0.00'}</span>
+                  <span className="text-[10px] text-gray-400 font-bold tracking-wider">AGENT ID</span>
+                  <span className="text-xl font-bold text-gray-900">{agent.id.slice(0, 8)}</span>
                 </div>
               </div>
 

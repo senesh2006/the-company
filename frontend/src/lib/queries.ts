@@ -7,7 +7,7 @@ export const useAgents = () => {
     return useQuery({
         queryKey: ['agents'],
         queryFn: api.getAgents,
-        refetchInterval: 2000,
+        refetchInterval: 5000,
     });
 };
 
@@ -15,7 +15,7 @@ export const useAgent = (id: string) => {
     return useQuery({
         queryKey: ['agent', id],
         queryFn: () => api.getAgent(id),
-        refetchInterval: 2000,
+        refetchInterval: 5000,
     });
 };
 
@@ -43,11 +43,19 @@ export const useNeedsAttention = () => {
     });
 };
 
+export const useTasks = () => {
+    return useQuery({
+        queryKey: ['tasks'],
+        queryFn: api.getTasks,
+        refetchInterval: 5000,
+    });
+};
+
 export const useHireAgent = () => {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: ({ role, name, initialGoal }: { role: string, name: string, initialGoal: string }) => 
-            api.hireAgent(role, name, initialGoal),
+        mutationFn: ({ role, name, goal }: { role: string, name: string, goal: string }) => 
+            api.hireAgent(role, name, goal),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['agents'] });
             queryClient.invalidateQueries({ queryKey: ['metrics'] });

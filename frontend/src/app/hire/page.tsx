@@ -10,7 +10,7 @@ import { useRouter } from "next/navigation";
 const hireSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
   role: z.string().min(1, "Please select a role"),
-  initialGoal: z.string().min(5, "Initial goal is required"),
+  goal: z.string().min(5, "Initial goal is required"),
 });
 
 type HireFormValues = z.infer<typeof hireSchema>;
@@ -71,11 +71,11 @@ export default function HirePage() {
             <div className="space-y-2">
               <label className="text-sm font-semibold text-on-surface">Initial Goal / Directive</label>
               <textarea 
-                {...register("initialGoal")}
+                {...register("goal")}
                 placeholder="Describe the first task this agent should accomplish..."
                 className="w-full p-3 bg-surface border border-outline-variant rounded-lg h-32 resize-none focus:ring-1 focus:ring-primary focus:border-primary outline-none"
               />
-              {errors.initialGoal && <p className="text-error text-xs">{errors.initialGoal.message}</p>}
+              {errors.goal && <p className="text-error text-xs">{errors.goal.message}</p>}
             </div>
 
             <button type="submit" disabled={hireAgent.isPending} className="bg-primary hover:bg-primary/90 text-white rounded-lg px-lg py-3 font-semibold text-base transition-colors flex items-center gap-2">

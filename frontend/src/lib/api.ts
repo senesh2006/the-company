@@ -8,28 +8,21 @@ export interface Agent {
   role: string;
   name: string;
   status: AgentStatus;
+  business_id?: string;
   current_task_id?: string;
-  confidence?: number;
-  cost_today?: number;
-  currentGoal?: string;
-  costSoFar: number;
-  thoughts: string[];
-  actions: string[];
+  created_at?: string;
 }
 
 export interface Task {
   id: string;
   description: string;
   status: 'pending' | 'queued' | 'assigned' | 'running' | 'completed' | 'failed';
+  business_id?: string;
   assignee_id?: string;
-  assignee_role?: string;
-  parent_id?: string;
+  priority?: number;
   result?: string;
-}
-
-export interface HierarchyNode {
-  agent: Agent;
-  children: HierarchyNode[];
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface Metrics {
@@ -39,7 +32,6 @@ export interface Metrics {
   completedTasks: number;
   totalCost: number;
   riskLevel: 'low' | 'medium' | 'high';
-  successRate?: number;
 }
 
 export interface MemoryEntry {
@@ -67,28 +59,6 @@ const rawBaseUrl = process.env.NODE_ENV === 'development'
 const BASE_URL = rawBaseUrl.endsWith('/') ? rawBaseUrl.slice(0, -1) : rawBaseUrl;
 
 export const api = {
-  // --- Hierarchy ---
-  getHierarchy: async (businessId: string): Promise<HierarchyNode> => {
-    const res = await fetch(`${BASE_URL}/api/v1/hierarchy/${businessId}`);
-    if (!res.ok) throw new Error('Failed to fetch hierarchy');
-    return res.json();
-  },
-
-  // --- Tasks ---
-  getTasks: async (businessId: string): Promise<Task[]> => {
-    const res = await fetch(`${BASE_URL}/api/v1/tasks/${businessId}`);
-    if (!res.ok) throw new Error('Failed to fetch tasks');
-    const data = await res.json();
-    return data.tasks || [];
-  },
-
-  // --- Agent Details ---
-  getAgentDetails: async (agentId: string): Promise<Agent | null> => {
-    const res = await fetch(`${BASE_URL}/api/v1/agents/${agentId}`);
-    if (!res.ok) throw new Error('Failed to fetch agent details');
-    return res.json();
-  },
-
   // --- Agents list ---
   getAgents: async (): Promise<Agent[]> => {
     const res = await fetch(`${BASE_URL}/api/v1/agents`);
@@ -96,9 +66,11 @@ export const api = {
     return res.json();
   },
 
-  // --- Single agent (alias) ---
+  // --- Single agent ---
   getAgent: async (id: string): Promise<Agent | null> => {
-    return api.getAgentDetails(id);
+    const res = await fetch(`${BASE_URL}/api/v1/agents/${id}`);
+    if (!res.ok) throw new Error('Failed to fetch agent details');
+    return res.json();
   },
 
   // --- Metrics ---
@@ -122,6 +94,13 @@ export const api = {
     return res.json();
   },
 
+  // --- Tasks ---
+  getTasks: async (): Promise<Task[]> => {
+    const res = await fetch(`${BASE_URL}/api/v1/tasks`);
+    if (!res.ok) throw new Error('Failed to fetch tasks');
+    return res.json();
+  },
+
   // --- Mutations ---
   updateAgentStatus: async (id: string, status: AgentStatus): Promise<void> => {
     await fetch(`${BASE_URL}/api/v1/agents/${id}/status`, {
@@ -139,11 +118,11 @@ export const api = {
     });
   },
 
-  hireAgent: async (role: string, name: string, initialGoal: string): Promise<void> => {
+  hireAgent: async (role: string, name: string, goal: string): Promise<void> => {
     await fetch(`${BASE_URL}/api/v1/agents/hire`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ role, name, initialGoal }),
+      body: JSON.stringify({ role, name, goal }),
     });
   },
 };
