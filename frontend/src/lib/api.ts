@@ -39,6 +39,7 @@ export interface Metrics {
   completedTasks: number;
   totalCost: number;
   riskLevel: 'low' | 'medium' | 'high';
+  successRate?: number;
 }
 
 export interface MemoryEntry {
