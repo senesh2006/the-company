@@ -3,6 +3,7 @@ from app.agents.state import OrchestratorState
 from app.agents.supervisor import global_supervisor_node, global_router
 from app.agents.workers import make_specialist_worker_node
 from app.agents.marketing_worker import make_marketing_worker_node
+from app.agents.finance_worker import make_finance_worker_node
 from app.agents.tools import register_default_tools
 from app.services.task_service import TaskService
 
@@ -17,9 +18,9 @@ def create_team_graph(business_id: str, main_task_id: str):
         raise ValueError("No agents found for this business. Please hire agents first.")
         
     for agent in agents:
-        if agent["role"] != "Marketing Manager":
+        if agent["role"] not in ["Marketing Manager", "Finance Manager"]:
             register_default_tools(business_id, agent["role"], agent["id"], main_task_id)
-        # For Marketing Manager, tools are registered dynamically inside its dedicated node.
+        # For Marketing/Finance Managers, tools are registered dynamically inside their dedicated nodes.
 
     workflow = StateGraph(OrchestratorState)
     
@@ -33,6 +34,8 @@ def create_team_graph(business_id: str, main_task_id: str):
         agent_nodes.append(node_name)
         if agent["role"] == "Marketing Manager":
             workflow.add_node(node_name, make_marketing_worker_node(agent))
+        elif agent["role"] == "Finance Manager":
+            workflow.add_node(node_name, make_finance_worker_node(agent))
         else:
             workflow.add_node(node_name, make_specialist_worker_node(agent))
         # Workers return to supervisor to report results and get next task
