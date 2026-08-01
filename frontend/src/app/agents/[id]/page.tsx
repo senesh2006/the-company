@@ -25,8 +25,8 @@ export default function AgentDetailPage() {
   const injectInstruction = useInjectInstruction();
   const [instruction, setInstruction] = useState("");
 
-  if (isLoading) return <div className="text-zinc-500">Loading agent data...</div>;
-  if (!agent) return <div className="text-red-500">Agent not found.</div>;
+  if (isLoading) return <div className="text-gray-500 font-medium">Loading agent data...</div>;
+  if (!agent) return <div className="text-red-500 font-medium">Agent not found.</div>;
 
   const handleInject = () => {
     if (!instruction.trim()) return;
@@ -39,23 +39,23 @@ export default function AgentDetailPage() {
       <div className="flex justify-between items-start">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-3xl font-bold tracking-tight text-zinc-100">{agent.name}</h1>
+            <h1 className="text-3xl font-bold tracking-tight text-gray-900">{agent.name}</h1>
             <Badge variant="outline" className={statusColors[agent.status]}>{agent.status}</Badge>
           </div>
-          <p className="text-zinc-400 mt-1">{agent.role}</p>
+          <p className="text-gray-500 mt-1 font-medium">{agent.role}</p>
         </div>
         
         <div className="flex gap-2">
            {agent.status === 'Running' ? (
-              <Button variant="outline" onClick={() => updateStatus.mutate({ id, status: 'Paused' })} className="bg-zinc-900 border-zinc-700">
+              <Button variant="outline" onClick={() => updateStatus.mutate({ id, status: 'Paused' })} className="bg-white border-gray-200 text-gray-700 hover:bg-gray-50 shadow-sm">
                 <Pause className="h-4 w-4 mr-2" /> Pause
               </Button>
             ) : (
-              <Button variant="outline" onClick={() => updateStatus.mutate({ id, status: 'Running' })} className="bg-zinc-900 border-zinc-700">
-                <Play className="h-4 w-4 mr-2 text-emerald-500" /> Resume
+              <Button variant="outline" onClick={() => updateStatus.mutate({ id, status: 'Running' })} className="bg-white border-gray-200 text-gray-700 hover:bg-gray-50 shadow-sm">
+                <Play className="h-4 w-4 mr-2 text-blue-500" /> Resume
               </Button>
             )}
-            <Button variant="outline" onClick={() => updateStatus.mutate({ id, status: 'Failed' })} className="bg-zinc-900 border-red-900/50 text-red-500 hover:bg-red-950/50">
+            <Button variant="outline" onClick={() => updateStatus.mutate({ id, status: 'Failed' })} className="bg-white border-gray-200 text-red-600 hover:bg-red-50 hover:border-red-200 shadow-sm">
               <Trash2 className="h-4 w-4 mr-2" /> Kill
             </Button>
         </div>
@@ -64,34 +64,34 @@ export default function AgentDetailPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column - Meta & Injection */}
         <div className="space-y-6">
-          <Card className="bg-zinc-900/50 border-zinc-800">
-            <CardHeader>
-              <CardTitle className="text-lg">Current State</CardTitle>
+          <Card className="bg-white border-gray-200 shadow-sm rounded-2xl">
+            <CardHeader className="border-b border-gray-100 bg-gray-50/50 rounded-t-2xl pb-4">
+              <CardTitle className="text-lg text-gray-900 font-bold">Current State</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-4 pt-4">
               <div>
-                <p className="text-xs text-zinc-500 uppercase tracking-wider mb-1">Current Goal</p>
-                <p className="text-sm text-zinc-300">{agent.currentGoal || 'No goal assigned'}</p>
+                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">Current Goal</p>
+                <p className="text-sm font-medium text-gray-700">{agent.currentGoal || 'No goal assigned'}</p>
               </div>
               <div>
-                <p className="text-xs text-zinc-500 uppercase tracking-wider mb-1">Cost So Far</p>
-                <p className="text-lg font-mono text-amber-500">${agent.costSoFar?.toFixed(2) ?? '0.00'}</p>
+                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">Cost So Far</p>
+                <p className="text-xl font-bold text-gray-900">${agent.costSoFar?.toFixed(2) ?? '0.00'}</p>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="bg-zinc-900/50 border-zinc-800">
-            <CardHeader>
-              <CardTitle className="text-lg">Inject Instruction</CardTitle>
+          <Card className="bg-white border-gray-200 shadow-sm rounded-2xl">
+            <CardHeader className="border-b border-gray-100 bg-gray-50/50 rounded-t-2xl pb-4">
+              <CardTitle className="text-lg text-gray-900 font-bold">Inject Instruction</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-4 pt-4">
               <Textarea 
                 placeholder="Override current goal..."
-                className="bg-zinc-950 border-zinc-800 resize-none h-24 text-zinc-200"
+                className="bg-white border-gray-200 resize-none h-24 text-gray-900 focus:ring-1 focus:ring-blue-500"
                 value={instruction}
                 onChange={(e) => setInstruction(e.target.value)}
               />
-              <Button onClick={handleInject} className="w-full bg-zinc-100 text-zinc-900 hover:bg-zinc-200">
+              <Button onClick={handleInject} className="w-full bg-black text-white hover:bg-gray-800 font-medium">
                 <Send className="h-4 w-4 mr-2" /> Inject Now
               </Button>
             </CardContent>
@@ -100,34 +100,34 @@ export default function AgentDetailPage() {
 
         {/* Right Column - Feed */}
         <div className="lg:col-span-2 space-y-6">
-          <Card className="bg-zinc-900/50 border-zinc-800 h-full flex flex-col">
-            <CardHeader className="border-b border-zinc-800/50 pb-4">
-              <CardTitle className="text-lg flex items-center">
-                <Terminal className="h-5 w-5 mr-2 text-zinc-500" /> Activity Feed
+          <Card className="bg-white border-gray-200 shadow-sm rounded-2xl h-full flex flex-col overflow-hidden">
+            <CardHeader className="border-b border-gray-100 bg-gray-50/50 pb-4">
+              <CardTitle className="text-lg flex items-center text-gray-900 font-bold">
+                <Terminal className="h-5 w-5 mr-2 text-gray-500" /> Activity Feed
               </CardTitle>
             </CardHeader>
-            <CardContent className="flex-1 overflow-y-auto p-0">
-              <div className="divide-y divide-zinc-800/50">
+            <CardContent className="flex-1 overflow-y-auto p-0 bg-gray-50/30">
+              <div className="divide-y divide-gray-100">
                 {(agent.thoughts ?? []).map((thought: string, i: number) => (
-                  <div key={`thought-${i}`} className="p-4 flex gap-4 hover:bg-zinc-800/20">
+                  <div key={`thought-${i}`} className="p-5 flex gap-4 hover:bg-gray-50 transition-colors">
                     <Lightbulb className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
                     <div>
-                      <p className="text-xs text-zinc-500 mb-1">Thought</p>
-                      <p className="text-sm text-zinc-300">{thought}</p>
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Thought</p>
+                      <p className="text-sm font-medium text-gray-700">{thought}</p>
                     </div>
                   </div>
                 ))}
                 {(agent.actions ?? []).map((action: string, i: number) => (
-                  <div key={`action-${i}`} className="p-4 flex gap-4 hover:bg-zinc-800/20 bg-zinc-950/30">
-                    <Terminal className="h-5 w-5 text-emerald-500 shrink-0 mt-0.5" />
+                  <div key={`action-${i}`} className="p-5 flex gap-4 bg-gray-50/50 hover:bg-gray-100 transition-colors border-l-4 border-blue-500">
+                    <Terminal className="h-5 w-5 text-blue-500 shrink-0 mt-0.5" />
                     <div>
-                      <p className="text-xs text-zinc-500 mb-1">Action Call</p>
-                      <pre className="text-sm font-mono text-zinc-300 whitespace-pre-wrap">{action}</pre>
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Action Call</p>
+                      <pre className="text-sm font-mono text-gray-800 whitespace-pre-wrap font-medium bg-white p-3 rounded-lg border border-gray-200 shadow-sm mt-2">{action}</pre>
                     </div>
                   </div>
                 ))}
                 {(agent.thoughts ?? []).length === 0 && (agent.actions ?? []).length === 0 && (
-                   <div className="p-8 text-center text-zinc-500">No activity logged yet.</div>
+                   <div className="p-8 text-center text-gray-500 font-medium">No activity logged yet.</div>
                 )}
               </div>
             </CardContent>
