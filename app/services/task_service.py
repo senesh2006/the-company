@@ -42,6 +42,16 @@ class TaskService:
             response = self.client.table("agents").insert(data).execute()
             return response.data[0] if response.data else {}
         except Exception as e:
+            # If the status column doesn't exist yet, retry without it
+            if "status" in str(e) and "PGRST204" in str(e):
+                logger.warning("agents table missing 'status' column — inserting without it. Please add the column via: ALTER TABLE agents ADD COLUMN status TEXT DEFAULT 'Idle';")
+                data = {
+                    "business_id": business_id,
+                    "name": name,
+                    "role": role
+                }
+                response = self.client.table("agents").insert(data).execute()
+                return response.data[0] if response.data else {}
             logger.error(f"Error creating agent for business {business_id}: {e}")
             raise e
 
@@ -54,6 +64,10 @@ class TaskService:
                 .execute()
             return response.data[0] if response.data else {}
         except Exception as e:
+            # Silently handle missing status column — the agent still works, just without status tracking
+            if "PGRST204" in str(e):
+                logger.warning(f"Cannot update agent status — 'status' column missing. Run: ALTER TABLE agents ADD COLUMN status TEXT DEFAULT 'Idle';")
+                return {}
             logger.error(f"Error updating agent {agent_id} status to {status}: {e}")
             return {}
 
