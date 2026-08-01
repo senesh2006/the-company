@@ -1,7 +1,6 @@
 "use client";
 
 import { useAgents, useMetrics, useUpdateAgentStatus } from "@/lib/queries";
-import Link from "next/link";
 import { AgentStatus } from "@/lib/api";
 
 export default function AgentsPage() {
@@ -37,10 +36,10 @@ export default function AgentsPage() {
           <h1 className="font-display-lg text-display-lg text-primary">Workers</h1>
           <p className="font-body-md text-body-md text-secondary">Manage and monitor your AI workforce.</p>
         </div>
-        <Link href="/hire" className="px-6 py-3 bg-primary text-black font-medium rounded-lg hover:bg-primary/90 transition-colors flex items-center gap-sm w-fit">
+        <a href="/hire" className="px-6 py-3 bg-primary text-black font-medium rounded-lg hover:bg-primary/90 transition-colors flex items-center gap-sm w-fit">
           <span className="material-symbols-outlined">person_add</span>
           Hire Worker
-        </Link>
+        </a>
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-md">
@@ -63,9 +62,9 @@ export default function AgentsPage() {
           <span className="material-symbols-outlined text-display-lg text-secondary">groups</span>
           <p className="font-headline-sm text-headline-sm text-primary">No workers found.</p>
           <p className="font-body-md text-body-md text-secondary mb-md">Hire your first AI worker to get started!</p>
-          <Link href="/hire" className="px-6 py-3 bg-surface-container text-primary rounded-lg hover:bg-secondary/20 transition-colors">
+          <a href="/hire" className="px-6 py-3 bg-surface-container text-primary rounded-lg hover:bg-secondary/20 transition-colors">
             Hire AI Worker
-          </Link>
+          </a>
         </div>
       ) : (
         <div className="bento-card overflow-hidden">

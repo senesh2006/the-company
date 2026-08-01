@@ -5,7 +5,6 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useHireAgent } from "@/lib/queries";
-import { useRouter } from "next/navigation";
 
 const hireSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
@@ -16,7 +15,6 @@ const hireSchema = z.object({
 type HireFormValues = z.infer<typeof hireSchema>;
 
 export default function HirePage() {
-  const router = useRouter();
   const hireAgent = useHireAgent();
   const [selectedRole, setSelectedRole] = useState<string | null>(null);
 
@@ -27,7 +25,9 @@ export default function HirePage() {
   const onSubmit = (data: HireFormValues) => {
     hireAgent.mutate(data, {
       onSuccess: () => {
-        router.push("/agents");
+        // Use full page navigation instead of router.push() — 
+        // static exports can't handle client-side RSC transitions reliably
+        window.location.href = "/agents";
       },
     });
   };

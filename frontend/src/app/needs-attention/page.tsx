@@ -4,7 +4,6 @@ import { useNeedsAttention } from "@/lib/queries";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AlertTriangle, Check, X, Edit, Hand } from "lucide-react";
-import Link from "next/link";
 
 export default function NeedsAttentionPage() {
   const { data: items, isLoading } = useNeedsAttention();
@@ -28,7 +27,7 @@ export default function NeedsAttentionPage() {
               <div className="flex justify-between items-start">
                 <div>
                   <CardTitle className="text-lg text-red-600 font-bold">Blocked: {item.agentName}</CardTitle>
-                  <p className="text-sm font-medium text-gray-500 mt-1">Agent ID: <Link href={`/agents/${item.agentId}`} className="hover:underline">{item.agentId}</Link></p>
+                  <p className="text-sm font-medium text-gray-500 mt-1">Agent ID: <a href={`/agents/${item.agentId}`} className="hover:underline">{item.agentId}</a></p>
                 </div>
                 <div className="text-right">
                   <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">Type</p>

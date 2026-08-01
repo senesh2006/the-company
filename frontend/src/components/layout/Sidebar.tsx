@@ -1,6 +1,5 @@
 "use client";
 
-import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 
@@ -32,7 +31,7 @@ export function Sidebar() {
         {mainNavItems.map((item) => {
           const isActive = pathname === item.href;
           return (
-            <Link 
+            <a 
               key={item.name} 
               href={item.href}
               className={cn(
@@ -44,7 +43,7 @@ export function Sidebar() {
             >
               <span className={cn("material-symbols-outlined", isActive && "fill")}>{item.icon}</span>
               <span className="font-body-md">{item.name}</span>
-            </Link>
+            </a>
           )
         })}
 
@@ -53,7 +52,7 @@ export function Sidebar() {
         {opsNavItems.map((item) => {
           const isActive = pathname === item.href;
           return (
-            <Link 
+            <a 
               key={item.name} 
               href={item.href}
               className={cn(
@@ -65,7 +64,7 @@ export function Sidebar() {
             >
               <span className={cn("material-symbols-outlined", isActive && "fill")}>{item.icon}</span>
               <span className="font-body-md">{item.name}</span>
-            </Link>
+            </a>
           )
         })}
       </nav>
