@@ -31,10 +31,9 @@ export function AgentDetailPanel() {
           <div className="p-4 border-b border-zinc-800 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className={`w-3 h-3 rounded-full ${
-                agent?.status === 'running' ? 'bg-emerald-500 pulse-emerald' :
-                agent?.status === 'failed' ? 'bg-rose-500' :
-                agent?.status === 'temp_supervisor' ? 'bg-purple-500 shadow-[0_0_10px_rgba(168,85,247,0.7)] animate-pulse' :
-                agent?.status === 'paused' ? 'bg-amber-500' :
+                agent?.status === 'Running' ? 'bg-emerald-500 pulse-emerald' :
+                agent?.status === 'Failed' ? 'bg-rose-500' :
+                agent?.status === 'Paused' ? 'bg-amber-500' :
                 'bg-blue-500'
               }`} />
               <div>
@@ -91,19 +90,13 @@ export function AgentDetailPanel() {
                   <span className="text-[10px] text-zinc-500 font-mono">ACTIVITY STREAM</span>
                 </div>
                 <div className="flex-1 overflow-y-auto p-4 pt-0 space-y-3 font-mono text-xs">
-                  {agent.status === 'temp_supervisor' && (
-                    <div className="text-purple-400 flex gap-2">
-                      <span>{'>'}</span>
-                      <span>Spawning sub-workers to handle complex sub-tasks...</span>
-                    </div>
-                  )}
-                  {agent.status === 'running' && (
+                  {agent.status === 'Running' && (
                     <div className="text-zinc-400 flex gap-2">
                       <span>{'>'}</span>
                       <span className="typing-effect">Analyzing data from memory...</span>
                     </div>
                   )}
-                  {agent.status === 'idle' && (
+                  {agent.status === 'Idle' && (
                     <div className="text-zinc-600 flex gap-2">
                       <span>{'>'}</span>
                       <span>Polling for new assignments.</span>
