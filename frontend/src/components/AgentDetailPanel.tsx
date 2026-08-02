@@ -60,13 +60,14 @@ export function AgentDetailPanel() {
       { id: selectedAgentId, instruction: instructionText.trim() },
       {
         onSuccess: () => {
-          setInjectedFeedback("Directive injected successfully");
+          setInjectedFeedback("Directive dispatched successfully!");
           setInstructionText("");
+          refetch();
           setTimeout(() => setInjectedFeedback(null), 3000);
         },
-        onError: () => {
-          setInjectedFeedback("Failed to inject directive");
-          setTimeout(() => setInjectedFeedback(null), 3000);
+        onError: (err: any) => {
+          setInjectedFeedback(err?.message || "Failed to inject directive");
+          setTimeout(() => setInjectedFeedback(null), 4000);
         }
       }
     );

@@ -191,20 +191,68 @@ class InjectInstructionPayload(BaseModel):
     instruction: str
 
 @router.post("/{agent_id}/inject")
-def inject_instruction_by_agent(agent_id: str, payload: InjectInstructionPayload, user = Depends(get_current_user)):
-    """Injects instruction for a specific agent by finding its business."""
+def inject_instruction_by_agent(
+    agent_id: str, 
+    payload: InjectInstructionPayload, 
+    background_tasks: BackgroundTasks, 
+    user = Depends(get_current_user)
+):
+    """Injects instruction for a specific agent into active task or launches a new task if idle."""
     try:
-        agent_resp = task_service.client.table("agents").select("business_id").eq("id", agent_id).execute()
-        if not agent_resp.data:
+        agent_resp = task_service.client.table("agents").select("*").eq("id", agent_id).execute()
+        agent = agent_resp.data[0] if agent_resp.data else None
+        
+        if not agent:
+            # Check in-memory agents
+            for a in task_service.list_agents("default-business-id"):
+                if str(a.get("id")) == str(agent_id):
+                    agent = a
+                    break
+                    
+        if not agent:
             raise HTTPException(status_code=404, detail="Agent not found")
-        business_id = agent_resp.data[0]["business_id"]
+            
+        business_id = agent.get("business_id", "default-business-id")
+        
+        # 1. Check if there is an active running task to inject into
         task = task_service.get_active_task_for_business(business_id)
-        if not task:
-            raise HTTPException(status_code=404, detail="No active task found for business.")
-        runner = TeamRunner(business_id, task["id"])
-        success = runner.inject_instruction(payload.instruction)
-        return {"status": "success", "message": "Instruction injected successfully."}
+        if task:
+            try:
+                runner = TeamRunner(business_id, task["id"])
+                success = runner.inject_instruction(payload.instruction)
+                if success:
+                    return {"status": "success", "message": "Instruction injected into active task loop."}
+            except Exception as e:
+                logger.warning(f"Could not inject into existing thread for task {task.get('id')}: {e}")
+                
+        # 2. If no active task or thread not active, launch a new mission specifically for this agent
+        task = task_service.create_task(
+            business_id=business_id,
+            description=payload.instruction,
+            mandate=payload.instruction,
+            status="running",
+            assignee_role=agent.get("role"),
+            trust_tier=agent.get("trust_tier", "observe")
+        )
+        task_service.update_agent_status(agent_id, "Running")
+        
+        def run_agent_directive():
+            try:
+                runner = TeamRunner(business_id, task["id"])
+                runner.start(f"Direct order for {agent.get('name')} ({agent.get('role')}): {payload.instruction}")
+            except Exception as e:
+                logger.error(f"Failed running directive task: {e}")
+                task_service.update_agent_status(agent_id, "Idle")
+                
+        background_tasks.add_task(lambda: thread_pool.submit(run_agent_directive))
+        
+        return {
+            "status": "success", 
+            "message": f"Directive dispatched to {agent.get('name')}.",
+            "task_id": task["id"]
+        }
     except HTTPException:
         raise
     except Exception as e:
+        logger.error(f"Error injecting instruction: {e}")
         raise HTTPException(status_code=500, detail=str(e))
