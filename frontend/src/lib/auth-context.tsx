@@ -48,7 +48,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       }
 
+      const isLoggedOut = typeof window !== "undefined" && localStorage.getItem("companyos_logged_out") === "true";
+
       if (!configured) {
+        if (isLoggedOut) {
+          setUser(null);
+          setIsLoading(false);
+          return;
+        }
+
         // Demo mock founder profile for local dev when keys are not yet provisioned
         const mockUser = {
           id: "founder-001",
@@ -90,6 +98,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signInWithPassword = async (email: string, password: string) => {
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("companyos_logged_out");
+    }
+
     if (!isConfiguredState) {
       setUser({
         id: "founder-001",
@@ -107,6 +119,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signUpWithPassword = async (email: string, password: string, fullName?: string) => {
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("companyos_logged_out");
+    }
+
     if (!isConfiguredState) {
       setUser({
         id: "founder-001",
@@ -132,6 +148,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signInWithOAuth = async (provider: "github" | "google") => {
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("companyos_logged_out");
+    }
+
     if (!isConfiguredState) {
       return { error: null };
     }
@@ -145,11 +165,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
-    if (isConfiguredState) {
-      await supabase.auth.signOut();
+    try {
+      if (isConfiguredState) {
+        await supabase.auth.signOut();
+      }
+    } catch (err) {
+      console.error("Signout error:", err);
     }
     setUser(null);
     setSession(null);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("companyos_logged_out", "true");
+      sessionStorage.clear();
+      window.location.href = "/login";
+    }
   };
 
   return (
