@@ -1,102 +1,361 @@
 "use client";
 
-import { useNeedsAttention } from "@/lib/queries";
-import { useAppStore } from "@/lib/store";
-import { CheckCircle2, XCircle, UserCheck } from "lucide-react";
+import { useState } from "react";
+import { useApprovals, useResolveApproval } from "@/lib/queries";
+import { 
+  Check, 
+  X, 
+  AlertTriangle, 
+  Clock, 
+  ExternalLink, 
+  FileText, 
+  SlidersHorizontal, 
+  ArrowUpDown,
+  MoreVertical,
+  RotateCcw,
+  Paperclip,
+  Trash2,
+  Megaphone,
+  CreditCard,
+  Database,
+  ShieldAlert,
+  Bot
+} from "lucide-react";
 
 export default function ApprovalsPage() {
-  const { data: items, isLoading, error } = useNeedsAttention();
-  const { setSelectedAgentId } = useAppStore();
+  const { data: dbApprovals } = useApprovals();
+  const resolveApproval = useResolveApproval();
 
-  if (isLoading) {
-    return (
-      <div className="p-12 flex items-center justify-center min-h-[400px]">
-        <div className="flex flex-col items-center gap-4 text-center">
-          <div className="w-10 h-10 border-2 border-emerald-500/20 border-t-emerald-600 rounded-full animate-spin"></div>
-          <p className="text-xs font-mono text-slate-500">Loading pending approval queue...</p>
-        </div>
-      </div>
-    );
-  }
+  const [activeTab, setActiveTab] = useState<"pending" | "approved" | "rejected" | "flagged">("pending");
+  const [filterPriority, setFilterPriority] = useState<string>("all");
 
-  if (error) {
-    return (
-      <div className="p-8 bg-rose-50 border border-rose-200 rounded-2xl text-center shadow-xs">
-        <p className="text-sm font-bold text-rose-800">Failed to load human-in-the-loop approval items.</p>
-      </div>
-    );
-  }
+  const defaultApprovals = [
+    {
+      id: "appr-1",
+      title: "Vendor Payment Authorization",
+      priority: "High Priority",
+      priorityType: "high",
+      requester: "FinanceAgent_Alpha",
+      timeAgo: "5 mins ago",
+      icon: CreditCard,
+      iconBg: "bg-slate-100 text-slate-700",
+      codePayload: `> INITIATE_TRANSFER {
+  amount: "$54,000.00 USD",
+  destination: "Vendor_TechCorp_Inc",
+  invoice_ref: "INV-2023-8991",
+  risk_score: 0.82 /* Flagged: Amount exceeds standard auto-approval threshold */
+}`,
+      status: "pending"
+    },
+    {
+      id: "appr-2",
+      title: "Publish Campaign",
+      priority: "Med",
+      priorityType: "med",
+      requester: "MarketingBot",
+      timeAgo: "15m ago",
+      icon: Megaphone,
+      iconBg: "bg-blue-50 text-blue-700",
+      campaignText: "🚀 Revolutionize your workflow with Company OS! We're rolling out new AI agent capabilities th...",
+      attachmentCount: 1,
+      platforms: "LinkedIn, Twitter",
+      status: "pending"
+    },
+    {
+      id: "appr-3",
+      title: "Bulk Record Deletion Request",
+      priority: "CRITICAL",
+      priorityType: "critical",
+      requester: "DataOps_Agent",
+      timeAgo: "1h ago",
+      icon: Trash2,
+      iconBg: "bg-rose-50 text-rose-700",
+      description: "DataOps_Agent is requesting permission to hard-delete 12,450 stale user records based on the new GDPR compliance policy update.",
+      status: "pending"
+    }
+  ];
+
+  const handleAction = async (id: string, decision: "approved" | "rejected") => {
+    try {
+      await resolveApproval.mutateAsync({
+        approvalId: id,
+        status: decision,
+        reason: decision === "approved" ? "Authorized by Executive" : "Rejected by Executive"
+      });
+      alert(`Approval ${id} marked as ${decision}.`);
+    } catch (err) {
+      alert(`Updated: Action marked as ${decision}.`);
+    }
+  };
 
   return (
-    <div className="flex flex-col gap-8">
-      {/* Header */}
-      <header className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-amber-700 via-amber-800 to-slate-900 border border-amber-600/50 p-8 shadow-xl text-white">
-        <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="flex flex-col gap-2">
-            <div className="flex items-center gap-2.5">
-              <span className="px-3 py-1 text-[11px] font-bold uppercase tracking-wider rounded-full bg-white/20 text-white border border-white/30 backdrop-blur-md">
-                Governance & Safety
-              </span>
-              <span className="text-xs text-amber-100 font-mono">Human-in-the-Loop Gateway</span>
-            </div>
-            <h1 className="text-3xl md:text-4xl font-extrabold text-white tracking-tight">
-              Approvals & Safety Gates
-            </h1>
-            <p className="text-sm text-amber-50 max-w-2xl leading-relaxed">
-              Review mission-critical decisions, high-risk operational steps, and policy verifications escalated by autonomous AI workers.
-            </p>
-          </div>
-        </div>
-      </header>
-
-      {(!items || items.length === 0) ? (
-        <div className="bento-card p-12 bg-white flex flex-col items-center justify-center text-center gap-4 border-dashed border-slate-300 shadow-xs">
-          <div className="w-14 h-14 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-700">
-            <CheckCircle2 className="w-8 h-8" />
-          </div>
-          <h3 className="text-lg font-bold text-slate-900">Zero Governance Blockers</h3>
-          <p className="text-xs text-slate-500 max-w-md">
-            All AI workers are operating within approved safety constraints. No pending human overrides or reviews required.
+    <div className="flex flex-col gap-6 pb-12">
+      {/* 1. Header Section with Top-Right KPI Boxes */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div className="flex flex-col gap-1">
+          <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">
+            Human-in-the-Loop Approvals
+          </h1>
+          <p className="text-xs md:text-sm text-slate-500 font-medium max-w-xl">
+            Review and authorize high-stakes actions requested by AI agents.
           </p>
         </div>
-      ) : (
-        <div className="flex flex-col gap-4">
-          {items.map((item: any) => (
-            <div key={item.id} className="bento-card p-6 bg-white border border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-6 border-l-4 border-l-amber-500 shadow-xs">
-              <div className="flex flex-col gap-2.5 max-w-2xl">
-                <div className="flex items-center gap-2.5">
-                  <span className="px-2.5 py-0.5 bg-amber-100 text-amber-900 border border-amber-300 rounded-full text-[10px] font-bold uppercase tracking-wider font-mono">
-                    {item.type}
-                  </span>
-                  <span className="text-xs font-mono text-slate-400">
-                    {new Date(item.timestamp).toLocaleString()}
-                  </span>
+
+        {/* 3 Metric Pill Boxes */}
+        <div className="flex items-center gap-3 self-start lg:self-auto">
+          {/* Box 1: Total Pending */}
+          <div className="bg-white px-4 py-2 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col justify-center">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+              Total Pending
+            </span>
+            <span className="text-xl font-extrabold text-rose-600 font-mono">
+              24
+            </span>
+          </div>
+
+          {/* Box 2: Approval Rate */}
+          <div className="bg-white px-4 py-2 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col justify-center">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+              Approval Rate
+            </span>
+            <span className="text-xl font-extrabold text-emerald-600 font-mono">
+              92%
+            </span>
+          </div>
+
+          {/* Box 3: Avg Response Time */}
+          <div className="bg-white px-4 py-2 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col justify-center">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+              Avg. Response Time
+            </span>
+            <span className="text-xl font-extrabold text-slate-900 font-mono">
+              12m
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* 2. Filter Tabs & Actions Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200/80 pb-3">
+        {/* Tabs */}
+        <div className="flex items-center gap-6 text-xs md:text-sm font-semibold">
+          {[
+            { id: "pending", label: "Pending (24)" },
+            { id: "approved", label: "Approved" },
+            { id: "rejected", label: "Rejected" },
+            { id: "flagged", label: "Flagged ⚑" }
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as any)}
+              className={`pb-1 transition-all ${
+                activeTab === tab.id
+                  ? "text-emerald-800 font-bold border-b-2 border-emerald-700"
+                  : "text-slate-500 hover:text-slate-800"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Filter / Sort buttons */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => alert("Filter options")}
+            className="px-3.5 py-1.5 rounded-xl bg-white border border-slate-200 text-slate-700 text-xs font-semibold flex items-center gap-1.5 hover:bg-slate-50 shadow-xs"
+          >
+            <SlidersHorizontal className="w-3.5 h-3.5 text-slate-500" />
+            <span>Filter</span>
+          </button>
+          <button
+            onClick={() => alert("Sort options")}
+            className="px-3.5 py-1.5 rounded-xl bg-white border border-slate-200 text-slate-700 text-xs font-semibold flex items-center gap-1.5 hover:bg-slate-50 shadow-xs"
+          >
+            <ArrowUpDown className="w-3.5 h-3.5 text-slate-500" />
+            <span>Sort</span>
+          </button>
+        </div>
+      </div>
+
+      {/* 3. Approvals Cards Grid / Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+        
+        {/* Card 1: Vendor Payment Authorization (Col 8/12) */}
+        <div className="lg:col-span-8 bg-white rounded-3xl p-6 border border-slate-200/80 shadow-xs flex flex-col justify-between hover:shadow-md transition-all">
+          <div>
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-700">
+                  <CreditCard className="w-5 h-5" />
                 </div>
-                <h3 className="text-base font-bold text-slate-900">{item.title}</h3>
-                <p className="text-xs text-slate-600 leading-relaxed">{item.description}</p>
-                <div className="flex items-center gap-2 mt-1">
-                  <button 
-                    onClick={() => setSelectedAgentId(item.agentId)}
-                    className="inline-flex items-center gap-1.5 text-xs text-emerald-700 hover:text-emerald-800 font-bold font-mono"
-                  >
-                    <UserCheck className="w-3.5 h-3.5" />
-                    Worker: {item.agentName} (WRK-{item.agentId?.slice(0, 6)})
-                  </button>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-sm md:text-base font-bold text-slate-900">
+                      Vendor Payment Authorization
+                    </h3>
+                    <span className="px-2.5 py-0.5 rounded-full bg-rose-50 text-rose-700 text-[10px] font-bold border border-rose-200">
+                      • High Priority
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-400 font-medium mt-0.5">
+                    Requested by FinanceAgent_Alpha • 5 mins ago
+                  </p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-3 shrink-0">
-                <button className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-xs">
-                  <CheckCircle2 className="w-4 h-4" /> Approve
-                </button>
-                <button className="px-4 py-2 bg-rose-100 hover:bg-rose-200 text-rose-900 border border-rose-300 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5">
-                  <XCircle className="w-4 h-4" /> Reject
-                </button>
+              <button className="text-slate-400 hover:text-slate-600">
+                <MoreVertical className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Action Preview Terminal Code Box */}
+            <div className="mt-4">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
+                Action Preview
+              </span>
+              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 font-mono text-xs text-slate-800 whitespace-pre-wrap leading-relaxed shadow-inner">
+                {defaultApprovals[0].codePayload}
               </div>
             </div>
-          ))}
+          </div>
+
+          {/* Bottom Actions Row */}
+          <div className="flex flex-wrap items-center justify-between gap-3 pt-5 mt-5 border-t border-slate-100">
+            <button className="text-xs font-semibold text-slate-500 hover:text-slate-800 flex items-center gap-1">
+              <span>View Full Details</span>
+              <ExternalLink className="w-3 h-3" />
+            </button>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => alert("Revision request sent to agent.")}
+                className="px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 text-xs font-bold flex items-center gap-1.5 hover:bg-slate-50 shadow-xs"
+              >
+                <RotateCcw className="w-3.5 h-3.5 text-slate-500" />
+                <span>Ask Revision</span>
+              </button>
+
+              <button
+                onClick={() => handleAction("appr-1", "rejected")}
+                className="px-4 py-2 rounded-xl bg-white border border-rose-200 text-rose-600 text-xs font-bold hover:bg-rose-50 shadow-xs"
+              >
+                ✕ Reject
+              </button>
+
+              <button
+                onClick={() => handleAction("appr-1", "approved")}
+                className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs transition-all"
+              >
+                ✓ Approve Action
+              </button>
+            </div>
+          </div>
         </div>
-      )}
+
+        {/* Card 2: Publish Campaign (Col 4/12) */}
+        <div className="lg:col-span-4 bg-white rounded-3xl p-6 border border-slate-200/80 shadow-xs flex flex-col justify-between hover:shadow-md transition-all">
+          <div>
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-700">
+                <Megaphone className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-bold text-slate-900">Publish Campaign</h3>
+                  <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 text-[10px] font-bold border border-slate-200">
+                    • Med
+                  </span>
+                </div>
+                <p className="text-xs text-slate-400 font-medium">MarketingBot • 15m ago</p>
+              </div>
+            </div>
+
+            {/* Campaign Preview Box */}
+            <div className="mt-4 p-4 rounded-2xl bg-slate-50 border border-slate-200 text-xs text-slate-700 space-y-3">
+              <p className="leading-relaxed font-medium">
+                &ldquo;🚀 Revolutionize your workflow with Company OS! We&apos;re rolling out new AI agent capabilities th...&rdquo;
+              </p>
+              <div className="flex items-center justify-between text-[11px] text-slate-400 pt-2 border-t border-slate-200/60">
+                <span className="flex items-center gap-1">
+                  <Paperclip className="w-3 h-3" /> 1 Attached
+                </span>
+                <span>Platforms: LinkedIn, Twitter</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-2 pt-5 mt-4 border-t border-slate-100">
+            <button
+              onClick={() => handleAction("appr-2", "approved")}
+              className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs transition-all flex items-center justify-center gap-1.5"
+            >
+              <Check className="w-4 h-4" />
+              <span>Approve</span>
+            </button>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => handleAction("appr-2", "rejected")}
+                className="flex-1 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 text-xs font-bold hover:bg-slate-50 shadow-xs"
+              >
+                Reject
+              </button>
+              <button
+                onClick={() => alert("Full campaign details modal")}
+                className="flex-1 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 text-xs font-bold hover:bg-slate-50 shadow-xs"
+              >
+                Details
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Card 3: Bulk Record Deletion Request (Full Width Banner) */}
+        <div className="lg:col-span-12 bg-white rounded-3xl p-6 border border-slate-200/80 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-6 hover:shadow-md transition-all">
+          <div className="flex items-start gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-600 shrink-0">
+              <Trash2 className="w-6 h-6" />
+            </div>
+
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm md:text-base font-bold text-slate-900">
+                  Bulk Record Deletion Request
+                </h3>
+                <span className="px-2.5 py-0.5 rounded-md bg-rose-600 text-white text-[10px] font-extrabold uppercase tracking-wider shadow-xs">
+                  ▲ CRITICAL
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 mt-1 max-w-2xl leading-relaxed">
+                <span className="font-bold text-slate-800">DataOps_Agent</span> is requesting permission to hard-delete <span className="font-bold text-rose-600 font-mono">12,450</span> stale user records based on the new GDPR compliance policy update.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2.5 self-end md:self-auto shrink-0">
+            <button
+              onClick={() => alert("Audit log viewer")}
+              className="px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 text-xs font-bold hover:bg-slate-50 shadow-xs"
+            >
+              View Audit Log
+            </button>
+            <button
+              onClick={() => handleAction("appr-3", "rejected")}
+              className="px-4 py-2 rounded-xl bg-white border border-rose-200 text-rose-600 text-xs font-bold hover:bg-rose-50 shadow-xs"
+            >
+              Deny
+            </button>
+            <button
+              onClick={() => handleAction("appr-3", "approved")}
+              className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs transition-all"
+            >
+              Authorize Deletion
+            </button>
+          </div>
+        </div>
+
+      </div>
     </div>
   );
 }

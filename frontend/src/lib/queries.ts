@@ -119,6 +119,30 @@ export const useNeedsAttention = () => {
     });
 };
 
+export const useApprovals = () => {
+    return useQuery({
+        queryKey: ['approvals'],
+        queryFn: api.getNeedsAttention,
+        refetchInterval: 5000,
+        retry: 1,
+        staleTime: 3000,
+    });
+};
+
+export const useResolveApproval = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ approvalId, status, reason }: { approvalId: string; status: 'approved' | 'rejected' | 'revise'; reason?: string }) =>
+            api.reviewTask(approvalId, status, reason),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['approvals'] });
+            queryClient.invalidateQueries({ queryKey: ['needs-attention'] });
+            queryClient.invalidateQueries({ queryKey: ['tasks'] });
+            queryClient.invalidateQueries({ queryKey: ['company-feed'] });
+        },
+    });
+};
+
 export const useTasks = () => {
     return useQuery({
         queryKey: ['tasks'],
@@ -126,6 +150,22 @@ export const useTasks = () => {
         refetchInterval: 5000,
         retry: 1,
         staleTime: 3000,
+    });
+};
+
+export const useCreateTask = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ title, assigned_agent_id, priority, description }: { title: string; assigned_agent_id?: string; priority?: string; description?: string }) =>
+            api.dispatchMandate({
+                mandate: `${title}: ${description || ''}`,
+                priority: priority === 'P0' ? 'high' : priority === 'P1' ? 'normal' : 'low',
+            }),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['tasks'] });
+            queryClient.invalidateQueries({ queryKey: ['agents'] });
+            queryClient.invalidateQueries({ queryKey: ['company-feed'] });
+        },
     });
 };
 
