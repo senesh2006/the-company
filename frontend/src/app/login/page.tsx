@@ -31,7 +31,7 @@ export default function LoginPage() {
           setSuccessMsg(
             isConfigured
               ? "Account created! Check your email to confirm registration or sign in directly."
-              : "Account created successfully in dev mode."
+              : "Account created successfully."
           );
           setTimeout(() => {
             router.push("/");
@@ -71,11 +71,11 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-[85vh] flex items-center justify-center py-10 px-4">
-      <div className="w-full max-w-md bg-white border border-slate-200/90 rounded-2xl shadow-xl shadow-slate-200/50 p-8">
+    <div className="w-full max-w-[440px] mx-auto py-12 px-4 flex flex-col items-center justify-center">
+      <div className="w-full bg-white/95 backdrop-blur-xl border border-slate-200/90 rounded-2xl shadow-2xl shadow-slate-200/60 p-8 sm:p-9">
         {/* Header Branding */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-tr from-emerald-600 via-teal-500 to-cyan-500 p-[1px] shadow-lg shadow-emerald-500/10 mb-3">
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-tr from-emerald-600 via-teal-500 to-cyan-500 p-[1px] shadow-lg shadow-emerald-500/20 mb-4">
             <div className="w-full h-full bg-white rounded-[15px] flex items-center justify-center">
               <span className="material-symbols-outlined text-emerald-600 text-2xl font-bold">hub</span>
             </div>
@@ -83,34 +83,21 @@ export default function LoginPage() {
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
             {isSignUp ? "Create Founder Account" : "Sign in to Company OS"}
           </h1>
-          <p className="text-xs text-slate-500 mt-1">
+          <p className="text-xs text-slate-500 mt-1.5 font-medium">
             {isSignUp 
               ? "Initialize your autonomous AI workforce environment" 
               : "Access your executive command & control center"}
           </p>
         </div>
 
-        {/* Supabase Status Banner */}
-        {!isConfigured && (
-          <div className="mb-6 p-3 rounded-xl bg-amber-50 border border-amber-200/80 text-amber-800 text-xs flex items-start gap-2.5">
-            <span className="material-symbols-outlined text-amber-600 text-base mt-0.5 shrink-0">info</span>
-            <div>
-              <p className="font-semibold">Local Dev Auth Active</p>
-              <p className="text-[11px] text-amber-700/90 mt-0.5">
-                Set <code className="bg-amber-100/80 px-1 py-0.5 rounded font-mono text-[10px]">NEXT_PUBLIC_SUPABASE_URL</code> and <code className="bg-amber-100/80 px-1 py-0.5 rounded font-mono text-[10px]">NEXT_PUBLIC_SUPABASE_ANON_KEY</code> in <code className="bg-amber-100/80 px-1 py-0.5 rounded font-mono text-[10px]">.env.local</code> to connect your live Supabase database.
-              </p>
-            </div>
-          </div>
-        )}
-
         {/* Auth Mode Toggle Tabs */}
-        <div className="grid grid-cols-2 p-1 bg-slate-100 rounded-xl mb-6 text-xs font-semibold">
+        <div className="grid grid-cols-2 p-1 bg-slate-100/90 rounded-xl mb-6 text-xs font-semibold">
           <button
             type="button"
             onClick={() => { setIsSignUp(false); setErrorMsg(null); setSuccessMsg(null); }}
             className={`py-2 rounded-lg transition-all ${
               !isSignUp 
-                ? "bg-white text-slate-900 shadow-sm" 
+                ? "bg-white text-slate-900 shadow-xs" 
                 : "text-slate-500 hover:text-slate-800"
             }`}
           >
@@ -121,7 +108,7 @@ export default function LoginPage() {
             onClick={() => { setIsSignUp(true); setErrorMsg(null); setSuccessMsg(null); }}
             className={`py-2 rounded-lg transition-all ${
               isSignUp 
-                ? "bg-white text-slate-900 shadow-sm" 
+                ? "bg-white text-slate-900 shadow-xs" 
                 : "text-slate-500 hover:text-slate-800"
             }`}
           >
@@ -151,7 +138,7 @@ export default function LoginPage() {
             disabled={loading}
             className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-slate-200 hover:bg-slate-50 hover:border-slate-300 text-slate-700 text-xs font-semibold transition-all disabled:opacity-50"
           >
-            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 24 24">
               <path fillRule="evenodd" clipRule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/>
             </svg>
             <span>GitHub</span>
@@ -163,7 +150,7 @@ export default function LoginPage() {
             disabled={loading}
             className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-slate-200 hover:bg-slate-50 hover:border-slate-300 text-slate-700 text-xs font-semibold transition-all disabled:opacity-50"
           >
-            <svg className="w-4 h-4" viewBox="0 0 24 24">
+            <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
               <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
               <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
               <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
@@ -193,7 +180,7 @@ export default function LoginPage() {
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 placeholder="e.g. Alex Morgan"
-                className="w-full px-3.5 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 text-slate-800 transition-all font-medium"
+                className="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 text-slate-800 transition-all font-medium"
               />
             </div>
           )}
@@ -208,7 +195,7 @@ export default function LoginPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="founder@company.ai"
-              className="w-full px-3.5 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 text-slate-800 transition-all font-medium"
+              className="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 text-slate-800 transition-all font-medium"
             />
           </div>
 
@@ -223,14 +210,14 @@ export default function LoginPage() {
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••••••"
               minLength={6}
-              className="w-full px-3.5 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 text-slate-800 transition-all font-medium"
+              className="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 text-slate-800 transition-all font-medium"
             />
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-semibold shadow-md shadow-emerald-600/20 transition-all hover:scale-[1.01] active:scale-95 disabled:opacity-50 mt-2 flex items-center justify-center gap-2"
+            className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-semibold shadow-md shadow-emerald-600/20 transition-all hover:scale-[1.01] active:scale-95 disabled:opacity-50 mt-2 flex items-center justify-center gap-2 cursor-pointer"
           >
             {loading && <span className="material-symbols-outlined text-sm animate-spin">progress_activity</span>}
             <span>{isSignUp ? "Create Account" : "Sign In to Workspace"}</span>
@@ -238,8 +225,8 @@ export default function LoginPage() {
         </form>
 
         {/* Footer info */}
-        <div className="mt-6 text-center text-[11px] text-slate-400">
-          Protected by Supabase Auth & CompanyOS Multi-Tenant Governance
+        <div className="mt-6 text-center text-[11px] text-slate-400 font-medium">
+          Protected by Supabase Auth & Company OS Multi-Tenant Governance
         </div>
       </div>
     </div>

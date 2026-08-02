@@ -1,10 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { AppProvider } from "@/providers/app-provider";
-import { Sidebar } from "@/components/layout/Sidebar";
-import { Topbar } from "@/components/layout/Topbar";
-import { AgentDetailPanel } from "@/components/AgentDetailPanel";
-import { cn } from "@/lib/utils";
+import { AppShell } from "@/components/layout/AppShell";
 
 export const metadata: Metadata = {
   title: "Company OS — AI Autonomous Workforce Control Plane",
@@ -25,17 +22,11 @@ export default function RootLayout({
       </head>
       <body className="bg-slate-50 text-slate-900 min-h-screen antialiased selection:bg-emerald-500/20 selection:text-emerald-900">
         <AppProvider attribute="class" defaultTheme="light" enableSystem={false}>
-          <Sidebar />
-          <Topbar />
-          <main className="ml-[280px] pt-20 px-6 md:px-10 pb-16 min-h-screen">
-            <div className="max-w-[1440px] mx-auto">
-              {children}
-            </div>
-          </main>
-          <AgentDetailPanel />
+          <AppShell>
+            {children}
+          </AppShell>
         </AppProvider>
       </body>
     </html>
   );
 }
-
