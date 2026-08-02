@@ -1,354 +1,401 @@
 "use client";
 
 import { useState } from "react";
-import { useAgents, useMetrics, useUpdateAgentStatus } from "@/lib/queries";
-import { AgentStatus, TrustTier } from "@/lib/api";
+import { useAgents, useMetrics, useTasks } from "@/lib/queries";
 import { useAppStore } from "@/lib/store";
+import { 
+  Plus, 
+  SlidersHorizontal, 
+  ArrowUpDown, 
+  List, 
+  LayoutGrid, 
+  Radio, 
+  Cpu, 
+  CreditCard, 
+  CheckCircle2,
+  TrendingUp,
+  Megaphone,
+  Briefcase,
+  Search,
+  Settings,
+  Bot,
+  Sparkles
+} from "lucide-react";
 
-export default function AgentsPage() {
-  const { data: agents, isLoading: isLoadingAgents, refetch } = useAgents();
-  const updateStatus = useUpdateAgentStatus();
+export default function WorkersPage() {
+  const { data: agents, isLoading: isLoadingAgents } = useAgents();
+  const { data: metrics } = useMetrics();
+  const { data: tasks } = useTasks();
   const { setSelectedAgentId } = useAppStore();
-  
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedRoleFilter, setSelectedRoleFilter] = useState("all");
-  const [selectedTierFilter, setSelectedTierFilter] = useState("all");
-  const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
 
-  if (isLoadingAgents && !agents) {
-    return (
-      <div className="flex items-center justify-center min-h-[500px]">
-        <div className="flex flex-col items-center gap-4 p-8 rounded-2xl bg-white border border-slate-200 shadow-md">
-          <div className="w-10 h-10 rounded-full border-4 border-emerald-500/20 border-t-emerald-600 animate-spin"></div>
-          <p className="text-sm font-semibold text-slate-800">Loading AI Workforce Directory...</p>
-        </div>
-      </div>
-    );
-  }
+  const [filterDepartment, setFilterDepartment] = useState<string>("all");
+  const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [sortBy, setSortBy] = useState<"name" | "cost" | "progress">("name");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+  const [viewMode, setViewMode] = useState<"table" | "grid">("table");
+  const [showFilterDropdown, setShowFilterDropdown] = useState(false);
 
-  const handleStatusChange = (e: React.MouseEvent, workerId: string, currentStatus: AgentStatus) => {
-    e.stopPropagation();
-    let newStatus: AgentStatus = "Paused";
-    if (currentStatus === "Paused") newStatus = "Running";
-    updateStatus.mutate({ id: workerId, status: newStatus });
-  };
+  // Default mock workers mapping if empty or supplementary
+  const defaultWorkersList = [
+    {
+      id: "agent-marketing-mgr",
+      name: "Marketing Manager",
+      sublabel: "Growth & Social",
+      department: "Marketing",
+      status: "Running",
+      currentTask: "Creating LinkedIn content calendar",
+      progress: 96.8,
+      costToday: 1.24,
+      avatarBg: "bg-emerald-50 border-emerald-200 text-emerald-700",
+      icon: Megaphone
+    },
+    {
+      id: "agent-finance-worker",
+      name: "Finance Agent",
+      sublabel: "Ledger & Audits",
+      department: "Finance",
+      status: "Paused",
+      currentTask: "Waiting for approval on refund",
+      progress: 45.0,
+      costToday: 0.86,
+      avatarBg: "bg-blue-50 border-blue-200 text-blue-700",
+      icon: Briefcase
+    },
+    {
+      id: "agent-research-worker",
+      name: "Research Agent",
+      sublabel: "Market Insights",
+      department: "Research",
+      status: "Running",
+      currentTask: "Competitor analysis",
+      progress: 53.1,
+      costToday: 2.10,
+      avatarBg: "bg-purple-50 border-purple-200 text-purple-700",
+      icon: Search
+    },
+    {
+      id: "agent-admin-worker",
+      name: "Admin Agent",
+      sublabel: "Ops & Scheduling",
+      department: "Operations",
+      status: "Idle",
+      currentTask: "—",
+      progress: 0.0,
+      costToday: 0.12,
+      avatarBg: "bg-slate-100 border-slate-200 text-slate-600",
+      icon: Settings
+    }
+  ];
 
-  const handleKill = (e: React.MouseEvent, workerId: string) => {
-    e.stopPropagation();
-    if (confirm("Are you sure you want to terminate this AI Worker?")) {
-      updateStatus.mutate({ id: workerId, status: "Failed" });
+  // Merge database agents if available, preserving the mockup structure
+  const workers = (agents && agents.length > 0)
+    ? agents.map((a: any, idx: number) => {
+        const matchingDefault = defaultWorkersList[idx % defaultWorkersList.length];
+        const r = (a.role || "").toLowerCase();
+        let dept = "Operations";
+        let sub = "Specialist";
+        let icon = Bot;
+        let bg = "bg-slate-100 border-slate-200 text-slate-700";
+
+        if (r.includes("market") || r.includes("growth")) {
+          dept = "Marketing";
+          sub = "Growth & Social";
+          icon = Megaphone;
+          bg = "bg-emerald-50 border-emerald-200 text-emerald-700";
+        } else if (r.includes("finance") || r.includes("account")) {
+          dept = "Finance";
+          sub = "Ledger & Audits";
+          icon = Briefcase;
+          bg = "bg-blue-50 border-blue-200 text-blue-700";
+        } else if (r.includes("research") || r.includes("data") || r.includes("analyst")) {
+          dept = "Research";
+          sub = "Market Insights";
+          icon = Search;
+          bg = "bg-purple-50 border-purple-200 text-purple-700";
+        }
+
+        return {
+          id: a.id,
+          name: a.name || matchingDefault.name,
+          sublabel: sub,
+          department: dept,
+          status: a.status || matchingDefault.status,
+          currentTask: a.current_task_title || matchingDefault.currentTask,
+          progress: a.task_progress ?? matchingDefault.progress,
+          costToday: a.cost_today_usd ?? matchingDefault.costToday,
+          avatarBg: bg,
+          icon: icon
+        };
+      })
+    : defaultWorkersList;
+
+  // Filter & Sort Logic
+  const filteredWorkers = workers.filter((w) => {
+    if (filterDepartment !== "all" && w.department !== filterDepartment) return false;
+    if (filterStatus !== "all" && w.status !== filterStatus) return false;
+    return true;
+  }).sort((a, b) => {
+    if (sortBy === "cost") {
+      return sortDirection === "asc" ? a.costToday - b.costToday : b.costToday - a.costToday;
+    }
+    if (sortBy === "progress") {
+      return sortDirection === "asc" ? a.progress - b.progress : b.progress - a.progress;
+    }
+    return sortDirection === "asc" ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name);
+  });
+
+  const toggleSort = () => {
+    if (sortBy === "name") {
+      setSortBy("cost");
+      setSortDirection("desc");
+    } else if (sortBy === "cost") {
+      setSortBy("progress");
+      setSortDirection("desc");
+    } else {
+      setSortBy("name");
+      setSortDirection("asc");
     }
   };
 
-  const getRoleIcon = (role?: string) => {
-    const r = role?.toLowerCase() || "";
-    if (r.includes("marketing") || r.includes("growth") || r.includes("social")) return "campaign";
-    if (r.includes("finance") || r.includes("accountant") || r.includes("analyst")) return "account_balance";
-    if (r.includes("coder") || r.includes("developer") || r.includes("engineer")) return "terminal";
-    if (r.includes("research") || r.includes("data")) return "psychology";
-    if (r.includes("admin") || r.includes("ops") || r.includes("operations")) return "inbox";
-    if (r.includes("supervisor") || r.includes("lead") || r.includes("manager") || r.includes("robin")) return "shield_person";
-    return "smart_toy";
-  };
-
-  const getRoleColor = (role?: string) => {
-    const r = role?.toLowerCase() || "";
-    if (r.includes("coder") || r.includes("developer") || r.includes("engineer")) return "from-cyan-50 to-blue-50 text-cyan-700 border-cyan-200";
-    if (r.includes("marketing") || r.includes("growth") || r.includes("social")) return "from-purple-50 to-pink-50 text-purple-700 border-purple-200";
-    if (r.includes("finance") || r.includes("accountant")) return "from-emerald-50 to-teal-50 text-emerald-700 border-emerald-200";
-    if (r.includes("research")) return "from-amber-50 to-orange-50 text-amber-700 border-amber-200";
-    if (r.includes("admin") || r.includes("ops")) return "from-blue-50 to-indigo-50 text-blue-700 border-blue-200";
-    return "from-indigo-50 to-blue-50 text-indigo-700 border-indigo-200";
-  };
-
-  const filteredAgents = (agents || []).filter((agent: any) => {
-    const matchesSearch = 
-      (agent.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (agent.role || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (agent.id || "").toLowerCase().includes(searchQuery.toLowerCase());
-    
-    if (!matchesSearch) return false;
-    if (selectedRoleFilter !== "all" && !(agent.role || "").toLowerCase().includes(selectedRoleFilter.toLowerCase())) return false;
-    if (selectedTierFilter !== "all" && (agent.trust_tier || "observe") !== selectedTierFilter) return false;
-    return true;
-  });
-
-  const rolesList = Array.from(new Set((agents || []).map((a: any) => a.role || "General")));
-
   return (
-    <div className="flex flex-col gap-8">
-      {/* Header */}
-      <header className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-emerald-800 via-teal-700 to-slate-900 border border-emerald-700/50 p-8 shadow-xl text-white">
-        <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="flex flex-col gap-2">
-            <div className="flex items-center gap-2.5">
-              <span className="px-3 py-1 text-[11px] font-bold uppercase tracking-wider rounded-full bg-white/20 text-white border border-white/30 backdrop-blur-md">
-                Workforce Control v6.0
-              </span>
-              <span className="text-xs text-emerald-100 font-mono">{agents?.length || 0} AI Workers Governed</span>
-            </div>
-            <h1 className="text-3xl md:text-4xl font-extrabold text-white tracking-tight">
-              AI Autonomous Workforce
-            </h1>
-            <p className="text-sm text-emerald-50 max-w-2xl leading-relaxed">
-              Command decentralized specialized AI workers, inspect earned trust tiers (Observe, Assist, Operate), modify prompt personas, and monitor live audit trails.
-            </p>
-          </div>
-          
-          <div className="flex items-center gap-3 shrink-0">
-            <button 
-              onClick={() => refetch()}
-              className="p-2.5 bg-white/15 hover:bg-white/25 border border-white/20 rounded-xl text-white transition-colors backdrop-blur-md"
-              title="Refresh roster"
-            >
-              <span className="material-symbols-outlined text-lg">refresh</span>
-            </button>
-            <a 
-              href="/hire"
-              className="flex items-center gap-2 px-5 py-2.5 bg-white hover:bg-slate-100 text-emerald-900 font-bold rounded-xl text-xs transition-all shadow-md"
-            >
-              <span className="material-symbols-outlined text-base text-emerald-700">person_add</span>
-              Recruit AI Worker
-            </a>
-          </div>
-        </div>
-      </header>
-
-      {/* Control Bar: Search & Filters */}
-      <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-        <div className="flex flex-1 items-center gap-3 w-full md:w-auto">
-          <div className="relative flex-1 max-w-md">
-            <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-lg">
-              search
-            </span>
-            <input 
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by worker name, role, specialization..."
-              className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 shadow-xs"
-            />
-          </div>
-
-          {/* Role Filter */}
-          <select 
-            value={selectedRoleFilter}
-            onChange={(e) => setSelectedRoleFilter(e.target.value)}
-            className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-700 focus:outline-none focus:border-emerald-500 cursor-pointer shadow-xs font-medium"
-          >
-            <option value="all">All Roles</option>
-            {rolesList.map((r: any) => (
-              <option key={r} value={r}>{r}</option>
-            ))}
-          </select>
-
-          {/* Trust Tier Filter */}
-          <select 
-            value={selectedTierFilter}
-            onChange={(e) => setSelectedTierFilter(e.target.value)}
-            className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-700 focus:outline-none focus:border-emerald-500 cursor-pointer shadow-xs font-medium"
-          >
-            <option value="all">All Trust Tiers</option>
-            <option value="observe">Observe Tier (100% Gated)</option>
-            <option value="assist">Assist Tier (Low-risk auto)</option>
-            <option value="operate">Operate Tier (Autonomous)</option>
-          </select>
+    <div className="flex flex-col gap-6 pb-12">
+      {/* 1. Header Section */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex flex-col gap-1">
+          <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">
+            Workers
+          </h1>
+          <p className="text-xs md:text-sm text-slate-500 font-medium">
+            Hire, monitor and control your AI workforce
+          </p>
         </div>
 
-        {/* View Mode Toggle */}
+        <a
+          href="/hire"
+          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white text-xs md:text-sm font-bold shadow-xs transition-all duration-200 hover:scale-[1.02] active:scale-95 self-start sm:self-auto"
+        >
+          <Plus className="w-4 h-4" />
+          <span>Hire Worker</span>
+        </a>
+      </div>
+
+      {/* 2. Filter & Toolbar Bar */}
+      <div className="bg-white p-3 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between gap-3 relative">
         <div className="flex items-center gap-2">
+          {/* Filter Button */}
+          <div className="relative">
+            <button
+              onClick={() => setShowFilterDropdown(!showFilterDropdown)}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 border transition-all ${
+                filterDepartment !== "all" || filterStatus !== "all"
+                  ? "bg-emerald-50 text-emerald-800 border-emerald-300"
+                  : "bg-slate-100/90 text-slate-700 border-slate-200/70 hover:bg-slate-200"
+              }`}
+            >
+              <SlidersHorizontal className="w-3.5 h-3.5" />
+              <span>Filter</span>
+              {(filterDepartment !== "all" || filterStatus !== "all") && (
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
+              )}
+            </button>
+
+            {/* Filter Dropdown */}
+            {showFilterDropdown && (
+              <div className="absolute left-0 mt-2 w-56 bg-white border border-slate-200 rounded-2xl p-3 shadow-xl z-30 space-y-3">
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Department</label>
+                  <select
+                    value={filterDepartment}
+                    onChange={(e) => setFilterDepartment(e.target.value)}
+                    className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500"
+                  >
+                    <option value="all">All Departments</option>
+                    <option value="Marketing">Marketing</option>
+                    <option value="Finance">Finance</option>
+                    <option value="Research">Research</option>
+                    <option value="Operations">Operations</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Status</label>
+                  <select
+                    value={filterStatus}
+                    onChange={(e) => setFilterStatus(e.target.value)}
+                    className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500"
+                  >
+                    <option value="all">All Statuses</option>
+                    <option value="Running">Running</option>
+                    <option value="Paused">Paused</option>
+                    <option value="Idle">Idle</option>
+                  </select>
+                </div>
+
+                <div className="pt-2 border-t border-slate-100 flex justify-between">
+                  <button
+                    onClick={() => {
+                      setFilterDepartment("all");
+                      setFilterStatus("all");
+                      setShowFilterDropdown(false);
+                    }}
+                    className="text-[11px] text-slate-500 hover:text-slate-800 font-semibold"
+                  >
+                    Reset
+                  </button>
+                  <button
+                    onClick={() => setShowFilterDropdown(false)}
+                    className="text-[11px] text-emerald-700 font-bold hover:text-emerald-800"
+                  >
+                    Apply
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Sort Button */}
           <button
-            onClick={() => setViewMode("grid")}
-            className={`p-2 rounded-xl transition-all shadow-xs ${
-              viewMode === "grid" ? "bg-emerald-100 text-emerald-800 border border-emerald-300 font-semibold" : "bg-white text-slate-600 border border-slate-200"
-            }`}
+            onClick={toggleSort}
+            className="px-3.5 py-1.5 rounded-xl bg-slate-100/90 text-slate-700 text-xs font-semibold flex items-center gap-1.5 border border-slate-200/70 hover:bg-slate-200 transition-all"
           >
-            <span className="material-symbols-outlined text-base">grid_view</span>
+            <ArrowUpDown className="w-3.5 h-3.5" />
+            <span>Sort ({sortBy})</span>
           </button>
+        </div>
+
+        {/* View Toggle */}
+        <div className="flex items-center gap-1 bg-slate-100/80 p-1 rounded-xl border border-slate-200/60">
           <button
             onClick={() => setViewMode("table")}
-            className={`p-2 rounded-xl transition-all shadow-xs ${
-              viewMode === "table" ? "bg-emerald-100 text-emerald-800 border border-emerald-300 font-semibold" : "bg-white text-slate-600 border border-slate-200"
+            className={`p-1.5 rounded-lg transition-all ${
+              viewMode === "table"
+                ? "bg-white text-slate-900 shadow-xs"
+                : "text-slate-400 hover:text-slate-700"
             }`}
+            title="Table View"
           >
-            <span className="material-symbols-outlined text-base">table_rows</span>
+            <List className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => setViewMode("grid")}
+            className={`p-1.5 rounded-lg transition-all ${
+              viewMode === "grid"
+                ? "bg-white text-slate-900 shadow-xs"
+                : "text-slate-400 hover:text-slate-700"
+            }`}
+            title="Grid View"
+          >
+            <LayoutGrid className="w-4 h-4" />
           </button>
         </div>
       </div>
 
-      {/* Workers Content Grid / Table */}
-      {(!agents || agents.length === 0) ? (
-        <div className="p-16 rounded-3xl bg-white border border-slate-200 shadow-sm flex flex-col items-center justify-center text-center gap-4">
-          <div className="w-16 h-16 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-500">
-            <span className="material-symbols-outlined text-4xl">groups</span>
-          </div>
-          <div>
-            <h3 className="text-base font-bold text-slate-800">No AI Workers in Fleet</h3>
-            <p className="text-xs text-slate-500 max-w-sm mt-1">Recruit autonomous workers to start running decentralized tasks and missions.</p>
-          </div>
-          <a href="/hire" className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs transition-all shadow-md shadow-emerald-600/20">
-            Recruit First AI Worker
-          </a>
-        </div>
-      ) : filteredAgents.length === 0 ? (
-        <div className="p-12 rounded-3xl bg-white border border-slate-200 shadow-sm flex flex-col items-center justify-center text-center gap-3">
-          <span className="material-symbols-outlined text-4xl text-slate-400">search_off</span>
-          <p className="text-sm font-bold text-slate-800">No matching AI Workers found</p>
-          <p className="text-xs text-slate-500">Try adjusting your search query or role filter.</p>
-        </div>
-      ) : viewMode === "grid" ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {filteredAgents.map((worker: any) => {
-            const roleIcon = getRoleIcon(worker.role);
-            const roleStyle = getRoleColor(worker.role);
-            const tier = (worker.trust_tier || "observe") as TrustTier;
-            const cleanCycles = worker.clean_cycles_count || 0;
-
-            return (
-              <div 
-                key={worker.id} 
-                onClick={() => setSelectedAgentId(worker.id)}
-                className="group cursor-pointer p-6 rounded-2xl bg-white border border-slate-200 hover:border-emerald-500/50 flex flex-col justify-between gap-5 relative hover:shadow-md transition-all shadow-xs"
-              >
-                <div>
-                  {/* Top Bar: Icon + Name + Tier + Status */}
-                  <div className="flex items-start justify-between gap-3 mb-3">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${roleStyle} flex items-center justify-center shrink-0 border`}>
-                        <span className="material-symbols-outlined text-2xl">{roleIcon}</span>
-                      </div>
-                      <div className="flex flex-col min-w-0">
-                        <h3 className="text-sm font-bold text-slate-900 group-hover:text-emerald-700 transition-colors truncate">
-                          {worker.name}
-                        </h3>
-                        <span className="text-xs text-slate-500 capitalize font-medium">
-                          {worker.role || "Specialist"}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="flex flex-col items-end gap-1.5 shrink-0">
-                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase tracking-wider border
-                        ${tier === 'operate'
-                          ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
-                          : tier === 'assist'
-                          ? 'bg-blue-100 text-blue-800 border-blue-300'
-                          : 'bg-amber-100 text-amber-800 border-amber-300'
-                        }`}
-                      >
-                        {tier}
-                      </span>
-                      <span className="text-[10px] font-mono text-slate-500">
-                        {worker.status || 'Active'}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Worker Metadata & Governance Progress */}
-                  <div className="bg-slate-50 border border-slate-200/80 p-3 rounded-xl text-xs flex flex-col gap-2">
-                    <div className="flex items-center justify-between text-slate-600">
-                      <span>Clean Cycles:</span>
-                      <span className="font-mono font-semibold text-emerald-700">{cleanCycles} completed</span>
-                    </div>
-                    <div className="flex items-center justify-between text-slate-600">
-                      <span>Authority Limit:</span>
-                      <span className="font-mono text-slate-800 font-medium">
-                        ${(worker.authority_limit_usd ?? (tier === 'operate' ? 1000 : tier === 'assist' ? 100 : 0)).toFixed(2)}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between text-slate-600">
-                      <span>Specialization:</span>
-                      <span className="text-slate-800 font-mono text-[11px] truncate max-w-[140px]">
-                        {worker.specialization_id || 'standard-v1'}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Footer Controls */}
-                <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
-                  <span className="text-xs text-emerald-700 font-semibold group-hover:text-emerald-800 flex items-center gap-1">
-                    <span className="material-symbols-outlined text-sm">tune</span>
-                    Inspect & Govern
-                  </span>
-
-                  <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
-                    <button 
-                      onClick={(e) => handleStatusChange(e, worker.id, worker.status)}
-                      disabled={worker.status === 'Failed'}
-                      className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors disabled:opacity-50"
-                      title={worker.status === 'Paused' ? 'Resume Worker' : 'Pause Worker'}
-                    >
-                      <span className="material-symbols-outlined text-sm">
-                        {worker.status === 'Paused' ? 'play_arrow' : 'pause'}
-                      </span>
-                      {worker.status === 'Paused' ? 'Resume' : 'Pause'}
-                    </button>
-                    <button 
-                      onClick={(e) => handleKill(e, worker.id)}
-                      disabled={worker.status === 'Failed'}
-                      className="p-1.5 hover:bg-rose-100 rounded-lg text-slate-400 hover:text-rose-600 transition-colors disabled:opacity-50"
-                      title="Terminate Worker"
-                    >
-                      <span className="material-symbols-outlined text-base">delete</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      ) : (
-        <div className="rounded-2xl border border-slate-200 overflow-hidden bg-white shadow-xs">
+      {/* 3. Workers Content (Table / Grid) */}
+      {viewMode === "table" ? (
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="border-b border-slate-200 bg-slate-50 text-slate-600 text-xs font-semibold">
-                  <th className="p-4">AI Worker</th>
-                  <th className="p-4">Specialized Role</th>
-                  <th className="p-4">Trust Tier</th>
-                  <th className="p-4">Clean Cycles</th>
-                  <th className="p-4">Authority Limit</th>
-                  <th className="p-4 text-right">Actions</th>
+                <tr className="border-b border-slate-100 bg-slate-50/50 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                  <th className="py-3.5 px-6 font-semibold text-slate-500">Worker</th>
+                  <th className="py-3.5 px-6 font-semibold text-slate-500">Department</th>
+                  <th className="py-3.5 px-6 font-semibold text-slate-500">Status</th>
+                  <th className="py-3.5 px-6 font-semibold text-slate-500">Current Task</th>
+                  <th className="py-3.5 px-6 font-semibold text-slate-500">Progress</th>
+                  <th className="py-3.5 px-6 font-semibold text-slate-500 text-right">Cost Today</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filteredAgents.map((worker: any) => {
-                  const tier = (worker.trust_tier || "observe") as TrustTier;
+                {filteredWorkers.map((worker) => {
+                  const Icon = worker.icon;
+                  const isRunning = worker.status === "Running";
+                  const isPaused = worker.status === "Paused";
+
                   return (
-                    <tr 
-                      key={worker.id} 
+                    <tr
+                      key={worker.id}
                       onClick={() => setSelectedAgentId(worker.id)}
-                      className="hover:bg-slate-50/80 cursor-pointer transition-colors"
+                      className="hover:bg-slate-50/80 cursor-pointer transition-colors group"
                     >
-                      <td className="p-4 text-xs font-bold text-slate-900 flex items-center gap-3">
-                        <span className="material-symbols-outlined text-lg text-emerald-600">smart_toy</span>
-                        {worker.name}
+                      {/* Worker Identity */}
+                      <td className="py-4 px-6">
+                        <div className="flex items-center gap-3.5">
+                          <div className={`w-10 h-10 rounded-xl ${worker.avatarBg} border flex items-center justify-center shrink-0 shadow-xs group-hover:scale-105 transition-transform`}>
+                            <Icon className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <div className="text-sm font-bold text-slate-900 group-hover:text-emerald-800 transition-colors">
+                              {worker.name}
+                            </div>
+                            <div className="text-xs text-slate-400 font-medium">
+                              {worker.sublabel}
+                            </div>
+                          </div>
+                        </div>
                       </td>
-                      <td className="p-4 text-xs text-slate-700 font-medium">{worker.role}</td>
-                      <td className="p-4 text-xs">
-                        <span className={`px-2 py-0.5 rounded-full font-mono text-[10px] font-bold uppercase border ${
-                          tier === 'operate' ? 'bg-emerald-100 text-emerald-800 border-emerald-300' :
-                          tier === 'assist' ? 'bg-blue-100 text-blue-800 border-blue-300' :
-                          'bg-amber-100 text-amber-800 border-amber-300'
-                        }`}>
-                          {tier}
+
+                      {/* Department */}
+                      <td className="py-4 px-6">
+                        <span className="text-xs text-slate-700 font-medium">
+                          {worker.department}
                         </span>
                       </td>
-                      <td className="p-4 text-xs font-mono text-emerald-700 font-semibold">{worker.clean_cycles_count || 0}</td>
-                      <td className="p-4 text-xs font-mono text-slate-700 font-medium">
-                        ${(worker.authority_limit_usd ?? (tier === 'operate' ? 1000 : tier === 'assist' ? 100 : 0)).toFixed(2)}
-                      </td>
-                      <td className="p-4 text-xs text-right">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedAgentId(worker.id);
-                          }}
-                          className="text-emerald-700 hover:text-emerald-800 font-semibold"
+
+                      {/* Status */}
+                      <td className="py-4 px-6">
+                        <span
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold border ${
+                            isRunning
+                              ? "bg-emerald-50 text-emerald-700 border-emerald-200/80"
+                              : isPaused
+                              ? "bg-amber-50 text-amber-700 border-amber-200/80"
+                              : "bg-slate-100 text-slate-600 border-slate-200/80"
+                          }`}
                         >
-                          Inspect
-                        </button>
+                          <span
+                            className={`w-1.5 h-1.5 rounded-full ${
+                              isRunning
+                                ? "bg-emerald-500"
+                                : isPaused
+                                ? "bg-amber-500"
+                                : "bg-slate-400"
+                            }`}
+                          />
+                          {worker.status}
+                        </span>
+                      </td>
+
+                      {/* Current Task */}
+                      <td className="py-4 px-6">
+                        <span className="text-xs text-slate-700 font-medium truncate block max-w-xs">
+                          {worker.currentTask}
+                        </span>
+                      </td>
+
+                      {/* Progress Bar & Number */}
+                      <td className="py-4 px-6">
+                        <div className="flex flex-col gap-1 w-24">
+                          <span className="text-[11px] font-bold text-slate-700 font-mono">
+                            {worker.progress > 0 ? `${worker.progress}%` : "0%"}
+                          </span>
+                          <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                            <div
+                              className={`h-full rounded-full transition-all duration-300 ${
+                                isRunning
+                                  ? "bg-emerald-800"
+                                  : isPaused
+                                  ? "bg-amber-500"
+                                  : "bg-slate-300"
+                              }`}
+                              style={{ width: `${worker.progress}%` }}
+                            />
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Cost Today */}
+                      <td className="py-4 px-6 text-right font-mono text-xs font-bold text-slate-900">
+                        ${worker.costToday.toFixed(2)}
                       </td>
                     </tr>
                   );
@@ -357,7 +404,149 @@ export default function AgentsPage() {
             </table>
           </div>
         </div>
+      ) : (
+        /* Grid View */
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {filteredWorkers.map((worker) => {
+            const Icon = worker.icon;
+            const isRunning = worker.status === "Running";
+            const isPaused = worker.status === "Paused";
+
+            return (
+              <div
+                key={worker.id}
+                onClick={() => setSelectedAgentId(worker.id)}
+                className="bg-white p-5 rounded-2xl border border-slate-200/80 hover:border-emerald-500/50 shadow-xs hover:shadow-md transition-all cursor-pointer flex flex-col justify-between gap-4 group"
+              >
+                <div>
+                  <div className="flex items-start justify-between gap-2">
+                    <div className={`w-10 h-10 rounded-xl ${worker.avatarBg} border flex items-center justify-center shrink-0`}>
+                      <Icon className="w-5 h-5" />
+                    </div>
+                    <span
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${
+                        isRunning
+                          ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                          : isPaused
+                          ? "bg-amber-50 text-amber-700 border-amber-200"
+                          : "bg-slate-100 text-slate-600 border-slate-200"
+                      }`}
+                    >
+                      <span className={`w-1.5 h-1.5 rounded-full ${isRunning ? "bg-emerald-500" : isPaused ? "bg-amber-500" : "bg-slate-400"}`} />
+                      {worker.status}
+                    </span>
+                  </div>
+
+                  <div className="mt-3">
+                    <h3 className="text-sm font-bold text-slate-900 group-hover:text-emerald-800 transition-colors">
+                      {worker.name}
+                    </h3>
+                    <p className="text-xs text-slate-400">{worker.sublabel} &bull; {worker.department}</p>
+                  </div>
+
+                  <div className="mt-3 p-2.5 rounded-xl bg-slate-50 border border-slate-100 text-xs text-slate-700">
+                    <p className="text-[10px] font-bold uppercase text-slate-400 mb-0.5">Current Task</p>
+                    <p className="truncate font-medium">{worker.currentTask}</p>
+                  </div>
+                </div>
+
+                <div className="space-y-2 pt-2 border-t border-slate-100">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-slate-500">Progress</span>
+                    <span className="font-mono font-bold text-slate-800">{worker.progress}%</span>
+                  </div>
+                  <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full ${isRunning ? "bg-emerald-800" : isPaused ? "bg-amber-500" : "bg-slate-300"}`}
+                      style={{ width: `${worker.progress}%` }}
+                    />
+                  </div>
+
+                  <div className="flex justify-between items-center text-xs pt-1">
+                    <span className="text-slate-500">Cost Today</span>
+                    <span className="font-mono font-bold text-slate-900">${worker.costToday.toFixed(2)}</span>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       )}
+
+      {/* 4. Bottom Metric Bento Cards (4 Cards Grid) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5 mt-2">
+        
+        {/* Card 1: Active Workers */}
+        <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs flex flex-col justify-between hover:shadow-md transition-all">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-slate-500">Active Workers</span>
+            <div className="text-emerald-600">
+              <Radio className="w-5 h-5" />
+            </div>
+          </div>
+          <div className="mt-3">
+            <span className="text-2xl md:text-3xl font-extrabold text-slate-900">
+              {agents?.length || 12}
+            </span>
+            <p className="text-[11px] font-semibold text-emerald-700 mt-1 flex items-center gap-1">
+              <span>&#9650;</span> 2 since yesterday
+            </p>
+          </div>
+        </div>
+
+        {/* Card 2: Compute Used */}
+        <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs flex flex-col justify-between hover:shadow-md transition-all">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-slate-500">Compute Used</span>
+            <div className="text-slate-600">
+              <Cpu className="w-5 h-5" />
+            </div>
+          </div>
+          <div className="mt-3">
+            <span className="text-2xl md:text-3xl font-extrabold text-slate-900">84%</span>
+            <p className="text-[11px] text-slate-400 font-medium mt-1">
+              Peak usage at 14:00
+            </p>
+          </div>
+        </div>
+
+        {/* Card 3: Total Cost Today */}
+        <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs flex flex-col justify-between hover:shadow-md transition-all">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-slate-500">Total Cost Today</span>
+            <div className="text-slate-600">
+              <CreditCard className="w-5 h-5" />
+            </div>
+          </div>
+          <div className="mt-3">
+            <span className="text-2xl md:text-3xl font-extrabold text-slate-900">
+              ${metrics?.totalCost ? metrics.totalCost.toFixed(2) : "42.30"}
+            </span>
+            <p className="text-[11px] font-semibold text-rose-600 mt-1 flex items-center gap-1">
+              <span>&#9650;</span> 12% above avg
+            </p>
+          </div>
+        </div>
+
+        {/* Card 4: Tasks Completed */}
+        <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs flex flex-col justify-between hover:shadow-md transition-all">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-slate-500">Tasks Completed</span>
+            <div className="text-slate-700">
+              <CheckCircle2 className="w-5 h-5" />
+            </div>
+          </div>
+          <div className="mt-3">
+            <span className="text-2xl md:text-3xl font-extrabold text-slate-900">
+              {metrics?.completedTasks || 156}
+            </span>
+            <p className="text-[11px] text-slate-500 font-medium mt-1">
+              {metrics?.errorRate !== undefined ? `${(100 - metrics.errorRate).toFixed(1)}%` : "98.2%"} success rate
+            </p>
+          </div>
+        </div>
+
+      </div>
     </div>
   );
 }
