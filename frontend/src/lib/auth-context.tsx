@@ -48,26 +48,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      const isLoggedOut = typeof window !== "undefined" && localStorage.getItem("companyos_logged_out") === "true";
-
       if (!configured) {
-        if (isLoggedOut) {
-          setUser(null);
-          setIsLoading(false);
-          return;
-        }
-
-        // Demo mock founder profile for local dev when keys are not yet provisioned
-        const mockUser = {
-          id: "founder-001",
-          email: "executive@companyos.ai",
-          user_metadata: { full_name: "Executive Founder", role: "admin" },
-          app_metadata: { provider: "email" },
-          aud: "authenticated",
-          created_at: new Date().toISOString(),
-        } as unknown as User;
-
-        setUser(mockUser);
+        setUser(null);
+        setSession(null);
         setIsLoading(false);
         return;
       }
@@ -103,15 +86,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     if (!isConfiguredState) {
-      setUser({
-        id: "founder-001",
-        email,
-        user_metadata: { full_name: email.split("@")[0] || "Executive Founder", role: "admin" },
-        app_metadata: { provider: "email" },
-        aud: "authenticated",
-        created_at: new Date().toISOString(),
-      } as unknown as User);
-      return { error: null };
+      return { error: { message: "Authentication is not configured" } as unknown as AuthError };
     }
 
     const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -124,15 +99,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     if (!isConfiguredState) {
-      setUser({
-        id: "founder-001",
-        email,
-        user_metadata: { full_name: fullName || "Executive Founder", role: "admin" },
-        app_metadata: { provider: "email" },
-        aud: "authenticated",
-        created_at: new Date().toISOString(),
-      } as unknown as User);
-      return { error: null };
+      return { error: { message: "Authentication is not configured" } as unknown as AuthError };
     }
 
     const { error } = await supabase.auth.signUp({
@@ -140,7 +107,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       password,
       options: {
         data: {
-          full_name: fullName || "Executive Founder",
+          full_name: fullName || email.split("@")[0],
         },
       },
     });
@@ -153,12 +120,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     if (!isConfiguredState) {
-      return { error: null };
+      return { error: { message: "Authentication is not configured" } as unknown as AuthError };
     }
+
+    const redirectOrigin = typeof window !== "undefined" ? window.location.origin : undefined;
+
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
       options: {
-        redirectTo: typeof window !== "undefined" ? `${window.location.origin}/` : undefined,
+        redirectTo: redirectOrigin ? `${redirectOrigin}/` : undefined,
       },
     });
     return { error };

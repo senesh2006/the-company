@@ -28,8 +28,8 @@ export function Topbar() {
   }, []);
 
   const activeCount = agents?.filter(a => a.status === 'Running' || a.status === 'Idle')?.length || 0;
-  const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || "Executive Founder";
-  const userInitials = userName.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2) || "EX";
+  const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || (user ? "User" : "");
+  const userInitials = userName ? userName.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2) : "U";
 
   return (
     <header className="fixed top-0 right-0 w-[calc(100%-280px)] h-16 bg-white/80 backdrop-blur-xl border-b border-slate-200/90 flex items-center justify-between px-8 z-40">
@@ -100,58 +100,68 @@ export function Topbar() {
           </Link>
         </div>
         
-        {/* User profile dropdown */}
-        <div className="relative" ref={menuRef}>
-          <button 
-            onClick={() => setMenuOpen(!menuOpen)}
-            className="flex items-center gap-2 p-1 rounded-xl hover:bg-slate-100 transition-all focus:outline-none"
+        {/* User profile dropdown or Sign In button */}
+        {user ? (
+          <div className="relative" ref={menuRef}>
+            <button 
+              onClick={() => setMenuOpen(!menuOpen)}
+              className="flex items-center gap-2 p-1 rounded-xl hover:bg-slate-100 transition-all focus:outline-none cursor-pointer"
+            >
+              <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 p-[1px] shadow-xs">
+                <div className="w-full h-full bg-white rounded-[11px] flex items-center justify-center text-xs font-bold text-emerald-800">
+                  {userInitials}
+                </div>
+              </div>
+              <span className="material-symbols-outlined text-slate-400 text-sm">
+                {menuOpen ? 'expand_less' : 'expand_more'}
+              </span>
+            </button>
+
+            {menuOpen && (
+              <div className="absolute right-0 mt-2 w-64 bg-white rounded-2xl border border-slate-200/90 shadow-xl shadow-slate-200/50 py-2 px-1 z-50 animate-in fade-in zoom-in-95 duration-100">
+                <div className="px-3 py-2 border-b border-slate-100 mb-1">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                    <p className="text-xs font-semibold text-slate-900 truncate">{userName}</p>
+                  </div>
+                  <p className="text-[11px] text-slate-500 truncate mt-0.5">{user.email}</p>
+                  <div className="mt-1.5 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-[10px] font-semibold text-emerald-700 border border-emerald-200">
+                    <span className="material-symbols-outlined text-[12px]">verified</span>
+                    <span>{isConfigured ? 'Supabase Auth' : 'Authenticated'}</span>
+                  </div>
+                </div>
+
+                <Link
+                  href="/login"
+                  onClick={() => setMenuOpen(false)}
+                  className="flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 rounded-xl transition-colors"
+                >
+                  <span className="material-symbols-outlined text-base text-slate-400">switch_account</span>
+                  <span>Switch Account</span>
+                </Link>
+
+                <button
+                  onClick={async () => {
+                    setMenuOpen(false);
+                    await signOut();
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-rose-600 hover:bg-rose-50 rounded-xl transition-colors text-left cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-base text-rose-500">logout</span>
+                  <span>Sign Out</span>
+                </button>
+              </div>
+            )}
+          </div>
+        ) : (
+          <Link
+            href="/login"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold transition-all shadow-xs"
           >
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 p-[1px] shadow-xs">
-              <div className="w-full h-full bg-white rounded-[11px] flex items-center justify-center text-xs font-bold text-emerald-800">
-                {userInitials}
-              </div>
-            </div>
-            <span className="material-symbols-outlined text-slate-400 text-sm">
-              {menuOpen ? 'expand_less' : 'expand_more'}
-            </span>
-          </button>
-
-          {menuOpen && (
-            <div className="absolute right-0 mt-2 w-64 bg-white rounded-2xl border border-slate-200/90 shadow-xl shadow-slate-200/50 py-2 px-1 z-50 animate-in fade-in zoom-in-95 duration-100">
-              <div className="px-3 py-2 border-b border-slate-100 mb-1">
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                  <p className="text-xs font-semibold text-slate-900 truncate">{userName}</p>
-                </div>
-                <p className="text-[11px] text-slate-500 truncate mt-0.5">{user?.email || "founder@company.ai"}</p>
-                <div className="mt-1.5 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-[10px] font-semibold text-emerald-700 border border-emerald-200">
-                  <span className="material-symbols-outlined text-[12px]">verified</span>
-                  <span>{isConfigured ? 'Supabase Auth' : 'Local Dev Mode'}</span>
-                </div>
-              </div>
-
-              <Link
-                href="/login"
-                onClick={() => setMenuOpen(false)}
-                className="flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 rounded-xl transition-colors"
-              >
-                <span className="material-symbols-outlined text-base text-slate-400">switch_account</span>
-                <span>Switch Account / Sign In</span>
-              </Link>
-
-              <button
-                onClick={async () => {
-                  setMenuOpen(false);
-                  await signOut();
-                }}
-                className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-rose-600 hover:bg-rose-50 rounded-xl transition-colors text-left"
-              >
-                <span className="material-symbols-outlined text-base text-rose-500">logout</span>
-                <span>Sign Out</span>
-              </button>
-            </div>
-          )}
-        </div>
+            <span className="material-symbols-outlined text-sm">login</span>
+            <span>Sign In</span>
+          </Link>
+        )}
       </div>
     </header>
   );
