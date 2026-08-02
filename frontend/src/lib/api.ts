@@ -1,3 +1,5 @@
+import { supabase } from './supabase';
+
 export type AgentStatus = 'Idle' | 'Thinking' | 'Working' | 'Running' | 'Paused' | 'Blocked' | 'Error' | 'Failed' | 'Terminated';
 export type AgentRole = 'Manager' | 'Worker' | 'Specialist';
 export type TrustTier = 'observe' | 'assist' | 'operate';
@@ -150,35 +152,54 @@ export const getBaseUrl = (): string => {
       const customUrl = process.env.NEXT_PUBLIC_API_URL;
       return customUrl.endsWith('/') ? customUrl.slice(0, -1) : customUrl;
     }
-    // Local development with separate Next.js dev server on port 3000/3001
     if (window.location.port === '3000' || window.location.port === '3001') {
       return `${window.location.protocol}//${window.location.hostname}:8000`;
     }
-    // In production / same-origin deployment (e.g. Railway, Docker), use relative path
     return '';
   }
   return process.env.NEXT_PUBLIC_API_URL || '';
+};
+
+export const getAuthHeaders = async (customHeaders: Record<string, string> = {}): Promise<Record<string, string>> => {
+  const headers: Record<string, string> = { ...customHeaders };
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.access_token) {
+      headers['Authorization'] = `Bearer ${session.access_token}`;
+    }
+  } catch {
+    // If supabase fails, continue without token
+  }
+  return headers;
+};
+
+const authFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+  const headers = await getAuthHeaders((init?.headers as Record<string, string>) || {});
+  return fetch(input, {
+    ...init,
+    headers,
+  });
 };
 
 export const api = {
   // --- Agents & AI Workers ---
   getAgents: async (): Promise<Agent[]> => {
     const baseUrl = getBaseUrl();
-    const res = await fetch(`${baseUrl}/api/v1/agents`);
+    const res = await authFetch(`${baseUrl}/api/v1/agents`);
     if (!res.ok) throw new Error(`Failed to fetch agents (${res.status})`);
     return res.json();
   },
 
   getAgent: async (id: string): Promise<Agent> => {
     const baseUrl = getBaseUrl();
-    const res = await fetch(`${baseUrl}/api/v1/agents/${id}`);
+    const res = await authFetch(`${baseUrl}/api/v1/agents/${id}`);
     if (!res.ok) throw new Error(`Failed to fetch agent (${res.status})`);
     return res.json();
   },
 
   getHierarchy: async (): Promise<Agent[]> => {
     const baseUrl = getBaseUrl();
-    const res = await fetch(`${baseUrl}/api/v1/hierarchy`);
+    const res = await authFetch(`${baseUrl}/api/v1/hierarchy`);
     if (!res.ok) throw new Error(`Failed to fetch hierarchy (${res.status})`);
     return res.json();
   },
@@ -186,7 +207,7 @@ export const api = {
   // --- Trust Tier Promotion / Demotion ---
   promoteWorker: async (agentId: string, targetTier?: TrustTier): Promise<any> => {
     const baseUrl = getBaseUrl();
-    const res = await fetch(`${baseUrl}/api/v1/agents/${agentId}/promote`, {
+    const res = await authFetch(`${baseUrl}/api/v1/agents/${agentId}/promote`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ target_tier: targetTier }),
@@ -197,7 +218,7 @@ export const api = {
 
   demoteWorker: async (agentId: string, reason?: string): Promise<any> => {
     const baseUrl = getBaseUrl();
-    const res = await fetch(`${baseUrl}/api/v1/agents/${agentId}/demote`, {
+    const res = await authFetch(`${baseUrl}/api/v1/agents/${agentId}/demote`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ reason }),
@@ -209,7 +230,7 @@ export const api = {
   // --- Company Feed Audit Trail ---
   getCompanyFeed: async (limit: number = 50): Promise<CompanyFeedItem[]> => {
     const baseUrl = getBaseUrl();
-    const res = await fetch(`${baseUrl}/api/v1/tasks/feed?limit=${limit}`);
+    const res = await authFetch(`${baseUrl}/api/v1/tasks/feed?limit=${limit}`);
     if (!res.ok) {
       return [];
     }
@@ -219,7 +240,7 @@ export const api = {
   // --- Mandate Dispatching ---
   dispatchMandate: async (payload: MandatePayload): Promise<any> => {
     const baseUrl = getBaseUrl();
-    const res = await fetch(`${baseUrl}/api/v1/tasks/mandate`, {
+    const res = await authFetch(`${baseUrl}/api/v1/tasks/mandate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
@@ -231,7 +252,7 @@ export const api = {
   // --- Review Task Action ---
   reviewTask: async (taskId: string, verdict: 'approved' | 'rejected' | 'revise', feedback?: string): Promise<any> => {
     const baseUrl = getBaseUrl();
-    const res = await fetch(`${baseUrl}/api/v1/tasks/${taskId}/review`, {
+    const res = await authFetch(`${baseUrl}/api/v1/tasks/${taskId}/review`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ verdict, feedback }),
@@ -243,7 +264,7 @@ export const api = {
   // --- Metrics ---
   getMetrics: async (): Promise<Metrics> => {
     const baseUrl = getBaseUrl();
-    const res = await fetch(`${baseUrl}/api/v1/metrics`);
+    const res = await authFetch(`${baseUrl}/api/v1/metrics`);
     if (!res.ok) throw new Error(`Failed to fetch metrics (${res.status})`);
     return res.json();
   },
@@ -251,14 +272,14 @@ export const api = {
   // --- Memory & Key-Value Matrix ---
   getMemory: async (): Promise<MemoryEntry[]> => {
     const baseUrl = getBaseUrl();
-    const res = await fetch(`${baseUrl}/api/v1/memory`);
+    const res = await authFetch(`${baseUrl}/api/v1/memory`);
     if (!res.ok) throw new Error(`Failed to fetch memory (${res.status})`);
     return res.json();
   },
 
   setMemory: async (key: string, value: any, tags: string[] = []): Promise<MemoryEntry> => {
     const baseUrl = getBaseUrl();
-    const res = await fetch(`${baseUrl}/api/v1/memory`, {
+    const res = await authFetch(`${baseUrl}/api/v1/memory`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ key, value, tags }),
@@ -275,7 +296,7 @@ export const api = {
     if (category) formData.append('category', category);
     if (title) formData.append('title', title);
 
-    const res = await fetch(`${baseUrl}/api/v1/memory/upload`, {
+    const res = await authFetch(`${baseUrl}/api/v1/memory/upload`, {
       method: 'POST',
       body: formData,
     });
@@ -291,21 +312,21 @@ export const api = {
     const url = category && category !== 'all' 
       ? `${baseUrl}/api/v1/memory/documents?category=${encodeURIComponent(category)}`
       : `${baseUrl}/api/v1/memory/documents`;
-    const res = await fetch(url);
+    const res = await authFetch(url);
     if (!res.ok) throw new Error(`Failed to fetch knowledge documents (${res.status})`);
     return res.json();
   },
 
   getKnowledgeDocument: async (docId: string): Promise<KnowledgeDocument> => {
     const baseUrl = getBaseUrl();
-    const res = await fetch(`${baseUrl}/api/v1/memory/documents/${docId}`);
+    const res = await authFetch(`${baseUrl}/api/v1/memory/documents/${docId}`);
     if (!res.ok) throw new Error(`Failed to fetch document ${docId} (${res.status})`);
     return res.json();
   },
 
   deleteKnowledgeDocument: async (docId: string): Promise<void> => {
     const baseUrl = getBaseUrl();
-    const res = await fetch(`${baseUrl}/api/v1/memory/documents/${docId}`, {
+    const res = await authFetch(`${baseUrl}/api/v1/memory/documents/${docId}`, {
       method: 'DELETE',
     });
     if (!res.ok) throw new Error(`Failed to delete document (${res.status})`);
@@ -313,7 +334,7 @@ export const api = {
 
   searchKnowledge: async (query: string, category?: string): Promise<any> => {
     const baseUrl = getBaseUrl();
-    const res = await fetch(`${baseUrl}/api/v1/memory/search`, {
+    const res = await authFetch(`${baseUrl}/api/v1/memory/search`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ query, category }),
@@ -325,7 +346,7 @@ export const api = {
   // --- Needs Attention ---
   getNeedsAttention: async (): Promise<AttentionItem[]> => {
     const baseUrl = getBaseUrl();
-    const res = await fetch(`${baseUrl}/api/v1/attention`);
+    const res = await authFetch(`${baseUrl}/api/v1/attention`);
     if (!res.ok) throw new Error(`Failed to fetch attention items (${res.status})`);
     return res.json();
   },
@@ -333,15 +354,27 @@ export const api = {
   // --- Tasks ---
   getTasks: async (): Promise<Task[]> => {
     const baseUrl = getBaseUrl();
-    const res = await fetch(`${baseUrl}/api/v1/tasks`);
+    const res = await authFetch(`${baseUrl}/api/v1/tasks`);
     if (!res.ok) throw new Error(`Failed to fetch tasks (${res.status})`);
     return res.json();
+  },
+
+  createTask: async (payload: { description: string; priority?: number }): Promise<Task> => {
+    const baseUrl = getBaseUrl();
+    const res = await authFetch(`${baseUrl}/api/v1/tasks`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) throw new Error(`Failed to create task (${res.status})`);
+    const data = await res.json();
+    return data.task || data;
   },
 
   // --- Mutations ---
   updateAgentStatus: async (id: string, status: AgentStatus): Promise<void> => {
     const baseUrl = getBaseUrl();
-    const res = await fetch(`${baseUrl}/api/v1/agents/${id}/status`, {
+    const res = await authFetch(`${baseUrl}/api/v1/agents/${id}/status`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status }),
@@ -351,7 +384,7 @@ export const api = {
 
   injectInstruction: async (id: string, instruction: string): Promise<void> => {
     const baseUrl = getBaseUrl();
-    const res = await fetch(`${baseUrl}/api/v1/agents/${id}/inject`, {
+    const res = await authFetch(`${baseUrl}/api/v1/agents/${id}/inject`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ instruction }),
@@ -361,7 +394,7 @@ export const api = {
 
   hireAgent: async (payload: HireWorkerPayload | { role: string; name: string; goal?: string }): Promise<void> => {
     const baseUrl = getBaseUrl();
-    const res = await fetch(`${baseUrl}/api/v1/agents/hire`, {
+    const res = await authFetch(`${baseUrl}/api/v1/agents/hire`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),

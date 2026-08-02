@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 
 export default function TasksPage() {
-  const { data: dbTasks, isLoading } = useTasks();
+  const { data: dbTasks, isLoading, refetch } = useTasks();
   const { data: agents } = useAgents();
   const createTask = useCreateTask();
 
@@ -31,116 +31,55 @@ export default function TasksPage() {
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
   const [showNewTaskModal, setShowNewTaskModal] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState("");
-  const [newTaskAgentId, setNewTaskAgentId] = useState("");
+  const [newTaskAgentRole, setNewTaskAgentRole] = useState("");
   const [newTaskPriority, setNewTaskPriority] = useState("P1");
+  const [selectedTask, setSelectedTask] = useState<any | null>(null);
 
-  // Mock initial rich tasks matching reference mockup
-  const defaultTasks = [
-    {
-      id: "task-1",
-      priority: "P0",
-      title: "Monthly Financial Audit",
-      subtitle: "Started 2 hours ago • Est. 4h remaining",
-      agentName: "FinAgent Delta",
-      agentRole: "Financial Analyst",
-      agentAvatar: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=100&auto=format&fit=crop&q=80",
-      status: "IN PROGRESS",
-      statusType: "in_progress",
-      progress: 64,
-      category: "active"
-    },
-    {
-      id: "task-2",
-      priority: "P1",
-      title: "Social Media Campaign Generation",
-      subtitle: "Scheduled for 2:00 PM • Est. 1.5h",
-      agentName: "CreativeBot 9",
-      agentRole: "Content Strategist",
-      agentAvatar: "https://images.unsplash.com/photo-1633332755192-727a05c4013d?w=100&auto=format&fit=crop&q=80",
-      status: "PENDING",
-      statusType: "pending",
-      progress: 0,
-      category: "scheduled"
-    },
-    {
-      id: "task-3",
-      priority: "P2",
-      title: "Data Normalization & Cleaning",
-      subtitle: "Completed 15m ago • Duration: 45m",
-      agentName: "DataNode Zero",
-      agentRole: "Data Engineer",
-      agentAvatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=80",
-      status: "COMPLETED",
-      statusType: "completed",
-      progress: 100,
-      category: "completed"
-    },
-    {
-      id: "task-4",
-      priority: "P0",
-      title: "Legacy Database Migration",
-      subtitle: "Blocked: API Rate Limit Exceeded",
-      isBlocked: true,
-      agentName: "Architect-1",
-      agentRole: "System Admin",
-      agentAvatar: "https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=100&auto=format&fit=crop&q=80",
-      status: "BLOCKED",
-      statusType: "blocked",
-      progress: 12,
-      category: "active"
-    },
-    {
-      id: "task-5",
-      priority: "P1",
-      title: "User Sentiment Analysis (Q4)",
-      subtitle: "Started 5m ago • Est. 12h remaining",
-      agentName: "SentiAI",
-      agentRole: "UX Researcher",
-      agentAvatar: "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=100&auto=format&fit=crop&q=80",
-      status: "IN PROGRESS",
-      statusType: "in_progress",
-      progress: 4,
-      category: "active"
+  // Map real database tasks
+  const allTasks = (dbTasks || []).map((t: any) => {
+    const assignedAgent = agents?.find(a => a.id === t.agent_id || a.role === t.assignee_role);
+    const statusUpper = (t.status || "queued").toUpperCase();
+    
+    let cat = "active";
+    let statType = "in_progress";
+    let isBlocked = false;
+    let progress = 50;
+
+    if (t.status === "completed") {
+      cat = "completed";
+      statType = "completed";
+      progress = 100;
+    } else if (t.status === "pending" || t.status === "queued") {
+      cat = "scheduled";
+      statType = "pending";
+      progress = 0;
+    } else if (t.status === "needs_approval" || t.status === "failed" || t.status === "rejected") {
+      cat = "active";
+      statType = "blocked";
+      isBlocked = true;
+      progress = 25;
     }
-  ];
 
-  // Merge database tasks if present
-  const allTasks = (dbTasks && dbTasks.length > 0)
-    ? dbTasks.map((t: any, idx: number) => {
-        const matching = defaultTasks[idx % defaultTasks.length];
-        const statusUpper = (t.status || "").toUpperCase();
-        let cat = "active";
-        let statType = "in_progress";
-        let isBlocked = false;
+    const priorityLabel = (t.priority === "high" || t.priority === "P0") ? "P0" : ((t.priority === "low" || t.priority === "P2") ? "P2" : "P1");
 
-        if (statusUpper === "COMPLETED") {
-          cat = "completed";
-          statType = "completed";
-        } else if (statusUpper === "PENDING" || statusUpper === "SCHEDULED") {
-          cat = "scheduled";
-          statType = "pending";
-        } else if (statusUpper === "BLOCKED" || statusUpper === "FAILED") {
-          cat = "active";
-          statType = "blocked";
-          isBlocked = true;
-        }
-
-        return {
-          id: t.id,
-          priority: t.priority || matching.priority,
-          title: t.title || t.instruction || matching.title,
-          subtitle: isBlocked ? "Blocked: Needs Review" : (t.created_at ? `Created ${new Date(t.created_at).toLocaleTimeString()}` : matching.subtitle),
-          isBlocked: isBlocked,
-          agentName: t.agent_name || matching.agentName,
-          agentRole: matching.agentRole,
-          agentAvatar: matching.agentAvatar,
-          status: statusUpper || matching.status,
-          statusType: statType,
-          progress: t.progress ?? (statType === "completed" ? 100 : matching.progress),
-          category: cat
-        };
-      })
-    : defaultTasks;
+    return {
+      id: t.id,
+      priority: priorityLabel,
+      title: t.description || t.mandate || "Autonomous Operation Mandate",
+      subtitle: isBlocked 
+        ? `Needs Review • Retry: ${t.retry_count || 0}/2` 
+        : `Dispatched ${new Date(t.created_at || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
+      isBlocked: isBlocked,
+      agentName: assignedAgent?.name || (t.assignee_role ? `Specialist (${t.assignee_role})` : "Lead Orchestrator"),
+      agentRole: assignedAgent?.role || t.assignee_role || "Autonomous Worker",
+      agentAvatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${t.id}`,
+      status: statusUpper,
+      statusType: statType,
+      progress: progress,
+      category: cat,
+      rawTask: t
+    };
+  });
 
   const filteredTasks = allTasks.filter((t) => {
     if (activeTab === "active" && t.category !== "active") return false;
@@ -157,12 +96,13 @@ export default function TasksPage() {
     try {
       await createTask.mutateAsync({
         title: newTaskTitle,
-        assigned_agent_id: newTaskAgentId || (agents?.[0]?.id ?? "agent-1"),
+        assigned_agent_id: newTaskAgentRole || (agents?.[0]?.role ?? "Lead Orchestrator"),
         priority: newTaskPriority,
         description: newTaskTitle
       });
       setNewTaskTitle("");
       setShowNewTaskModal(false);
+      refetch();
     } catch (err) {
       console.error(err);
     }
@@ -174,10 +114,10 @@ export default function TasksPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex flex-col gap-1">
           <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">
-            Tasks
+            Tasks & Operations
           </h1>
           <p className="text-xs md:text-sm text-slate-500 font-medium">
-            Orchestrate and monitor the execution of complex workflows
+            Live execution monitoring and autonomous workflow orchestration
           </p>
         </div>
 
@@ -220,7 +160,6 @@ export default function TasksPage() {
 
         {/* Filter / Sort Actions */}
         <div className="flex items-center gap-2 shrink-0">
-          {/* Filter Dropdown Toggle */}
           <div className="relative">
             <button
               onClick={() => setShowFilterDropdown(!showFilterDropdown)}
@@ -247,240 +186,285 @@ export default function TasksPage() {
             )}
           </div>
 
-          {/* Sort Button */}
-          <button
+          <button 
             onClick={() => setSortBy(sortBy === "time" ? "priority" : "time")}
             className="px-3.5 py-1.5 rounded-xl bg-white border border-slate-200 text-slate-700 text-xs font-semibold flex items-center gap-1.5 hover:bg-slate-50 shadow-xs"
           >
             <ArrowUpDown className="w-3.5 h-3.5 text-slate-500" />
-            <span>Sort</span>
+            <span>Sort: {sortBy === "time" ? "Latest" : "Priority"}</span>
           </button>
         </div>
       </div>
 
-      {/* 3. Task Cards List */}
-      <div className="flex flex-col gap-3.5">
-        {filteredTasks.map((task) => {
-          const isP0 = task.priority === "P0";
-          const isP1 = task.priority === "P1";
-          const isCompleted = task.statusType === "completed";
-          const isBlocked = task.statusType === "blocked" || task.isBlocked;
-          const isPending = task.statusType === "pending";
-
-          return (
-            <div
-              key={task.id}
-              className="bg-white rounded-2xl p-4 md:p-5 border border-slate-200/80 shadow-xs hover:shadow-md hover:border-slate-300 transition-all flex flex-col md:flex-row md:items-center justify-between gap-4"
-            >
-              {/* Left Column: Priority + Title + Subtitle */}
-              <div className="flex items-start gap-3.5 min-w-[280px] max-w-md">
-                <span
-                  className={`px-2 py-0.5 rounded-md text-xs font-bold shrink-0 mt-0.5 border ${
-                    isP0
-                      ? "bg-rose-50 text-rose-700 border-rose-200/80"
-                      : isP1
-                      ? "bg-slate-100 text-slate-700 border-slate-200"
-                      : "bg-slate-100 text-slate-500 border-slate-200"
-                  }`}
-                >
-                  {task.priority}
-                </span>
-
-                <div className="flex flex-col gap-1">
-                  <h3 className="text-sm md:text-base font-bold text-slate-900 leading-snug">
-                    {task.title}
-                  </h3>
-                  
-                  {isBlocked ? (
-                    <p className="text-xs font-semibold text-rose-600 flex items-center gap-1.5">
-                      <AlertTriangle className="w-3.5 h-3.5" />
-                      <span>{task.subtitle}</span>
-                    </p>
-                  ) : isCompleted ? (
-                    <p className="text-xs text-slate-400 font-medium flex items-center gap-1.5">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                      <span>{task.subtitle}</span>
-                    </p>
-                  ) : (
-                    <p className="text-xs text-slate-400 font-medium flex items-center gap-1.5">
-                      <Clock className="w-3.5 h-3.5 text-slate-400" />
-                      <span>{task.subtitle}</span>
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              {/* Middle Column: Assignee */}
-              <div className="flex items-center gap-3 min-w-[180px]">
-                <img
-                  src={task.agentAvatar}
-                  alt={task.agentName}
-                  className="w-9 h-9 rounded-xl object-cover border border-slate-200 shrink-0"
-                />
-                <div>
-                  <div className="text-xs font-bold text-slate-900">{task.agentName}</div>
-                  <div className="text-[11px] text-slate-400 font-medium">{task.agentRole}</div>
-                </div>
-              </div>
-
-              {/* Right Column: Status Badge & Progress */}
-              <div className="flex items-center gap-4 min-w-[200px] justify-between md:justify-end">
-                <span
-                  className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border shrink-0 ${
-                    isCompleted
-                      ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                      : isBlocked
-                      ? "bg-rose-50 text-rose-700 border-rose-200"
-                      : isPending
-                      ? "bg-blue-50 text-blue-700 border-blue-200"
-                      : "bg-emerald-50 text-emerald-700 border-emerald-200"
-                  }`}
-                >
-                  <span
-                    className={`w-1.5 h-1.5 rounded-full ${
-                      isCompleted
-                        ? "bg-emerald-500"
-                        : isBlocked
-                        ? "bg-rose-500"
-                        : isPending
-                        ? "bg-blue-500"
-                        : "bg-emerald-500"
-                    }`}
-                  />
-                  {task.status}
-                </span>
-
-                <div className="flex items-center gap-3 w-28 shrink-0">
-                  <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                    <div
-                      className={`h-full rounded-full transition-all ${
-                        isBlocked
-                          ? "bg-rose-600"
-                          : isCompleted
-                          ? "bg-emerald-600"
-                          : "bg-emerald-600"
-                      }`}
-                      style={{ width: `${task.progress}%` }}
-                    />
-                  </div>
-                  <span className="text-xs font-bold font-mono text-slate-700 w-9 text-right">
-                    {task.progress}%
-                  </span>
-                </div>
-              </div>
+      {/* 3. Task List Card Container */}
+      <div className="bg-white border border-slate-200/90 rounded-2xl shadow-xs overflow-hidden">
+        {isLoading ? (
+          <div className="p-12 text-center text-slate-400 flex flex-col items-center justify-center gap-2">
+            <span className="material-symbols-outlined text-3xl animate-spin text-emerald-600">progress_activity</span>
+            <p className="text-xs font-semibold">Synchronizing task fleet...</p>
+          </div>
+        ) : filteredTasks.length === 0 ? (
+          <div className="p-16 text-center text-slate-500 flex flex-col items-center justify-center gap-3">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+              <Sparkles className="w-6 h-6" />
             </div>
-          );
-        })}
+            <div>
+              <p className="text-sm font-bold text-slate-800">No operations found</p>
+              <p className="text-xs text-slate-400 mt-0.5">Dispatched missions and mandate tasks will appear here in real-time.</p>
+            </div>
+            <button
+              onClick={() => setShowNewTaskModal(true)}
+              className="mt-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all"
+            >
+              Dispatch First Mission
+            </button>
+          </div>
+        ) : (
+          <div className="divide-y divide-slate-100">
+            {filteredTasks.map((task) => (
+              <div
+                key={task.id}
+                onClick={() => setSelectedTask(task)}
+                className="p-5 hover:bg-slate-50/80 transition-all duration-150 flex flex-col lg:flex-row lg:items-center justify-between gap-4 group cursor-pointer"
+              >
+                {/* Left: Priority + Title + Subtitle */}
+                <div className="flex items-start gap-3.5 min-w-0 flex-1">
+                  <span
+                    className={`shrink-0 px-2.5 py-1 rounded-lg text-[11px] font-black font-mono tracking-wider ${
+                      task.priority === "P0"
+                        ? "bg-rose-50 text-rose-700 border border-rose-200"
+                        : task.priority === "P1"
+                        ? "bg-amber-50 text-amber-800 border border-amber-200"
+                        : "bg-slate-100 text-slate-700 border border-slate-200"
+                    }`}
+                  >
+                    {task.priority}
+                  </span>
+
+                  <div className="flex flex-col min-w-0">
+                    <h3 className="text-sm font-bold text-slate-900 group-hover:text-emerald-800 transition-colors truncate">
+                      {task.title}
+                    </h3>
+                    <p className={`text-xs mt-0.5 font-medium ${task.isBlocked ? "text-rose-600 font-semibold" : "text-slate-400"}`}>
+                      {task.subtitle}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Center: Assigned Agent & Status */}
+                <div className="flex items-center gap-6 shrink-0">
+                  {/* Agent badge */}
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-lg overflow-hidden bg-slate-100 border border-slate-200 shrink-0">
+                      <img src={task.agentAvatar} alt={task.agentName} className="w-full h-full object-cover" />
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-xs font-semibold text-slate-800 leading-tight">
+                        {task.agentName}
+                      </span>
+                      <span className="text-[10px] text-slate-400 leading-tight">
+                        {task.agentRole}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Status Badge & Progress */}
+                  <div className="flex items-center gap-3 w-44 justify-end">
+                    {task.statusType === "in_progress" && (
+                      <div className="flex items-center gap-2">
+                        <div className="w-16 h-1.5 rounded-full bg-slate-100 overflow-hidden">
+                          <div
+                            className="h-full bg-emerald-600 rounded-full"
+                            style={{ width: `${task.progress}%` }}
+                          />
+                        </div>
+                        <span className="text-[11px] font-mono font-bold text-slate-600">
+                          {task.progress}%
+                        </span>
+                      </div>
+                    )}
+
+                    <span
+                      className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold tracking-wide uppercase flex items-center gap-1.5 ${
+                        task.statusType === "completed"
+                          ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
+                          : task.statusType === "blocked"
+                          ? "bg-rose-50 text-rose-700 border border-rose-200"
+                          : task.statusType === "pending"
+                          ? "bg-slate-100 text-slate-700 border border-slate-200"
+                          : "bg-emerald-50 text-emerald-800 border border-emerald-200"
+                      }`}
+                    >
+                      <span
+                        className={`w-1.5 h-1.5 rounded-full ${
+                          task.statusType === "completed"
+                            ? "bg-emerald-600"
+                            : task.statusType === "blocked"
+                            ? "bg-rose-500"
+                            : task.statusType === "pending"
+                            ? "bg-slate-400"
+                            : "bg-emerald-600 animate-pulse"
+                        }`}
+                      />
+                      <span>{task.status}</span>
+                    </span>
+                  </div>
+
+                  <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-slate-700 transition-transform group-hover:translate-x-0.5" />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* 4. Bottom Metrics Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5 mt-4">
-        {/* Card 1 */}
-        <div className="bg-white rounded-2xl p-4 md:p-5 border border-slate-200/80 shadow-xs">
-          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-            Active Tasks
-          </span>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-2xl md:text-3xl font-extrabold text-slate-900">12</span>
-            <span className="text-xs font-bold text-emerald-600">+2 from yesterday</span>
-          </div>
-        </div>
-
-        {/* Card 2 */}
-        <div className="bg-white rounded-2xl p-4 md:p-5 border border-slate-200/80 shadow-xs">
-          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-            Success Rate
-          </span>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-2xl md:text-3xl font-extrabold text-slate-900">99.2%</span>
-            <span className="text-xs font-semibold text-slate-400">Global Avg</span>
-          </div>
-        </div>
-
-        {/* Card 3 */}
-        <div className="bg-white rounded-2xl p-4 md:p-5 border border-slate-200/80 shadow-xs">
-          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-            Avg Completion Time
-          </span>
-          <div className="mt-2">
-            <span className="text-2xl md:text-3xl font-extrabold text-slate-900">1h 14m</span>
-          </div>
-        </div>
-
-        {/* Card 4 */}
-        <div className="bg-white rounded-2xl p-4 md:p-5 border border-slate-200/80 shadow-xs">
-          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-            Pending Approval
-          </span>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-2xl md:text-3xl font-extrabold text-slate-900">3</span>
-            <span className="text-xs font-bold text-rose-600">Needs Action</span>
-          </div>
-        </div>
-      </div>
-
-      {/* New Task Modal */}
+      {/* 4. New Task Modal */}
       {showNewTaskModal && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-3xl p-6 max-w-md w-full border border-slate-200 shadow-2xl space-y-4">
-            <h2 className="text-lg font-bold text-slate-900">Dispatch New Task</h2>
-            
-            <form onSubmit={handleCreateTask} className="space-y-3">
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in duration-150">
+          <div className="bg-white border border-slate-200 rounded-3xl p-6 md:p-8 max-w-lg w-full shadow-2xl space-y-5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center">
+                  <Plus className="w-5 h-5" />
+                </div>
+                <h2 className="text-lg font-bold text-slate-900">Dispatch New Operation</h2>
+              </div>
+              <button
+                onClick={() => setShowNewTaskModal(false)}
+                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+              >
+                <XCircle className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateTask} className="space-y-4">
               <div>
-                <label className="text-xs font-bold text-slate-700">Task Title / Mission</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Run Q3 Financial Rebalancing"
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                  Operation Mandate / Goal
+                </label>
+                <textarea
+                  required
+                  rows={3}
                   value={newTaskTitle}
                   onChange={(e) => setNewTaskTitle(e.target.value)}
-                  className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-emerald-600"
-                  required
+                  placeholder="e.g. Conduct comprehensive competitor pricing audit and output comparative table in shared memory..."
+                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3 text-xs text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 font-medium resize-none"
                 />
               </div>
 
-              <div>
-                <label className="text-xs font-bold text-slate-700">Assign Worker</label>
-                <select
-                  value={newTaskAgentId}
-                  onChange={(e) => setNewTaskAgentId(e.target.value)}
-                  className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-emerald-600"
-                >
-                  <option value="">Default AI Worker</option>
-                  {agents?.map((a: any) => (
-                    <option key={a.id} value={a.id}>{a.name} ({a.role})</option>
-                  ))}
-                </select>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                    Assignee Specialist
+                  </label>
+                  <select
+                    value={newTaskAgentRole}
+                    onChange={(e) => setNewTaskAgentRole(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:bg-white focus:outline-none"
+                  >
+                    <option value="">Lead Orchestrator (Auto-delegate)</option>
+                    {(agents || []).map((a) => (
+                      <option key={a.id} value={a.role}>
+                        {a.name} ({a.role})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                    Priority Tier
+                  </label>
+                  <select
+                    value={newTaskPriority}
+                    onChange={(e) => setNewTaskPriority(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:bg-white focus:outline-none font-semibold"
+                  >
+                    <option value="P0">P0 - Critical Block</option>
+                    <option value="P1">P1 - High Priority</option>
+                    <option value="P2">P2 - Normal Routine</option>
+                  </select>
+                </div>
               </div>
 
-              <div>
-                <label className="text-xs font-bold text-slate-700">Priority Level</label>
-                <select
-                  value={newTaskPriority}
-                  onChange={(e) => setNewTaskPriority(e.target.value)}
-                  className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-emerald-600"
-                >
-                  <option value="P0">P0 - Critical</option>
-                  <option value="P1">P1 - High</option>
-                  <option value="P2">P2 - Medium</option>
-                </select>
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-3">
+              <div className="flex items-center justify-end gap-3 pt-3">
                 <button
                   type="button"
                   onClick={() => setShowNewTaskModal(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-500 hover:bg-slate-100"
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs"
+                  disabled={createTask.isPending}
+                  className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs transition-all flex items-center gap-2"
                 >
-                  Dispatch
+                  {createTask.isPending && <span className="material-symbols-outlined text-sm animate-spin">progress_activity</span>}
+                  <span>Dispatch Mission</span>
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* 5. Task Detail Drawer */}
+      {selectedTask && (
+        <div className="fixed inset-0 bg-slate-900/30 backdrop-blur-xs flex justify-end z-50 animate-in fade-in duration-150">
+          <div className="bg-white border-l border-slate-200 w-full max-w-lg h-full p-6 md:p-8 flex flex-col justify-between shadow-2xl overflow-y-auto">
+            <div className="space-y-6">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+                <div className="flex items-center gap-2">
+                  <span className="px-2.5 py-1 rounded-lg text-xs font-black font-mono bg-emerald-50 text-emerald-800 border border-emerald-200">
+                    {selectedTask.priority}
+                  </span>
+                  <span className="text-xs font-bold uppercase text-slate-400">Operation Details</span>
+                </div>
+                <button
+                  onClick={() => setSelectedTask(null)}
+                  className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+                >
+                  <XCircle className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div>
+                <h2 className="text-lg font-bold text-slate-900">{selectedTask.title}</h2>
+                <p className="text-xs text-slate-400 mt-1 font-mono">{selectedTask.id}</p>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-3">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-semibold text-slate-500">Assigned Agent</span>
+                  <span className="font-bold text-slate-800">{selectedTask.agentName}</span>
+                </div>
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-semibold text-slate-500">Execution Status</span>
+                  <span className="font-bold text-emerald-800 uppercase">{selectedTask.status}</span>
+                </div>
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-semibold text-slate-500">Review Retries</span>
+                  <span className="font-mono font-bold text-slate-800">{selectedTask.rawTask?.retry_count || 0} / 2</span>
+                </div>
+              </div>
+
+              {selectedTask.rawTask?.result && (
+                <div>
+                  <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Execution Output</h4>
+                  <div className="p-3.5 bg-slate-950 text-emerald-400 rounded-xl text-xs font-mono whitespace-pre-wrap overflow-x-auto max-h-60 border border-slate-800">
+                    {selectedTask.rawTask.result}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <button
+              onClick={() => setSelectedTask(null)}
+              className="w-full py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold transition-colors"
+            >
+              Close Drawer
+            </button>
           </div>
         </div>
       )}

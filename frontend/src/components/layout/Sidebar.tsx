@@ -1,16 +1,22 @@
 "use client";
 
 import { usePathname } from 'next/navigation';
+import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { useAgents, useNeedsAttention } from '@/lib/queries';
+import { useAuth } from '@/lib/auth-context';
 
 export function Sidebar() {
   const pathname = usePathname();
   const { data: agents } = useAgents();
   const { data: attentionItems } = useNeedsAttention();
+  const { user, signOut } = useAuth();
   
   const activeWorkerCount = agents?.filter(a => a.status === 'Running' || a.status === 'Idle')?.length || 0;
   const pendingAttentionCount = attentionItems?.length || 0;
+  const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || "Executive Founder";
+  const userEmail = user?.email || "founder@company.ai";
+  const userInitials = userName.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2) || "EX";
 
   const mainNavItems = [
     { name: 'Dashboard', href: '/', icon: 'dashboard' },
@@ -30,8 +36,8 @@ export function Sidebar() {
     <aside className="fixed left-0 top-0 h-screen w-[280px] bg-white/95 backdrop-blur-2xl border-r border-slate-200/90 shadow-sm flex flex-col p-5 z-50">
       {/* Brand Header */}
       <div className="mb-6 px-3 pt-2">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-600 via-teal-500 to-cyan-500 p-[1px] shadow-md shadow-emerald-500/10">
+        <Link href="/" className="flex items-center gap-3 group">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-600 via-teal-500 to-cyan-500 p-[1px] shadow-md shadow-emerald-500/10 group-hover:scale-105 transition-transform">
             <div className="w-full h-full bg-white rounded-[11px] flex items-center justify-center">
               <span className="material-symbols-outlined text-emerald-600 text-xl font-bold">hub</span>
             </div>
@@ -43,7 +49,7 @@ export function Sidebar() {
             </div>
             <p className="text-[11px] text-slate-500 font-medium">Autonomous AI Workforce</p>
           </div>
-        </div>
+        </Link>
       </div>
       
       {/* Navigation Sections */}
@@ -52,7 +58,7 @@ export function Sidebar() {
         {mainNavItems.map((item) => {
           const isActive = pathname === item.href;
           return (
-            <a 
+            <Link 
               key={item.name} 
               href={item.href}
               className={cn(
@@ -81,7 +87,7 @@ export function Sidebar() {
                   {item.badge}
                 </span>
               )}
-            </a>
+            </Link>
           );
         })}
 
@@ -90,7 +96,7 @@ export function Sidebar() {
         {opsNavItems.map((item) => {
           const isActive = pathname === item.href;
           return (
-            <a 
+            <Link 
               key={item.name} 
               href={item.href}
               className={cn(
@@ -119,7 +125,7 @@ export function Sidebar() {
                   {item.badge}
                 </span>
               )}
-            </a>
+            </Link>
           );
         })}
       </nav>
@@ -136,25 +142,29 @@ export function Sidebar() {
         <span className="text-[10px] font-mono text-emerald-700 font-semibold">99.9%</span>
       </div>
 
-      {/* User Profile */}
+      {/* User Profile Footer */}
       <div className="border-t border-slate-200 pt-4 px-2 flex items-center justify-between">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="relative">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-500 to-emerald-400 p-[1px]">
-              <div className="w-full h-full bg-slate-100 rounded-[11px] flex items-center justify-center text-xs font-bold text-slate-700">
-                HQ
+        <Link href="/login" className="flex items-center gap-3 min-w-0 group">
+          <div className="relative shrink-0">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-500 to-emerald-400 p-[1px] group-hover:scale-105 transition-transform">
+              <div className="w-full h-full bg-white rounded-[11px] flex items-center justify-center text-xs font-bold text-slate-700">
+                {userInitials}
               </div>
             </div>
             <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-white"></span>
           </div>
-          <div className="min-w-0">
-            <p className="text-xs font-semibold text-slate-900 truncate">Workspace Admin</p>
-            <p className="text-[10px] text-slate-500 truncate">ops@company.ai</p>
+          <div className="min-w-0 text-left">
+            <p className="text-xs font-semibold text-slate-900 truncate group-hover:text-emerald-700 transition-colors">{userName}</p>
+            <p className="text-[10px] text-slate-500 truncate">{userEmail}</p>
           </div>
-        </div>
-        <a href="/analytics" className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors">
-          <span className="material-symbols-outlined text-lg">tune</span>
-        </a>
+        </Link>
+        <button 
+          onClick={() => signOut()}
+          className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+          title="Sign Out"
+        >
+          <span className="material-symbols-outlined text-lg">logout</span>
+        </button>
       </div>
     </aside>
   );

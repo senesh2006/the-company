@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useAgents, useHierarchy } from "@/lib/queries";
 import { 
   GitFork, 
   Users, 
@@ -13,12 +14,43 @@ import {
   Terminal, 
   Layers,
   ChevronRight,
-  ExternalLink
+  ExternalLink,
+  ShieldCheck,
+  Zap,
+  Sparkles
 } from "lucide-react";
 
 export default function HierarchyPage() {
+  const { data: liveAgents, isLoading } = useAgents();
+  const { data: hierarchyData } = useHierarchy();
+
   const [viewType, setViewType] = useState<"functional" | "projects">("functional");
-  const [selectedNode, setSelectedNode] = useState<string | null>("exec");
+  const [selectedAgent, setSelectedAgent] = useState<any | null>(null);
+
+  const agents = liveAgents || [];
+
+  // Group agents into functional departments
+  const engineeringAgents = agents.filter(a => 
+    a.role?.toLowerCase().includes("engineer") || 
+    a.role?.toLowerCase().includes("code") || 
+    a.role?.toLowerCase().includes("security")
+  );
+
+  const opsAgents = agents.filter(a => 
+    a.role?.toLowerCase().includes("lead") || 
+    a.role?.toLowerCase().includes("orchestrator") || 
+    a.role?.toLowerCase().includes("research") || 
+    a.role?.toLowerCase().includes("ops") ||
+    a.role?.toLowerCase().includes("data")
+  );
+
+  const businessAgents = agents.filter(a => 
+    a.role?.toLowerCase().includes("finance") || 
+    a.role?.toLowerCase().includes("marketing") || 
+    a.role?.toLowerCase().includes("growth")
+  );
+
+  const totalBots = agents.length > 0 ? agents.length : 5;
 
   return (
     <div className="flex flex-col gap-6 pb-12">
@@ -29,7 +61,7 @@ export default function HierarchyPage() {
             Organizational Structure
           </h1>
           <p className="text-xs md:text-sm text-slate-500 font-medium">
-            Manage and visualize reporting lines for human teams and AI agents.
+            Dynamic hierarchy and reporting hierarchy across active human executives and autonomous AI agents.
           </p>
         </div>
 
@@ -44,7 +76,7 @@ export default function HierarchyPage() {
             }`}
           >
             <GitFork className="w-3.5 h-3.5" />
-            <span>Functional</span>
+            <span>Functional Hierarchy</span>
           </button>
           <button
             onClick={() => setViewType("projects")}
@@ -55,40 +87,35 @@ export default function HierarchyPage() {
             }`}
           >
             <Layers className="w-3.5 h-3.5" />
-            <span>Project Teams</span>
+            <span>Autonomous Units</span>
           </button>
         </div>
       </div>
 
       {/* 2. Interactive Diagram Canvas */}
-      <div className="bg-slate-50/60 rounded-3xl p-6 md:p-10 border border-slate-200/80 shadow-xs min-h-[480px] flex flex-col items-center justify-center relative overflow-x-auto">
+      <div className="bg-slate-50/60 rounded-3xl p-6 md:p-10 border border-slate-200/80 shadow-xs min-h-[520px] flex flex-col items-center justify-center relative overflow-x-auto">
         
         {/* LEVEL 1: Executive Control Node */}
         <div className="flex flex-col items-center">
-          <div className="bg-white rounded-2xl p-4 w-72 border border-slate-200/90 shadow-sm hover:shadow-md transition-all">
+          <div className="bg-white rounded-2xl p-4 w-80 border border-slate-200/90 shadow-sm hover:shadow-md transition-all">
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-700">
+                <div className="w-9 h-9 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center text-white">
                   <Building2 className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="text-xs md:text-sm font-bold text-slate-900">Executive Control</h3>
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">HQ Node</p>
+                  <h3 className="text-xs md:text-sm font-bold text-slate-900">Founder & Executive Board</h3>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Supreme Governance Node</p>
                 </div>
               </div>
-              <button className="text-slate-400 hover:text-slate-600">
-                <MoreVertical className="w-3.5 h-3.5" />
-              </button>
             </div>
 
             <div className="flex items-center justify-between pt-3 mt-3 border-t border-slate-100 text-xs">
-              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                ACTIVE
+              <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-emerald-700">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                LIVE OVERSIGHT
               </span>
-              <button className="text-[11px] text-slate-500 hover:text-slate-800 font-medium">
-                View Details
-              </button>
+              <span className="text-[11px] font-mono text-slate-500 font-bold">PRD v6.0 Gate</span>
             </div>
           </div>
 
@@ -97,110 +124,128 @@ export default function HierarchyPage() {
         </div>
 
         {/* LEVEL 2: Department Horizontal Bar & Nodes */}
-        <div className="w-full max-w-2xl flex flex-col items-center">
+        <div className="w-full max-w-4xl flex flex-col items-center">
           {/* Horizontal Fork Bar */}
-          <div className="w-3/4 h-0.5 bg-slate-300 relative">
-            <div className="absolute left-0 top-0 w-0.5 h-8 bg-slate-300" />
-            <div className="absolute right-0 top-0 w-0.5 h-8 bg-slate-300" />
+          <div className="w-full h-0.5 bg-slate-300 relative">
+            <div className="absolute left-1/6 top-0 w-0.5 h-8 bg-slate-300" />
+            <div className="absolute left-1/2 top-0 w-0.5 h-8 bg-slate-300" />
+            <div className="absolute right-1/6 top-0 w-0.5 h-8 bg-slate-300" />
           </div>
 
           {/* Level 2 Nodes Grid */}
-          <div className="w-full flex justify-between gap-6 pt-8">
+          <div className="w-full grid grid-cols-1 md:grid-cols-3 gap-6 pt-8">
             
-            {/* Left Node: Engineering */}
-            <div className="flex-1 flex flex-col items-center max-w-[280px]">
+            {/* Column 1: Engineering Pod */}
+            <div className="flex flex-col items-center">
               <div className="bg-white rounded-2xl p-4 w-full border border-slate-200/90 shadow-sm hover:shadow-md transition-all">
                 <div className="flex items-center gap-2.5 mb-2">
                   <div className="w-8 h-8 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-700">
-                    <Users className="w-4 h-4" />
+                    <Terminal className="w-4 h-4" />
                   </div>
                   <div>
-                    <h3 className="text-xs md:text-sm font-bold text-slate-900">Engineering</h3>
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Department</p>
+                    <h3 className="text-xs md:text-sm font-bold text-slate-900">Engineering & Security</h3>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Autonomous Pod</p>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-1.5 text-xs text-slate-600 font-medium mt-2">
-                  <User className="w-3.5 h-3.5 text-slate-400" />
-                  <span>Sarah Chen (VP)</span>
-                </div>
-
-                <div className="pt-3 mt-3 border-t border-slate-100 text-xs">
-                  <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                    ACTIVE
-                  </span>
-                </div>
-              </div>
-
-              {/* Stem Line down to Level 3 */}
-              <div className="w-0.5 h-8 bg-slate-300" />
-
-              {/* Sub-fork bar for DevOps & Backend */}
-              <div className="w-full h-0.5 bg-slate-300 relative">
-                <div className="absolute left-0 top-0 w-0.5 h-6 bg-slate-300" />
-                <div className="absolute right-0 top-0 w-0.5 h-6 bg-slate-300" />
-              </div>
-
-              {/* Level 3 Sub-Nodes */}
-              <div className="w-full flex justify-between gap-3 pt-6">
-                {/* Sub-card 1: DevOps */}
-                <div className="bg-white rounded-2xl p-3 w-[130px] border border-slate-200/80 shadow-xs space-y-2">
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-slate-900">
-                    <Cloud className="w-3.5 h-3.5 text-slate-500" />
-                    <span>DevOps</span>
-                  </div>
-
-                  <div className="bg-slate-50 p-1.5 rounded-xl border border-slate-100 flex items-center justify-between text-[10px] font-semibold text-slate-700">
-                    <div className="flex items-center gap-1 truncate">
-                      <Bot className="w-3 h-3 text-emerald-700 shrink-0" />
-                      <span className="truncate">DataOps_Agent</span>
+                <div className="pt-2 border-t border-slate-100 space-y-2 mt-2">
+                  {(engineeringAgents.length > 0 ? engineeringAgents : [
+                    { id: "agent-eng", name: "Cipher", role: "Software Engineer", status: "Idle", trust_tier: "operate" }
+                  ]).map((agent: any) => (
+                    <div 
+                      key={agent.id}
+                      onClick={() => setSelectedAgent(agent)}
+                      className="bg-slate-50 hover:bg-slate-100 p-2 rounded-xl border border-slate-100 flex items-center justify-between text-xs cursor-pointer transition-colors"
+                    >
+                      <div className="flex items-center gap-2 truncate">
+                        <Bot className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+                        <div className="truncate">
+                          <p className="font-bold text-slate-900 truncate">{agent.name}</p>
+                          <p className="text-[10px] text-slate-500">{agent.role}</p>
+                        </div>
+                      </div>
+                      <span className="text-[9px] font-bold font-mono uppercase px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200">
+                        {agent.trust_tier || "Assist"}
+                      </span>
                     </div>
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
-                  </div>
-
-                  <div className="flex items-center gap-1 text-[10px] text-slate-500 font-medium">
-                    <User className="w-3 h-3 text-slate-400" />
-                    <span>M. Davis</span>
-                  </div>
-                </div>
-
-                {/* Sub-card 2: Backend */}
-                <div className="bg-white rounded-2xl p-3 w-[130px] border border-slate-200/80 shadow-xs space-y-2">
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-slate-900">
-                    <Terminal className="w-3.5 h-3.5 text-slate-500" />
-                    <span>Backend</span>
-                  </div>
-
-                  <div className="bg-slate-50 p-1.5 rounded-xl border border-slate-100 flex items-center justify-between text-[10px] font-semibold text-slate-700">
-                    <div className="flex items-center gap-1 truncate">
-                      <Bot className="w-3 h-3 text-emerald-700 shrink-0" />
-                      <span className="truncate">CodeReview_Bot</span>
-                    </div>
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
-                  </div>
+                  ))}
                 </div>
               </div>
             </div>
 
-            {/* Right Node: Marketing */}
-            <div className="flex-1 flex flex-col items-center max-w-[280px]">
+            {/* Column 2: Operations & Orchestration Pod */}
+            <div className="flex flex-col items-center">
               <div className="bg-white rounded-2xl p-4 w-full border border-slate-200/90 shadow-sm hover:shadow-md transition-all">
                 <div className="flex items-center gap-2.5 mb-2">
-                  <div className="w-8 h-8 rounded-xl bg-purple-50 border border-purple-200 flex items-center justify-center text-purple-700">
-                    <Building2 className="w-4 h-4" />
+                  <div className="w-8 h-8 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-700">
+                    <Zap className="w-4 h-4" />
                   </div>
                   <div>
-                    <h3 className="text-xs md:text-sm font-bold text-slate-900">Marketing</h3>
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Department</p>
+                    <h3 className="text-xs md:text-sm font-bold text-slate-900">Core Orchestration</h3>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Mission Lead</p>
                   </div>
                 </div>
 
-                <div className="pt-3 mt-3 border-t border-slate-100 text-xs">
-                  <span className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-400">
-                    <span className="w-1.5 h-1.5 rounded-full bg-slate-300" />
-                    IDLE
-                  </span>
+                <div className="pt-2 border-t border-slate-100 space-y-2 mt-2">
+                  {(opsAgents.length > 0 ? opsAgents : [
+                    { id: "agent-lead", name: "Atlas", role: "Lead Orchestrator", status: "Idle", trust_tier: "assist" }
+                  ]).map((agent: any) => (
+                    <div 
+                      key={agent.id}
+                      onClick={() => setSelectedAgent(agent)}
+                      className="bg-slate-50 hover:bg-slate-100 p-2 rounded-xl border border-slate-100 flex items-center justify-between text-xs cursor-pointer transition-colors"
+                    >
+                      <div className="flex items-center gap-2 truncate">
+                        <Bot className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+                        <div className="truncate">
+                          <p className="font-bold text-slate-900 truncate">{agent.name}</p>
+                          <p className="text-[10px] text-slate-500">{agent.role}</p>
+                        </div>
+                      </div>
+                      <span className="text-[9px] font-bold font-mono uppercase px-1.5 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200">
+                        {agent.trust_tier || "Assist"}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Column 3: Growth & Financial Pod */}
+            <div className="flex flex-col items-center">
+              <div className="bg-white rounded-2xl p-4 w-full border border-slate-200/90 shadow-sm hover:shadow-md transition-all">
+                <div className="flex items-center gap-2.5 mb-2">
+                  <div className="w-8 h-8 rounded-xl bg-purple-50 border border-purple-200 flex items-center justify-center text-purple-700">
+                    <ShieldCheck className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-xs md:text-sm font-bold text-slate-900">Finance & Growth</h3>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Capital & Market</p>
+                  </div>
+                </div>
+
+                <div className="pt-2 border-t border-slate-100 space-y-2 mt-2">
+                  {(businessAgents.length > 0 ? businessAgents : [
+                    { id: "agent-fin", name: "Ledger", role: "Finance Specialist", status: "Idle", trust_tier: "observe" },
+                    { id: "agent-mkt", name: "Echo", role: "Marketing Specialist", status: "Idle", trust_tier: "assist" }
+                  ]).map((agent: any) => (
+                    <div 
+                      key={agent.id}
+                      onClick={() => setSelectedAgent(agent)}
+                      className="bg-slate-50 hover:bg-slate-100 p-2 rounded-xl border border-slate-100 flex items-center justify-between text-xs cursor-pointer transition-colors"
+                    >
+                      <div className="flex items-center gap-2 truncate">
+                        <Bot className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+                        <div className="truncate">
+                          <p className="font-bold text-slate-900 truncate">{agent.name}</p>
+                          <p className="text-[10px] text-slate-500">{agent.role}</p>
+                        </div>
+                      </div>
+                      <span className="text-[9px] font-bold font-mono uppercase px-1.5 py-0.5 rounded-md bg-purple-50 text-purple-700 border border-purple-200">
+                        {agent.trust_tier || "Observe"}
+                      </span>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
@@ -216,14 +261,11 @@ export default function HierarchyPage() {
           {/* Headcount */}
           <div className="flex items-center gap-3">
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-              Total Headcount
+              Total Workforce
             </span>
             <div className="flex items-center gap-3 text-xs font-bold text-slate-800">
-              <span className="flex items-center gap-1">
-                <User className="w-3.5 h-3.5 text-slate-500" /> 142
-              </span>
               <span className="flex items-center gap-1 text-emerald-700">
-                <Bot className="w-3.5 h-3.5" /> 38
+                <Bot className="w-3.5 h-3.5" /> {totalBots} Active Agents
               </span>
             </div>
           </div>
@@ -233,24 +275,26 @@ export default function HierarchyPage() {
           {/* Structure Health */}
           <div className="flex items-center gap-3">
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-              Structure Health
+              Governance Health
             </span>
             <div className="flex items-center gap-2">
               <div className="w-24 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                <div className="h-full bg-emerald-600 rounded-full w-[92%]" />
+                <div className="h-full bg-emerald-600 rounded-full w-[96%]" />
               </div>
-              <span className="text-xs font-bold text-emerald-700 font-mono">92%</span>
+              <span className="text-xs font-bold text-emerald-700 font-mono">96%</span>
             </div>
           </div>
         </div>
 
-        {/* Export Button */}
-        <button
-          onClick={() => alert("Exporting organizational tree...")}
-          className="px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-800 text-xs font-bold hover:bg-slate-50 shadow-xs transition-colors self-start sm:self-auto"
-        >
-          Export Structure
-        </button>
+        {/* Selected Agent Quick Inspector */}
+        {selectedAgent && (
+          <div className="flex items-center gap-3 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200 text-xs">
+            <span className="font-bold text-slate-800">{selectedAgent.name}</span>
+            <span className="text-slate-400">•</span>
+            <span className="font-mono text-emerald-700 font-bold uppercase">{selectedAgent.trust_tier}</span>
+            <button onClick={() => setSelectedAgent(null)} className="text-slate-400 hover:text-slate-600">✕</button>
+          </div>
+        )}
       </div>
     </div>
   );

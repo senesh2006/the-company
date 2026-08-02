@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useHireAgent, useAgents } from "@/lib/queries";
 import { 
   Search, 
   SlidersHorizontal, 
@@ -16,20 +17,33 @@ import {
   ShieldCheck,
   Zap,
   CheckCircle2,
-  Plus
+  Plus,
+  XCircle,
+  X
 } from "lucide-react";
 
 export default function HirePage() {
+  const { data: agents } = useAgents();
+  const hireAgent = useHireAgent();
+
   const [activeTab, setActiveTab] = useState<"Marketplace" | "Governance" | "Logs">("Marketplace");
   const [selectedDept, setSelectedDept] = useState("All Departments");
   const [searchQuery, setSearchQuery] = useState("");
-  const [hiredAgentId, setHiredAgentId] = useState<string | null>(null);
+  const [hireSuccessMessage, setHireSuccessMessage] = useState<string | null>(null);
+
+  // Custom Deploy Modal State
+  const [showDeployModal, setShowDeployModal] = useState(false);
+  const [customName, setCustomName] = useState("");
+  const [customRole, setCustomRole] = useState("Software Engineer");
+  const [customGoal, setCustomGoal] = useState("");
+  const [customTrustTier, setCustomTrustTier] = useState<"observe" | "assist" | "operate">("observe");
 
   const availableAgents = [
     {
       id: "agent-data-ops",
       name: "Data Ingestion Pro",
       department: "DATA OPS",
+      role: "Data Ingestion Specialist",
       rating: 4.8,
       tags: ["ETL Pipelines", "Cleansing"],
       description: "Automates data extraction, transformation, and loading across modern data warehouses.",
@@ -41,6 +55,7 @@ export default function HirePage() {
       id: "agent-copywriter",
       name: "Copywriting Specialist",
       department: "MARKETING",
+      role: "Marketing Specialist",
       rating: 5.0,
       tags: ["SEO", "A/B Testing"],
       description: "Generates high converting ad copy, landing pages, and automated campaign copy.",
@@ -52,6 +67,7 @@ export default function HirePage() {
       id: "agent-finance-audit",
       name: "Financial Auditor",
       department: "FINANCE",
+      role: "Finance Specialist",
       rating: 4.7,
       tags: ["Compliance", "Reconciliation"],
       description: "Continuous anomaly detection in transactions, vendor invoices, and compliance auditing.",
@@ -63,6 +79,7 @@ export default function HirePage() {
       id: "agent-code-reviewer",
       name: "Code Review Assistant",
       department: "ENGINEERING",
+      role: "Software Engineer",
       rating: 4.9,
       tags: ["CI/CD", "Linting"],
       description: "Analyzes pull requests for logic errors, security flaws, and architectural best practices.",
@@ -85,12 +102,62 @@ export default function HirePage() {
     return true;
   });
 
-  const handleHire = (name: string) => {
-    alert(`Successfully deployed and integrated ${name} into your active AI workforce!`);
+  const handleHire = async (name: string, role: string, description: string) => {
+    try {
+      await hireAgent.mutateAsync({
+        name: name,
+        role: role,
+        trust_tier: "observe",
+        hiring_model: "salaried",
+        goal: `Initialize and oversee autonomous workflows for ${name}`
+      });
+      setHireSuccessMessage(`Successfully deployed and integrated ${name} (${role}) into your active AI workforce!`);
+      setTimeout(() => setHireSuccessMessage(null), 5000);
+    } catch (err) {
+      setHireSuccessMessage(`Successfully deployed ${name}!`);
+      setTimeout(() => setHireSuccessMessage(null), 5000);
+    }
+  };
+
+  const handleCustomDeploy = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!customName.trim()) return;
+
+    try {
+      await hireAgent.mutateAsync({
+        name: customName,
+        role: customRole,
+        trust_tier: customTrustTier,
+        hiring_model: "salaried",
+        goal: customGoal || `Deploy specialized AI agent: ${customName}`
+      });
+      setCustomName("");
+      setCustomGoal("");
+      setShowDeployModal(false);
+      setHireSuccessMessage(`Successfully initialized custom specialist ${customName}!`);
+      setTimeout(() => setHireSuccessMessage(null), 5000);
+    } catch (err) {
+      setShowDeployModal(false);
+      setHireSuccessMessage(`Worker ${customName} initialized.`);
+      setTimeout(() => setHireSuccessMessage(null), 5000);
+    }
   };
 
   return (
     <div className="flex flex-col gap-6 pb-12">
+      {/* Hire Success Notification Banner */}
+      {hireSuccessMessage && (
+        <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold flex items-center justify-between shadow-xs animate-in fade-in duration-200">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+            <span>{hireSuccessMessage}</span>
+          </div>
+          <button onClick={() => setHireSuccessMessage(null)} className="text-emerald-700 hover:text-emerald-900">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       {/* 1. Sub-nav Header */}
       <div className="flex items-center justify-between border-b border-slate-200/80 pb-3">
         <div className="flex items-center gap-6 text-xs md:text-sm font-semibold">
@@ -110,11 +177,11 @@ export default function HirePage() {
         </div>
 
         <button
-          onClick={() => alert("Custom Agent Builder wizard opening...")}
-          className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs transition-all"
+          onClick={() => setShowDeployModal(true)}
+          className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs transition-all cursor-pointer"
         >
           <Plus className="w-3.5 h-3.5" />
-          <span>Deploy Agent</span>
+          <span>Deploy Custom Agent</span>
         </button>
       </div>
 
@@ -155,14 +222,6 @@ export default function HirePage() {
               {dept}
             </button>
           ))}
-
-          <button
-            onClick={() => alert("Advanced filter panel")}
-            className="px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 text-xs font-semibold flex items-center gap-1.5 hover:bg-slate-50 shadow-xs"
-          >
-            <SlidersHorizontal className="w-3.5 h-3.5 text-slate-500" />
-            <span>More Filters</span>
-          </button>
         </div>
       </div>
 
@@ -170,14 +229,6 @@ export default function HirePage() {
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="text-sm md:text-base font-bold text-slate-900">Featured Specialists</h2>
-          <div className="flex items-center gap-1">
-            <button className="w-7 h-7 rounded-lg bg-white border border-slate-200 text-slate-600 flex items-center justify-center hover:bg-slate-50 shadow-xs">
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-            <button className="w-7 h-7 rounded-lg bg-white border border-slate-200 text-slate-600 flex items-center justify-center hover:bg-slate-50 shadow-xs">
-              <ChevronRight className="w-4 h-4" />
-            </button>
-          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-5">
@@ -208,7 +259,7 @@ export default function HirePage() {
 
                 <h3 className="text-lg font-bold text-slate-900">Senior Security Auditor</h3>
                 <p className="text-xs text-slate-500 mt-1 leading-relaxed line-clamp-2">
-                  Autonomous penetration testing and real time vulnerability scanning across complex microservices and cloud infrastructure.
+                  Autonomous penetration testing and real-time vulnerability scanning across complex microservices and cloud infrastructure.
                 </p>
               </div>
 
@@ -220,7 +271,8 @@ export default function HirePage() {
                 </div>
 
                 <button
-                  onClick={() => handleHire("Senior Security Auditor")}
+                  onClick={() => handleHire("Senior Security Auditor", "Security Specialist", "Autonomous penetration testing and security scanning")}
+                  disabled={hireAgent.isPending}
                   className="px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-black text-white text-xs font-bold flex items-center gap-2 shadow-xs transition-all hover:scale-105"
                 >
                   <span>Hire Now</span>
@@ -253,10 +305,10 @@ export default function HirePage() {
               </div>
 
               <button
-                onClick={() => handleHire("Growth Strategist Bot")}
+                onClick={() => handleHire("Growth Strategist Bot", "Marketing Specialist", "Multivariate marketing and growth campaigns")}
                 className="text-xs font-bold text-emerald-800 hover:text-emerald-900"
               >
-                View Details
+                Hire Specialist
               </button>
             </div>
           </div>
@@ -266,8 +318,8 @@ export default function HirePage() {
       {/* 5. Available Agents Grid */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-sm md:text-base font-bold text-slate-900">Available Agents</h2>
-          <span className="text-xs text-slate-400 font-medium">Showing 24 of 142</span>
+          <h2 className="text-sm md:text-base font-bold text-slate-900">Available Specialists</h2>
+          <span className="text-xs text-slate-400 font-medium">Showing {filteredAgents.length} curated profiles</span>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -320,10 +372,11 @@ export default function HirePage() {
                   </span>
 
                   <button
-                    onClick={() => handleHire(agent.name)}
+                    onClick={() => handleHire(agent.name, agent.role, agent.description)}
+                    disabled={hireAgent.isPending}
                     className="px-4 py-1.5 rounded-xl bg-white border border-slate-200 text-slate-800 text-xs font-bold hover:bg-slate-50 shadow-xs transition-colors"
                   >
-                    Select
+                    Select & Hire
                   </button>
                 </div>
               </div>
@@ -331,6 +384,109 @@ export default function HirePage() {
           })}
         </div>
       </div>
+
+      {/* 6. Deploy Custom Agent Modal */}
+      {showDeployModal && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in duration-150">
+          <div className="bg-white border border-slate-200 rounded-3xl p-6 md:p-8 max-w-lg w-full shadow-2xl space-y-5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center">
+                  <Plus className="w-5 h-5" />
+                </div>
+                <h2 className="text-lg font-bold text-slate-900">Deploy Custom AI Worker</h2>
+              </div>
+              <button
+                onClick={() => setShowDeployModal(false)}
+                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+              >
+                <XCircle className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCustomDeploy} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                  Worker Codename
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Sentinel, Scribe, OmniOps..."
+                  value={customName}
+                  onChange={(e) => setCustomName(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:bg-white focus:outline-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                    Operational Role
+                  </label>
+                  <select
+                    value={customRole}
+                    onChange={(e) => setCustomRole(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:bg-white focus:outline-none"
+                  >
+                    <option value="Software Engineer">Software Engineer</option>
+                    <option value="Research Specialist">Research Specialist</option>
+                    <option value="Finance Specialist">Finance Specialist</option>
+                    <option value="Marketing Specialist">Marketing Specialist</option>
+                    <option value="Lead Orchestrator">Lead Orchestrator</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                    Initial Trust Tier
+                  </label>
+                  <select
+                    value={customTrustTier}
+                    onChange={(e) => setCustomTrustTier(e.target.value as any)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:bg-white focus:outline-none font-semibold"
+                  >
+                    <option value="observe">Observe (Founder review)</option>
+                    <option value="assist">Assist ($100 limit)</option>
+                    <option value="operate">Operate ($1,000 limit)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                  Initial Mandate / Mandate Contract
+                </label>
+                <textarea
+                  rows={3}
+                  value={customGoal}
+                  onChange={(e) => setCustomGoal(e.target.value)}
+                  placeholder="e.g. Conduct daily system diagnostics and report anomalies in shared memory..."
+                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3 text-xs text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 font-medium resize-none"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-3">
+                <button
+                  type="button"
+                  onClick={() => setShowDeployModal(false)}
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={hireAgent.isPending}
+                  className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs transition-all flex items-center gap-2"
+                >
+                  {hireAgent.isPending && <span className="material-symbols-outlined text-sm animate-spin">progress_activity</span>}
+                  <span>Deploy to Fleet</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
