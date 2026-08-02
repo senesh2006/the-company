@@ -1,9 +1,16 @@
 import logging
-from typing import Any, Optional, List
+import uuid
+from datetime import datetime
+from typing import Any, Optional, List, Dict
 from supabase import create_client, Client
 from app.core.config import settings
+from app.services.governance_service import GovernanceService
 
 logger = logging.getLogger(__name__)
+
+# In-memory storage fallback for audit feed and agent metadata
+_IN_MEMORY_AUDIT_LOG: List[Dict[str, Any]] = []
+_IN_MEMORY_AGENT_EXTRA: Dict[str, Dict[str, Any]] = {}
 
 class TaskService:
     def __init__(self, supabase_client: Optional[Client] = None):
@@ -19,19 +26,45 @@ class TaskService:
         return self._client
             
     def list_agents(self, business_id: str) -> List[dict[str, Any]]:
-        """List all available agents for a business."""
+        """List all available agents for a business, merged with PRD metadata."""
         try:
             response = self.client.table("agents")\
                 .select("*")\
                 .eq("business_id", business_id)\
                 .execute()
-            return response.data
+            
+            agents = response.data or []
+            # Merge in-memory extra fields (trust_tier, clean_cycles, etc.)
+            for a in agents:
+                extra = _IN_MEMORY_AGENT_EXTRA.get(str(a.get("id")), {})
+                for k, v in extra.items():
+                    if k not in a or a[k] is None:
+                        a[k] = v
+                if "trust_tier" not in a:
+                    a["trust_tier"] = "observe"
+                if "clean_cycles_count" not in a:
+                    a["clean_cycles_count"] = 0
+                if "authority_limit_usd" not in a:
+                    a["authority_limit_usd"] = 0.0 if a["trust_tier"] == "observe" else (100.0 if a["trust_tier"] == "assist" else 1000.0)
+            return agents
         except Exception as e:
             logger.error(f"Error listing agents for business {business_id}: {e}")
             raise e
 
-    def create_agent(self, business_id: str, name: str, role: str, status: str = "Idle") -> dict[str, Any]:
-        """Creates a new agent."""
+    def create_agent(
+        self,
+        business_id: str,
+        name: str,
+        role: str,
+        status: str = "Idle",
+        trust_tier: str = "observe",
+        specialization_id: Optional[str] = None,
+        hiring_model: str = "salaried",
+        system_prompt: Optional[str] = None,
+        model: Optional[str] = None,
+        capabilities: Optional[List[str]] = None
+    ) -> dict[str, Any]:
+        """Creates a new agent seeded at Observe tier as specified in PRD v6.0 §5.3."""
         try:
             data = {
                 "business_id": business_id,
@@ -40,23 +73,62 @@ class TaskService:
                 "status": status
             }
             response = self.client.table("agents").insert(data).execute()
-            return response.data[0] if response.data else {}
+            agent = response.data[0] if response.data else {}
+            
+            agent_id = str(agent.get("id", uuid.uuid4()))
+            agent["id"] = agent_id
+            
+            # Store PRD v6.0 metadata
+            extra_meta = {
+                "trust_tier": trust_tier,
+                "specialization_id": specialization_id or f"{role.lower()}-standard-v1",
+                "hiring_model": hiring_model,
+                "clean_cycles_count": 0,
+                "authority_limit_usd": 0.0 if trust_tier == "observe" else (100.0 if trust_tier == "assist" else 1000.0),
+                "system_prompt": system_prompt,
+                "model": model or "kimi-k3",
+                "capabilities": capabilities or []
+            }
+            _IN_MEMORY_AGENT_EXTRA[agent_id] = extra_meta
+            agent.update(extra_meta)
+            
+            # Log audit event for worker hire
+            self.log_audit_event(
+                business_id=business_id,
+                agent_id=agent_id,
+                agent_name=name,
+                role=role,
+                trust_tier=trust_tier,
+                action=f"Recruited AI Worker ({hiring_model.capitalize()}) - Specialization: {specialization_id or 'Standard'}",
+                details={"hiring_model": hiring_model, "tier": trust_tier}
+            )
+            return agent
         except Exception as e:
-            # If the status column doesn't exist yet, retry without it
             if "status" in str(e) and "PGRST204" in str(e):
-                logger.warning("agents table missing 'status' column — inserting without it. Please add the column via: ALTER TABLE agents ADD COLUMN status TEXT DEFAULT 'Idle';")
-                data = {
-                    "business_id": business_id,
-                    "name": name,
-                    "role": role
-                }
+                logger.warning("agents table missing 'status' column — inserting basic.")
+                data = {"business_id": business_id, "name": name, "role": role}
                 response = self.client.table("agents").insert(data).execute()
-                return response.data[0] if response.data else {}
+                agent = response.data[0] if response.data else {}
+                agent_id = str(agent.get("id", uuid.uuid4()))
+                agent["id"] = agent_id
+                extra_meta = {
+                    "trust_tier": trust_tier,
+                    "specialization_id": specialization_id or f"{role.lower()}-standard-v1",
+                    "hiring_model": hiring_model,
+                    "clean_cycles_count": 0,
+                    "authority_limit_usd": 0.0 if trust_tier == "observe" else 100.0,
+                    "system_prompt": system_prompt,
+                    "model": model or "kimi-k3",
+                    "capabilities": capabilities or []
+                }
+                _IN_MEMORY_AGENT_EXTRA[agent_id] = extra_meta
+                agent.update(extra_meta)
+                return agent
             logger.error(f"Error creating agent for business {business_id}: {e}")
             raise e
 
     def update_agent_status(self, agent_id: str, status: str) -> dict[str, Any]:
-        """Updates the status of an agent in the database."""
+        """Updates the status of an agent."""
         try:
             response = self.client.table("agents")\
                 .update({"status": status})\
@@ -64,15 +136,94 @@ class TaskService:
                 .execute()
             return response.data[0] if response.data else {}
         except Exception as e:
-            # Silently handle missing status column — the agent still works, just without status tracking
             if "PGRST204" in str(e):
-                logger.warning(f"Cannot update agent status — 'status' column missing. Run: ALTER TABLE agents ADD COLUMN status TEXT DEFAULT 'Idle';")
                 return {}
             logger.error(f"Error updating agent {agent_id} status to {status}: {e}")
             return {}
 
-    def create_task(self, business_id: str, description: str, status: str = "pending", parent_id: Optional[str] = None, dependencies: List[str] = [], assignee_role: Optional[str] = None, id: Optional[str] = None) -> dict[str, Any]:
-        """Creates a new task."""
+    def promote_agent(self, business_id: str, agent_id: str, target_tier: Optional[str] = None, reason: str = "Founder authorization") -> dict[str, Any]:
+        """Promotes an agent's trust tier (PRD v6.0 §6.1)."""
+        extra = _IN_MEMORY_AGENT_EXTRA.get(agent_id, {"trust_tier": "observe", "clean_cycles_count": 0})
+        current_tier = extra.get("trust_tier", "observe")
+        
+        if not target_tier:
+            target_tier = "assist" if current_tier == "observe" else "operate"
+            
+        extra["trust_tier"] = target_tier
+        if target_tier == "assist":
+            extra["authority_limit_usd"] = 100.0
+        elif target_tier == "operate":
+            extra["authority_limit_usd"] = 1000.0
+            
+        _IN_MEMORY_AGENT_EXTRA[agent_id] = extra
+        
+        # Log to feed
+        self.log_audit_event(
+            business_id=business_id,
+            agent_id=agent_id,
+            trust_tier=target_tier,
+            action=f"Promoted to {target_tier.capitalize()} Tier",
+            details={"reason": reason, "previous_tier": current_tier, "new_tier": target_tier}
+        )
+        return {"status": "success", "agent_id": agent_id, "new_tier": target_tier, "reason": reason}
+
+    def demote_agent(self, business_id: str, agent_id: str, reason: str = "Flagged error or rejection") -> dict[str, Any]:
+        """Demotes an agent immediately upon error/rejection (PRD v6.0 §6.1)."""
+        extra = _IN_MEMORY_AGENT_EXTRA.get(agent_id, {"trust_tier": "observe", "clean_cycles_count": 0})
+        new_tier, msg = GovernanceService.evaluate_demotion(extra, reason)
+        
+        extra["trust_tier"] = new_tier
+        extra["clean_cycles_count"] = 0 # Reset clean streak
+        if new_tier == "observe":
+            extra["authority_limit_usd"] = 0.0
+        elif new_tier == "assist":
+            extra["authority_limit_usd"] = 100.0
+            
+        _IN_MEMORY_AGENT_EXTRA[agent_id] = extra
+        
+        self.log_audit_event(
+            business_id=business_id,
+            agent_id=agent_id,
+            trust_tier=new_tier,
+            action=f"Demoted to {new_tier.capitalize()} Tier",
+            details={"reason": reason, "new_tier": new_tier}
+        )
+        return {"status": "demoted", "agent_id": agent_id, "new_tier": new_tier, "reason": reason}
+
+    def record_task_verdict(self, business_id: str, agent_id: str, is_clean: bool, reason: str = "") -> dict[str, Any]:
+        """Records task success or failure and automatically adjusts trust tier if qualified."""
+        extra = _IN_MEMORY_AGENT_EXTRA.get(agent_id, {"trust_tier": "observe", "clean_cycles_count": 0})
+        if is_clean:
+            extra["clean_cycles_count"] = extra.get("clean_cycles_count", 0) + 1
+            _IN_MEMORY_AGENT_EXTRA[agent_id] = extra
+            
+            # Check for auto-promotion from Observe -> Assist
+            new_tier, promo_reason = GovernanceService.evaluate_promotion(extra)
+            if new_tier:
+                return self.promote_agent(business_id, agent_id, target_tier=new_tier, reason=promo_reason)
+            return {"status": "clean_recorded", "clean_cycles": extra["clean_cycles_count"]}
+        else:
+            return self.demote_agent(business_id, agent_id, reason=reason or "Execution flaw encountered")
+
+    def create_task(
+        self,
+        business_id: str,
+        description: str,
+        status: str = "pending",
+        parent_id: Optional[str] = None,
+        dependencies: List[str] = [],
+        assignee_role: Optional[str] = None,
+        id: Optional[str] = None,
+        mandate: Optional[str] = None,
+        cadence: str = "once",
+        priority: str = "normal",
+        authority_limit: Optional[Dict[str, Any]] = None,
+        trust_tier: str = "observe",
+        specialization_id: Optional[str] = None,
+        shared_memory_refs: Optional[List[str]] = None,
+        expected_output: Optional[Dict[str, Any]] = None
+    ) -> dict[str, Any]:
+        """Creates a new Task / Mandate contract."""
         try:
             data = {
                 "business_id": business_id,
@@ -86,19 +237,40 @@ class TaskService:
                 data["id"] = id
                 
             response = self.client.table("tasks").insert(data).execute()
-            return response.data[0] if response.data else {}
+            task = response.data[0] if response.data else {}
+            
+            # Attach PRD mandate metadata
+            task_id = task.get("id", id or str(uuid.uuid4()))
+            task["mandate"] = mandate or description
+            task["cadence"] = cadence
+            task["priority"] = priority
+            task["authority_limit"] = authority_limit or {"requires_approval_above_usd": 0.0}
+            task["trust_tier"] = trust_tier
+            task["specialization_id"] = specialization_id
+            task["shared_memory_refs"] = shared_memory_refs or []
+            task["expected_output"] = expected_output
+            
+            self.log_audit_event(
+                business_id=business_id,
+                role=assignee_role,
+                trust_tier=trust_tier,
+                action=f"Mandate Dispatched: {mandate or description[:60]}",
+                details={"cadence": cadence, "priority": priority, "task_id": str(task_id)},
+                shared_memory_refs=shared_memory_refs
+            )
+            return task
         except Exception as e:
             logger.error(f"Error creating task for business {business_id}: {e}")
             raise e
 
     def list_tasks(self, business_id: str, status: Optional[str] = None) -> List[dict[str, Any]]:
-        """List tasks for a business, optionally filtered by status."""
+        """List tasks for a business."""
         try:
             query = self.client.table("tasks").select("*").eq("business_id", business_id)
             if status:
                 query = query.eq("status", status)
             response = query.execute()
-            return response.data
+            return response.data or []
         except Exception as e:
             logger.error(f"Error listing tasks for business {business_id}: {e}")
             raise e
@@ -125,7 +297,6 @@ class TaskService:
                 .execute()
             
             if not response.data:
-                # Fallback to assigned tasks if none are strictly running
                 response = self.client.table("tasks")\
                     .select("*")\
                     .eq("agent_id", agent_id)\
@@ -175,57 +346,43 @@ class TaskService:
             logger.error(f"Error updating task {task_id} result: {e}")
             raise e
 
-    # --- Queue Specific Methods ---
+    # --- Company Feed / Audit Trail (PRD v6.0 §4.2, §10.1) ---
 
-    def queue_task(self, business_id: str, description: str, priority: int = 0) -> dict[str, Any]:
-        """Creates a new task with status 'queued' and a specific priority."""
-        try:
-            data = {
-                "business_id": business_id,
-                "description": description,
-                "status": "queued",
-                "priority": priority
-            }
-            response = self.client.table("tasks").insert(data).execute()
-            return response.data[0] if response.data else {}
-        except Exception as e:
-            logger.error(f"Error queuing task for business {business_id}: {e}")
-            raise e
+    def log_audit_event(
+        self,
+        business_id: str,
+        action: str,
+        agent_id: Optional[str] = None,
+        agent_name: Optional[str] = None,
+        role: Optional[str] = None,
+        mandate: Optional[str] = None,
+        trust_tier: str = "observe",
+        details: Optional[Dict[str, Any]] = None,
+        review_status: Optional[str] = None,
+        shared_memory_refs: Optional[List[str]] = None
+    ) -> Dict[str, Any]:
+        """Logs an event into the structured Company Feed."""
+        entry = {
+            "id": str(uuid.uuid4()),
+            "business_id": str(business_id),
+            "agent_id": str(agent_id) if agent_id else None,
+            "agent_name": agent_name,
+            "role": role,
+            "mandate": mandate,
+            "trust_tier": trust_tier,
+            "action": action,
+            "details": details or {},
+            "review_status": review_status or "unattended",
+            "shared_memory_refs": shared_memory_refs or [],
+            "created_at": datetime.utcnow().isoformat() + "Z"
+        }
+        _IN_MEMORY_AUDIT_LOG.insert(0, entry)
+        # Cap log length to 500 entries
+        if len(_IN_MEMORY_AUDIT_LOG) > 500:
+            _IN_MEMORY_AUDIT_LOG.pop()
+        return entry
 
-    def claim_task(self, business_id: str, agent_id: str) -> Optional[dict[str, Any]]:
-        """Atomically claims the highest priority queued task for the given agent."""
-        try:
-            # We call the RPC we created in the migration
-            response = self.client.rpc("claim_next_task", {
-                "p_business_id": business_id,
-                "p_agent_id": agent_id
-            }).execute()
-            
-            return response.data[0] if response.data else None
-        except Exception as e:
-            logger.error(f"Error claiming task for agent {agent_id}: {e}")
-            raise e
-
-    def requeue_task(self, task_id: str) -> dict[str, Any]:
-        """Requeues a failed or running task back to 'queued' state and clears the agent."""
-        try:
-            response = self.client.table("tasks")\
-                .update({
-                    "status": "queued",
-                    "agent_id": None
-                })\
-                .eq("id", task_id)\
-                .execute()
-            return response.data[0] if response.data else {}
-        except Exception as e:
-            logger.error(f"Error requeuing task {task_id}: {e}")
-            raise e
-
-    def complete_task(self, task_id: str) -> dict[str, Any]:
-        """Marks a task as completed."""
-        return self.update_task_status(task_id, "completed")
-
-    def fail_task(self, task_id: str) -> dict[str, Any]:
-        """Marks a task as failed."""
-        return self.update_task_status(task_id, "failed")
-
+    def list_audit_feed(self, business_id: str, limit: int = 50) -> List[Dict[str, Any]]:
+        """Retrieves the chronological audit log for the Company Feed."""
+        filtered = [e for e in _IN_MEMORY_AUDIT_LOG if e.get("business_id") == str(business_id) or business_id == "default-business-id"]
+        return filtered[:limit]

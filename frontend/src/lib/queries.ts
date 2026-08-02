@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api, AgentStatus } from './api';
+import { api, AgentStatus, HireWorkerPayload, TrustTier, HiringModel } from './api';
 
 export const useAgents = () => {
     return useQuery({
@@ -63,14 +63,25 @@ export const useTasks = () => {
     });
 };
 
+export const useCompanyFeed = (limit: number = 50) => {
+    return useQuery({
+        queryKey: ['company-feed', limit],
+        queryFn: () => api.getCompanyFeed(limit),
+        refetchInterval: 5000,
+        retry: 1,
+        staleTime: 3000,
+    });
+};
+
 export const useHireAgent = () => {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: ({ role, name, goal }: { role: string, name: string, goal: string }) => 
-            api.hireAgent(role, name, goal),
+        mutationFn: (payload: HireWorkerPayload | { role: string; name: string; goal?: string; trust_tier?: TrustTier; specialization_id?: string; hiring_model?: HiringModel }) => 
+            api.hireAgent(payload),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['agents'] });
             queryClient.invalidateQueries({ queryKey: ['metrics'] });
+            queryClient.invalidateQueries({ queryKey: ['company-feed'] });
         },
     });
 };

@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Literal, List, Optional
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
 from pydantic import BaseModel, Field
@@ -8,41 +8,58 @@ from langgraph.constants import Send, END
 from app.core.config import settings
 from app.agents.state import OrchestratorState, TaskNode
 from app.services.task_service import TaskService
+from app.services.shared_memory import SharedMemoryService
 
 task_service = TaskService()
+memory_service = SharedMemoryService()
 
 class SupervisorDecision(BaseModel):
-    thoughts: str = Field(description="Reasoning about the current state of tasks and what to do next.")
-    action: Literal["dispatch", "replan", "escalate", "finish"] = Field(description="The action to take.")
-    new_tasks: list[TaskNode] = Field(default=[], description="Any new high-level tasks to add if replanning.")
+    thoughts: str = Field(description="Reasoning about company health, cross-worker state, and required mandates.")
+    action: Literal["dispatch", "replan", "escalate", "finish"] = Field(description="The coordination action to take.")
+    new_tasks: list[TaskNode] = Field(default=[], description="Any new high-level mandates to dispatch to specialist workers.")
+    executive_brief: Optional[str] = Field(None, description="Brief summary of company operations for the founder.")
 
-def get_supervisor_agent(roles: list[str]):
+def get_supervisor_agent(roles: list[str], business_id: str):
     llm = ChatOpenAI(
         model="accounts/fireworks/models/kimi-k3" if settings.FIREWORKS_API_KEY else "gpt-4o",
         api_key=settings.FIREWORKS_API_KEY or settings.OPENAI_API_KEY,
         base_url="https://api.fireworks.ai/inference/v1" if settings.FIREWORKS_API_KEY else None
     )
 
+    # Fetch shared memory context for cross-agent coordination
+    memory_items = memory_service.list_by_business(business_id)
+    shared_context_summary = "\n".join([f"- {m['key']}: {m['value']}" for m in memory_items[:10]]) if memory_items else "No shared memory entries."
+
     prompt = ChatPromptTemplate.from_messages([
-        ("system", """You are the Global Supervisor (Level 1).
-You manage the master task graph for a multi-agent system.
-Available Level 2 Specialist roles: {roles}
+        ("system", f"""You are Robin, the Coordinating Agent (PRD v6.0 §4.1).
+You are an internal-only coordinator who reads every in-house worker's state and shared memory.
+You never touch customer-facing or money-facing tools directly.
+Your mandate:
+1. Coordinate the in-house team: Accountant, Social Media Manager, Admin/Ops, Researcher.
+2. Read shared business context:
+{shared_context_summary}
+3. Break down the founder's objectives into structured mandates with dependencies.
+4. Ensure cross-worker alignment (e.g., if cash flow is flagged as tight in memory, ensure marketing plans do not spend budget on paid promotion).
+5. Surface items requiring founder decisions to the Governance Gateway.
+
+Available specialist roles on staff: {{roles}}
 
 Analyze the current state of tasks:
-{current_tasks}
+{{current_tasks}}
 
 If tasks are pending, output action="dispatch". 
-If you need to break down the user's objective into high-level tasks, output action="replan" and provide new_tasks.
+If you need to break down objectives into specialist mandates, output action="replan" and provide new_tasks.
 If all tasks are completed, output action="finish".
 """),
-        ("human", "User message: {messages}")
+        ("human", "Founder instruction / Objective: {messages}")
     ])
     
     return prompt | llm.with_structured_output(SupervisorDecision)
 
 def global_supervisor_node(state: OrchestratorState):
     roles = list({agent.role for agent in state.get("active_agents", {}).values()})
-    supervisor = get_supervisor_agent(roles)
+    business_id = state.get("business_id", "default-business-id")
+    supervisor = get_supervisor_agent(roles, business_id)
     
     current_tasks = state.get("task_graph", {})
     last_message = state["messages"][-1].content if state.get("messages") else ""
@@ -67,15 +84,26 @@ def global_supervisor_node(state: OrchestratorState):
         t.dependencies = [id_mapping.get(d, d) for d in t.dependencies]
         new_task_dict[t.id] = t
         
-        # Sync to DB
+        # Sync Mandate to DB
         task_service.create_task(
             business_id=state["business_id"],
             description=t.description,
+            mandate=t.description,
             status="queued",
             assignee_role=t.assignee_role,
             id=t.id,
             dependencies=t.dependencies
         )
+    
+    # Log Robin's coordination pulse to Company Feed
+    task_service.log_audit_event(
+        business_id=business_id,
+        role="Coordinating Agent",
+        agent_name="Robin",
+        trust_tier="operate",
+        action=f"Robin coordinated team: {decision.action.upper()}",
+        details={"thoughts": decision.thoughts[:120], "brief": decision.executive_brief}
+    )
     
     return {
         "supervisor_thoughts": [decision.thoughts],
@@ -97,11 +125,9 @@ def global_router(state: OrchestratorState):
             all_completed = False
             
         if task.status == "queued":
-            # Check dependencies
             deps_met = all(tasks[dep].status == "completed" for dep in task.dependencies if dep in tasks)
             if deps_met:
-                # Find candidate agent
-                candidate_agents = [a for a in agents.values() if a.role == task.assignee_role]
+                candidate_agents = [a for a in agents.values() if a.role == task.assignee_role or (task.assignee_role and a.role.lower() in task.assignee_role.lower())]
                 if candidate_agents:
                     agent = candidate_agents[0]
                     node_name = f"worker_{agent.id}"
@@ -109,7 +135,6 @@ def global_router(state: OrchestratorState):
                     task_service.update_task_status(task.id, "running")
                     task_service.assign_task(task.id, agent.id)
                     
-                    # Update state and route to worker
                     task.status = "running"
                     task.assignee_id = agent.id
                     agent.current_task_id = task.id
@@ -123,8 +148,6 @@ def global_router(state: OrchestratorState):
         return END
         
     if not sends:
-        # If no sends and not completed, we might be deadlocked or just waiting for workers to finish
-        # For simplicity, if nothing to send, return END (or loop back if we had a sleep mechanism)
         return END
         
     return sends

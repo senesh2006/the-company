@@ -1,7 +1,7 @@
 import concurrent.futures
 from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List, Dict, Any
 
 from app.agents.runner import TeamRunner
 from app.core.logging import logger
@@ -19,16 +19,25 @@ class HireAgentPayload(BaseModel):
     role: str
     name: str
     goal: Optional[str] = None
+    trust_tier: Optional[str] = "observe"
+    specialization_id: Optional[str] = None
+    hiring_model: Optional[str] = "salaried"
+    system_prompt: Optional[str] = None
+    model: Optional[str] = None
+    capabilities: Optional[List[str]] = None
+
+class PromoteDemotePayload(BaseModel):
+    target_tier: Optional[str] = None
+    reason: Optional[str] = None
 
 @router.post("")
 @router.post("/")
 @router.post("/hire")
 def hire_agent_default(payload: HireAgentPayload, background_tasks: BackgroundTasks, user = Depends(get_current_user)):
     """
-    Hires a new agent for the default business team (used by frontend dashboard).
+    Hires a new worker for the default business team (used by frontend dashboard).
     """
     try:
-        # Get default business
         try:
             response = task_service.client.table("businesses").select("*").limit(1).execute()
             if response.data:
@@ -43,23 +52,38 @@ def hire_agent_default(payload: HireAgentPayload, background_tasks: BackgroundTa
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Failed to hire agent: {e}")
+        logger.error(f"Failed to hire worker: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/{business_id}")
 def hire_agent(business_id: str, payload: HireAgentPayload, background_tasks: BackgroundTasks, user = Depends(get_current_user)):
     """
-    Hires a new agent for the business team.
-    If a goal is provided, it submits a task to the team and starts the supervisor.
+    Hires a new AI Worker seeded at the specified Trust Tier (default: Observe).
     """
     try:
-        agent = task_service.create_agent(business_id, payload.name, payload.role)
+        agent = task_service.create_agent(
+            business_id=business_id,
+            name=payload.name,
+            role=payload.role,
+            trust_tier=payload.trust_tier or "observe",
+            specialization_id=payload.specialization_id,
+            hiring_model=payload.hiring_model or "salaried",
+            system_prompt=payload.system_prompt,
+            model=payload.model,
+            capabilities=payload.capabilities
+        )
         
         task = None
         if payload.goal:
-            # Set agent to Running immediately so frontend sees it
             task_service.update_agent_status(agent["id"], "Running")
-            task = task_service.create_task(business_id, payload.goal, status="running")
+            task = task_service.create_task(
+                business_id=business_id,
+                description=payload.goal,
+                mandate=payload.goal,
+                status="running",
+                assignee_role=payload.role,
+                trust_tier=payload.trust_tier or "observe"
+            )
             
             def start_team_loop():
                 try:
@@ -67,7 +91,6 @@ def hire_agent(business_id: str, payload: HireAgentPayload, background_tasks: Ba
                     runner.start(f"Your goal is: {payload.goal}")
                 except Exception as e:
                     logger.error(f"Failed to start team loop: {e}")
-                    # Reset agent to Idle if team fails to start
                     task_service.update_agent_status(agent["id"], "Idle")
             
             background_tasks.add_task(lambda: thread_pool.submit(start_team_loop))
@@ -78,124 +101,73 @@ def hire_agent(business_id: str, payload: HireAgentPayload, background_tasks: Ba
             "initial_task": task
         }
     except Exception as e:
-        logger.error(f"Failed to hire agent: {e}")
+        logger.error(f"Failed to hire worker: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.post("/{business_id}/team/pause")
-def pause_team(business_id: str):
-    """
-    Pauses the active team run.
-    """
+@router.post("/{agent_id}/promote")
+def promote_agent(agent_id: str, payload: PromoteDemotePayload = PromoteDemotePayload(), user = Depends(get_current_user)):
+    """Promotes an AI Worker's trust tier (Observe -> Assist -> Operate)."""
     try:
-        task = task_service.get_active_task_for_business(business_id)
-        if not task:
-            raise HTTPException(status_code=404, detail="No active task found for business.")
-            
-        runner = TeamRunner(business_id, task["id"])
-        success = runner.pause()
-        if not success:
-            raise HTTPException(status_code=404, detail="Team thread state not found.")
-        return {"status": "success", "message": "Team paused."}
-    except HTTPException:
-        raise
+        agent_resp = task_service.client.table("agents").select("business_id").eq("id", agent_id).execute()
+        biz_id = agent_resp.data[0]["business_id"] if agent_resp.data else "default-business-id"
+        result = task_service.promote_agent(
+            business_id=biz_id,
+            agent_id=agent_id,
+            target_tier=payload.target_tier,
+            reason=payload.reason or "Founder promotion"
+        )
+        return result
     except Exception as e:
-        logger.error(f"Failed to pause team: {e}")
+        logger.error(f"Failed to promote worker: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.post("/{business_id}/team/resume")
-def resume_team(business_id: str, payload: ResumePayload, background_tasks: BackgroundTasks):
-    """
-    Resumes a paused team run in the background.
-    """
+@router.post("/{agent_id}/demote")
+def demote_agent(agent_id: str, payload: PromoteDemotePayload = PromoteDemotePayload(), user = Depends(get_current_user)):
+    """Demotes an AI Worker's trust tier upon flagged errors or founder override."""
     try:
-        # For paused tasks, the status might still be running in the DB, just paused in state
-        task = task_service.get_active_task_for_business(business_id)
-        if not task:
-             response = task_service.client.table("tasks").select("*").eq("business_id", business_id).execute()
-             if response.data:
-                 task = response.data[-1]
-             else:
-                 raise HTTPException(status_code=404, detail="No tasks found for business.")
-                 
-        def background_resume():
-            try:
-                runner = TeamRunner(business_id, task["id"])
-                runner.resume(additional_instruction=payload.instruction)
-            except Exception as e:
-                logger.error(f"Failed to resume team in background: {e}")
-
-        background_tasks.add_task(lambda: thread_pool.submit(background_resume))
-        
-        return {"status": "success", "message": "Team resume initiated in the background."}
+        agent_resp = task_service.client.table("agents").select("business_id").eq("id", agent_id).execute()
+        biz_id = agent_resp.data[0]["business_id"] if agent_resp.data else "default-business-id"
+        result = task_service.demote_agent(
+            business_id=biz_id,
+            agent_id=agent_id,
+            reason=payload.reason or "Founder manual demotion"
+        )
+        return result
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-class InjectInstructionPayload(BaseModel):
-    instruction: str
-
-@router.post("/{business_id}/team/inject-instruction")
-def inject_instruction(business_id: str, payload: InjectInstructionPayload):
-    """
-    Injects a human instruction into the running team supervisor loop.
-    """
-    try:
-        task = task_service.get_active_task_for_business(business_id)
-        if not task:
-            raise HTTPException(status_code=404, detail="No active task found for business.")
-            
-        runner = TeamRunner(business_id, task["id"])
-        success = runner.inject_instruction(payload.instruction)
-        if not success:
-            raise HTTPException(status_code=400, detail="Failed to inject instruction.")
-            
-        return {"status": "success", "message": "Instruction injected successfully."}
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Failed to inject instruction: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@router.post("/{business_id}/team/force-stop")
-def force_stop_team(business_id: str):
-    """
-    Immediately kills the running team loop.
-    """
-    try:
-        task = task_service.get_active_task_for_business(business_id)
-        if not task:
-            raise HTTPException(status_code=404, detail="No active task found for business.")
-            
-        runner = TeamRunner(business_id, task["id"])
-        success = runner.kill()
-        if not success:
-            raise HTTPException(status_code=404, detail="Team thread state not found.")
-            
-        return {"status": "success", "message": "Team force stopped."}
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Failed to force stop team: {e}")
+        logger.error(f"Failed to demote worker: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("")
 @router.get("/")
 def get_agents(user = Depends(get_current_user)):
-    """Fetches all agents across the user's business."""
+    """Fetches all AI Workers with Trust Tier and governance metrics."""
     try:
-        response = task_service.client.table("agents").select("*").execute()
-        return response.data or []
+        biz_id = "default-business-id"
+        try:
+            biz_resp = task_service.client.table("businesses").select("id").limit(1).execute()
+            if biz_resp.data:
+                biz_id = biz_resp.data[0]["id"]
+        except Exception:
+            pass
+        return task_service.list_agents(biz_id)
     except Exception as e:
-        logger.error(f"Failed to fetch agents from database: {e}")
+        logger.error(f"Failed to fetch agents: {e}")
         return []
 
 @router.get("/{agent_id}")
 def get_agent_details(agent_id: str, user = Depends(get_current_user)):
-    """Fetches details for a specific agent."""
+    """Fetches details for a specific AI Worker."""
     try:
         response = task_service.client.table("agents").select("*").eq("id", agent_id).execute()
         if not response.data:
-            raise HTTPException(status_code=404, detail="Agent not found")
-        return response.data[0]
+            raise HTTPException(status_code=404, detail="AI Worker not found")
+        agent = response.data[0]
+        # Attach in-memory extra fields
+        agents = task_service.list_agents(agent.get("business_id", "default-business-id"))
+        for a in agents:
+            if str(a.get("id")) == str(agent_id):
+                return a
+        return agent
     except HTTPException:
         raise
     except Exception as e:
@@ -210,12 +182,13 @@ def update_agent_status(agent_id: str, payload: UpdateStatusPayload, user = Depe
     try:
         response = task_service.client.table("agents").update({"status": payload.status}).eq("id", agent_id).execute()
         if not response.data:
-            raise HTTPException(status_code=404, detail="Agent not found")
+            return {"status": payload.status}
         return response.data[0]
-    except HTTPException:
-        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+class InjectInstructionPayload(BaseModel):
+    instruction: str
 
 @router.post("/{agent_id}/inject")
 def inject_instruction_by_agent(agent_id: str, payload: InjectInstructionPayload, user = Depends(get_current_user)):
@@ -225,7 +198,12 @@ def inject_instruction_by_agent(agent_id: str, payload: InjectInstructionPayload
         if not agent_resp.data:
             raise HTTPException(status_code=404, detail="Agent not found")
         business_id = agent_resp.data[0]["business_id"]
-        return inject_instruction(business_id, payload)
+        task = task_service.get_active_task_for_business(business_id)
+        if not task:
+            raise HTTPException(status_code=404, detail="No active task found for business.")
+        runner = TeamRunner(business_id, task["id"])
+        success = runner.inject_instruction(payload.instruction)
+        return {"status": "success", "message": "Instruction injected successfully."}
     except HTTPException:
         raise
     except Exception as e:
