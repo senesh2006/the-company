@@ -148,6 +148,21 @@ export interface HireWorkerPayload {
 
 export const getBaseUrl = (): string => {
   if (typeof window !== 'undefined') {
+    const isLocal = 
+      window.location.hostname === 'localhost' || 
+      window.location.hostname === '127.0.0.1';
+
+    // In production (e.g. Railway or custom domain), never call localhost
+    if (!isLocal) {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+      if (apiUrl && !apiUrl.includes('localhost') && !apiUrl.includes('127.0.0.1')) {
+        return apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
+      }
+      // Default to same origin for unified FastAPI + static files deployment
+      return '';
+    }
+
+    // In local development
     if (process.env.NEXT_PUBLIC_API_URL) {
       const customUrl = process.env.NEXT_PUBLIC_API_URL;
       return customUrl.endsWith('/') ? customUrl.slice(0, -1) : customUrl;
