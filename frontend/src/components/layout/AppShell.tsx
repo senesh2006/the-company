@@ -7,9 +7,12 @@ import { AgentDetailPanel } from "@/components/AgentDetailPanel";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const isAuthPage = pathname === "/login";
+  const isAuthOrOnboardingPage = 
+    pathname === "/login" || 
+    pathname === "/signup" || 
+    pathname === "/startup";
 
-  if (isAuthPage) {
+  if (isAuthOrOnboardingPage) {
     return (
       <main className="min-h-screen w-full flex items-center justify-center bg-slate-50 p-4">
         {children}
