@@ -69,6 +69,21 @@ def requeue_task(business_id: str, task_id: str, user = Depends(get_current_user
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@router.post("")
+@router.post("/")
+def create_default_task(payload: QueueTaskPayload, background_tasks: BackgroundTasks, user = Depends(get_current_user)):
+    """Creates/queues a task for the default business."""
+    try:
+        try:
+            response = task_service.client.table("businesses").select("*").limit(1).execute()
+            biz_id = response.data[0]["id"] if response.data else "default-business-id"
+        except Exception:
+            biz_id = "default-business-id"
+        return queue_task(biz_id, payload, background_tasks, user)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("")
 @router.get("/")
 def list_all_tasks(user = Depends(get_current_user)):
     """Lists all tasks across all businesses."""

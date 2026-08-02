@@ -3,6 +3,7 @@ from app.api.deps import get_current_user
 
 router = APIRouter()
 
+@router.get("")
 @router.get("/")
 def get_needs_attention(user = Depends(get_current_user)):
     """Fetches items that require human attention."""

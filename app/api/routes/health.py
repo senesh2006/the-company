@@ -6,6 +6,8 @@ router = APIRouter()
 class HealthCheck(BaseModel):
     status: str = "ok"
 
+@router.get("", response_model=HealthCheck, status_code=200)
+@router.get("/", response_model=HealthCheck, status_code=200)
 @router.get("/health", response_model=HealthCheck, status_code=200)
 def health_check() -> HealthCheck:
     """

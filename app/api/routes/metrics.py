@@ -11,6 +11,7 @@ router = APIRouter()
 metrics_service = MetricsService()
 cost_service = CostService()
 
+@router.get("")
 @router.get("/")
 def get_global_metrics():
     """Returns aggregated global metrics for the dashboard."""

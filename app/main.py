@@ -16,7 +16,15 @@ app = FastAPI(
 # Set up CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allows all origins, change in production
+    allow_origins=[
+        "http://localhost:3000",
+        "http://localhost:3001",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:3001",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000",
+    ],
+    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:[0-9]+)?$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -24,6 +32,7 @@ app.add_middleware(
 
 # Include routers
 app.include_router(health.router, tags=["health"])
+app.include_router(health.router, prefix=f"{settings.API_V1_STR}", tags=["health"])
 app.include_router(agents.router, prefix=f"{settings.API_V1_STR}/agents", tags=["agents"])
 app.include_router(tasks.router, prefix=f"{settings.API_V1_STR}/tasks", tags=["tasks"])
 app.include_router(costs.router, prefix=f"{settings.API_V1_STR}/costs", tags=["costs"])
@@ -43,6 +52,9 @@ def setup_test_environment(user = Depends(get_current_user)):
         sb_url = settings.SUPABASE_URL or os.getenv("SUPABASE_URL")
         sb_key = settings.SUPABASE_KEY or os.getenv("SUPABASE_KEY") or os.getenv("SUPABASE_SECRET_KEY")
 
+        if not sb_url or not sb_key:
+            return {"business_id": "default-business-id", "warning": "Supabase not configured"}
+
         client = create_client(sb_url, sb_key)
         
         # Since auth is disabled, just grab the first available business in the database
@@ -52,21 +64,20 @@ def setup_test_environment(user = Depends(get_current_user)):
             biz_id = response.data[0]["id"]
         else:
             # If no business exists at all, try creating one without an owner_id if possible
-            # Or with a null owner_id
             new_biz = client.table("businesses").insert({"name": "Default Business"}).execute()
             biz_id = new_biz.data[0]["id"]
             
         # Ensure default agents exist for this business
-        agents = client.table("agents").select("id, name, role").eq("business_id", biz_id).execute()
-        existing_roles = [a["role"] for a in agents.data] if agents.data else []
+        agents_resp = client.table("agents").select("id, name, role").eq("business_id", biz_id).execute()
+        existing_roles = [a["role"] for a in agents_resp.data] if agents_resp.data else []
         
         default_agents_to_insert = []
         if "Researcher" not in existing_roles:
-            default_agents_to_insert.append({"business_id": biz_id, "name": "Alice (Researcher)", "role": "Researcher"})
+            default_agents_to_insert.append({"business_id": biz_id, "name": "Alice (Researcher)", "role": "Researcher", "status": "Idle"})
         if "Coder" not in existing_roles:
-            default_agents_to_insert.append({"business_id": biz_id, "name": "Bob (Coder)", "role": "Coder"})
+            default_agents_to_insert.append({"business_id": biz_id, "name": "Bob (Coder)", "role": "Coder", "status": "Idle"})
         if "Accountant" not in existing_roles:
-            default_agents_to_insert.append({"business_id": biz_id, "name": "Charlie (Accountant)", "role": "Accountant"})
+            default_agents_to_insert.append({"business_id": biz_id, "name": "Charlie (Accountant)", "role": "Accountant", "status": "Idle"})
             
         if default_agents_to_insert:
             client.table("agents").insert(default_agents_to_insert).execute()
@@ -74,9 +85,7 @@ def setup_test_environment(user = Depends(get_current_user)):
         return {"business_id": biz_id}
     except Exception as e:
         logger.error(f"Setup error: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        return {"error": str(e), "type": str(type(e))}
+        return {"business_id": "default-business-id", "error": str(e)}
 
 @app.get("/api/v1/config")
 def get_public_config():
@@ -104,6 +113,10 @@ app.mount("/_next", StaticFiles(directory="app/static/_next"), name="next-assets
 
 @app.api_route("/{full_path:path}", methods=["GET", "HEAD"])
 async def serve_frontend(full_path: str):
+    # Never catch API calls with static file handling
+    if full_path.startswith("api/") or full_path == "api":
+        return JSONResponse(status_code=404, content={"detail": f"API endpoint /{full_path} not found"})
+
     if full_path == "":
         full_path = "index"
         
@@ -117,7 +130,7 @@ async def serve_frontend(full_path: str):
     if os.path.isfile(html_path):
         return FileResponse(html_path)
         
-    # Fallback to index.html for SPA feeling (though Next generates distinct HTMLs)
+    # Fallback to index.html for SPA feeling
     index_path = os.path.join("app/static", "index.html")
     if os.path.isfile(index_path):
         return FileResponse(index_path)

@@ -5,6 +5,7 @@ from app.services.task_service import TaskService
 router = APIRouter()
 task_service = TaskService()
 
+@router.get("")
 @router.get("/")
 def get_memory(user = Depends(get_current_user)):
     """Fetches shared memory entries."""

@@ -20,6 +20,8 @@ class HireAgentPayload(BaseModel):
     name: str
     goal: Optional[str] = None
 
+@router.post("")
+@router.post("/")
 @router.post("/hire")
 def hire_agent_default(payload: HireAgentPayload, background_tasks: BackgroundTasks, user = Depends(get_current_user)):
     """
@@ -27,10 +29,15 @@ def hire_agent_default(payload: HireAgentPayload, background_tasks: BackgroundTa
     """
     try:
         # Get default business
-        response = task_service.client.table("businesses").select("*").limit(1).execute()
-        if not response.data:
-            raise HTTPException(status_code=404, detail="No business found in database.")
-        biz_id = response.data[0]["id"]
+        try:
+            response = task_service.client.table("businesses").select("*").limit(1).execute()
+            if response.data:
+                biz_id = response.data[0]["id"]
+            else:
+                new_biz = task_service.client.table("businesses").insert({"name": "Default Business"}).execute()
+                biz_id = new_biz.data[0]["id"] if new_biz.data else "default-business-id"
+        except Exception:
+            biz_id = "default-business-id"
         
         return hire_agent(biz_id, payload, background_tasks, user)
     except HTTPException:
@@ -170,6 +177,7 @@ def force_stop_team(business_id: str):
         logger.error(f"Failed to force stop team: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@router.get("")
 @router.get("/")
 def get_agents(user = Depends(get_current_user)):
     """Fetches all agents across the user's business."""
