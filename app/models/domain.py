@@ -9,6 +9,13 @@ class TrustTier(str, Enum):
     ASSIST = "assist"
     OPERATE = "operate"
 
+class KnowledgeCategory(str, Enum):
+    BRAND_GUIDELINES = "Brand Guidelines"
+    FINANCIAL_REPORTS = "Financial Reports"
+    PRODUCT_DOCS = "Product Documentation"
+    CUSTOMER_PERSONAS = "Customer Personas"
+    GENERAL = "General Knowledge"
+
 class DBModel(BaseModel):
     """Base Pydantic model for database entities."""
     model_config = ConfigDict(from_attributes=True)
@@ -65,9 +72,28 @@ class SharedMemory(DBModel):
     id: UUID
     business_id: UUID
     key: str
-    value: str
+    value: Any
+    tags: Optional[List[str]] = None
     updated_by: Optional[str] = None
     agent_id: Optional[UUID] = None
+    created_at: datetime
+    updated_at: datetime
+
+class KnowledgeDocument(DBModel):
+    """
+    Processed knowledge document stored in the collective memory matrix.
+    """
+    id: UUID
+    business_id: UUID
+    title: str
+    category: str # Brand Guidelines | Financial Reports | Product Documentation | Customer Personas | General Knowledge
+    filename: str
+    file_type: str # pdf | csv | markdown | text | json
+    file_size_bytes: int
+    summary: str
+    content: str # Full extracted text / structured representation
+    chunks: Optional[List[str]] = None
+    metadata: Optional[Dict[str, Any]] = None
     created_at: datetime
     updated_at: datetime
 

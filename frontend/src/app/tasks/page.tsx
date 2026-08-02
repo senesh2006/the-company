@@ -49,10 +49,11 @@ export default function TasksPage() {
       filter === "failed" ? t.status === "failed" :
       filter === "pending" ? (t.status === "pending" || t.status === "queued") : true;
 
+    const desc = t.description || t.mandate || "";
     const matchesSearch = 
-      t.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      desc.toLowerCase().includes(searchQuery.toLowerCase()) ||
       t.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (t.result && t.result.toLowerCase().includes(searchQuery.toLowerCase()));
+      Boolean(t.result && t.result.toLowerCase().includes(searchQuery.toLowerCase()));
 
     return matchesFilter && matchesSearch;
   });
@@ -286,7 +287,7 @@ export default function TasksPage() {
                     </div>
                     
                     <p className="text-sm font-semibold text-slate-100 leading-snug">
-                      {task.description}
+                      {task.description || task.mandate || "Autonomous Operation"}
                     </p>
                   </div>
 

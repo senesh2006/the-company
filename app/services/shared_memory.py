@@ -1,163 +1,367 @@
+import uuid
 import logging
-from typing import Any, Optional, List
-from supabase import create_client, Client
+from datetime import datetime, timezone
+from typing import Any, Optional, List, Dict
+
+try:
+    from supabase._sync.client import create_client, Client
+except ImportError:
+    try:
+        from supabase import create_client, Client
+    except Exception:
+        create_client = None
+        Client = Any
+
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
 class SharedMemoryService:
+    """
+    Central Shared Memory & Knowledge Base Service for Company OS.
+    Provides persistence for both key-value runtime state and parsed knowledge documents
+    (Brand Guidelines, Financial Reports, Product Docs, Customer Personas).
+    """
+
+    # In-memory storage cache as fallback/local dev buffer (shared across instances)
+    _local_kv: Dict[str, Dict[str, Any]] = {}
+    _local_docs: Dict[str, Dict[str, Any]] = {}
+
     def __init__(self, supabase_client: Optional[Client] = None):
         self._client = supabase_client
 
     @property
-    def client(self) -> Client:
+    def client(self) -> Optional[Client]:
         if self._client:
             return self._client
-        if not settings.SUPABASE_URL or not settings.SUPABASE_KEY:
-            raise ValueError("SUPABASE_URL and SUPABASE_KEY must be set in environment variables to use SharedMemoryService.")
-        self._client = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
-        return self._client
-            
+        if settings.SUPABASE_URL and settings.SUPABASE_KEY:
+            try:
+                self._client = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
+                return self._client
+            except Exception as e:
+                logger.warning(f"Could not connect to Supabase client: {e}. Operating in memory-backed mode.")
+        return None
+
     def get(self, business_id: str, key: str) -> Optional[dict[str, Any]]:
         """
         Fetch a specific key from shared memory for a business.
         """
         try:
-            response = self.client.table("shared_memory")\
-                .select("*")\
-                .eq("business_id", business_id)\
-                .eq("key", key)\
-                .execute()
-                
-            if response.data:
-                return response.data[0]
-            return None
-        except Exception as e:
-            logger.error(f"Error fetching shared memory for business {business_id}, key {key}: {e}")
-            raise e
-
-    def set(self, business_id: str, key: str, value: Any, tags: List[str] = []) -> dict[str, Any]:
-        """
-        Insert or update a key in shared memory. 
-        Note: Supabase standard `upsert` requires a unique constraint on (business_id, key). 
-        Since we didn't define a unique constraint, we will do a manual check or rely on the primary key.
-        We'll do a get-then-update/insert.
-        """
-        try:
-            existing = self.get(business_id, key)
-            
-            data = {
-                "business_id": business_id,
-                "key": key,
-                "value": value,
-                "tags": tags
-            }
-            
-            if existing:
-                # Update existing record
+            if self.client:
                 response = self.client.table("shared_memory")\
-                    .update(data)\
-                    .eq("id", existing["id"])\
-                    .execute()
-            else:
-                # Insert new record
-                response = self.client.table("shared_memory")\
-                    .insert(data)\
+                    .select("*")\
+                    .eq("business_id", business_id)\
+                    .eq("key", key)\
                     .execute()
                     
-            return response.data[0] if response.data else {}
+                if response.data:
+                    return response.data[0]
         except Exception as e:
-            logger.error(f"Error setting shared memory for business {business_id}, key {key}: {e}")
-            raise e
+            logger.warning(f"Supabase read fallback for key '{key}': {e}")
+
+        # Local fallback
+        local_key = f"{business_id}:{key}"
+        return self._local_kv.get(local_key)
+
+    def set(self, business_id: str, key: str, value: Any, tags: List[str] = [], updated_by: Optional[str] = None) -> dict[str, Any]:
+        """
+        Insert or update a key in shared memory.
+        """
+        now_iso = datetime.now(timezone.utc).isoformat()
+        record = {
+            "id": str(uuid.uuid4()),
+            "business_id": business_id,
+            "key": key,
+            "value": value,
+            "tags": tags,
+            "updated_by": updated_by or "System",
+            "created_at": now_iso,
+            "updated_at": now_iso
+        }
+
+        try:
+            if self.client:
+                existing = self.get(business_id, key)
+                data = {
+                    "business_id": business_id,
+                    "key": key,
+                    "value": value,
+                    "tags": tags
+                }
+                if existing:
+                    response = self.client.table("shared_memory")\
+                        .update(data)\
+                        .eq("id", existing["id"])\
+                        .execute()
+                else:
+                    response = self.client.table("shared_memory")\
+                        .insert(data)\
+                        .execute()
+                if response.data:
+                    record = response.data[0]
+        except Exception as e:
+            logger.warning(f"Supabase write fallback for key '{key}': {e}")
+
+        # Cache locally
+        local_key = f"{business_id}:{key}"
+        self._local_kv[local_key] = record
+        return record
 
     def delete(self, business_id: str, key: str) -> bool:
         """
         Delete a key from shared memory.
         """
+        deleted = False
         try:
-            response = self.client.table("shared_memory")\
-                .delete()\
-                .eq("business_id", business_id)\
-                .eq("key", key)\
-                .execute()
-            return len(response.data) > 0
+            if self.client:
+                response = self.client.table("shared_memory")\
+                    .delete()\
+                    .eq("business_id", business_id)\
+                    .eq("key", key)\
+                    .execute()
+                deleted = len(response.data) > 0
         except Exception as e:
-            logger.error(f"Error deleting shared memory for business {business_id}, key {key}: {e}")
-            raise e
+            logger.warning(f"Supabase delete fallback for key '{key}': {e}")
+
+        local_key = f"{business_id}:{key}"
+        if local_key in self._local_kv:
+            del self._local_kv[local_key]
+            deleted = True
+            
+        return deleted
+
+    def list_all(self, business_id: str) -> List[dict[str, Any]]:
+        """
+        List all key-value shared memory items for a business.
+        """
+        results: List[dict[str, Any]] = []
+        try:
+            if self.client:
+                response = self.client.table("shared_memory")\
+                    .select("*")\
+                    .eq("business_id", business_id)\
+                    .execute()
+                if response.data:
+                    results = response.data
+        except Exception as e:
+            logger.warning(f"Supabase list fallback: {e}")
+
+        # Merge local entries
+        local_items = [v for k, v in self._local_kv.items() if k.startswith(f"{business_id}:")]
+        seen_keys = {item.get("key") for item in results}
+        for item in local_items:
+            if item.get("key") not in seen_keys:
+                results.append(item)
+
+        # Default foundational memory seed if empty
+        if not results:
+            defaults = [
+                {
+                    "id": "mem-1",
+                    "business_id": business_id,
+                    "key": "company_mission",
+                    "value": "Autonomous AI workforce platform delivering 10x leverage with earned trust governance.",
+                    "tags": ["strategy", "mission"],
+                    "updated_by": "Founder",
+                    "created_at": datetime.now(timezone.utc).isoformat()
+                },
+                {
+                    "id": "mem-2",
+                    "business_id": business_id,
+                    "key": "brand_voice_tone",
+                    "value": "Sophisticated, authoritative, concise, data-driven, and forward-leaning.",
+                    "tags": ["brand", "marketing"],
+                    "updated_by": "Growth Marketer",
+                    "created_at": datetime.now(timezone.utc).isoformat()
+                }
+            ]
+            results.extend(defaults)
+            for d in defaults:
+                self._local_kv[f"{business_id}:{d['key']}"] = d
+
+        return results
 
     def list_by_tags(self, business_id: str, tags: List[str]) -> List[dict[str, Any]]:
         """
         List shared memory items containing the specified tags.
         """
-        try:
-            response = self.client.table("shared_memory")\
-                .select("*")\
-                .eq("business_id", business_id)\
-                .contains("tags", tags)\
-                .execute()
-            return response.data
-        except Exception as e:
-            logger.error(f"Error listing shared memory by tags for business {business_id}: {e}")
-            raise e
+        all_items = self.list_all(business_id)
+        tag_set = set(tags)
+        return [
+            item for item in all_items 
+            if any(t in (item.get("tags") or []) for t in tag_set)
+        ]
 
-    def set_flag(self, business_id: str, flag_name: str, value: bool) -> dict[str, Any]:
-        """
-        Sets a boolean flag in shared memory.
-        """
-        key = f"flag:{flag_name}"
-        return self.set(business_id=business_id, key=key, value=value, tags=["flag"])
+    # --- Knowledge Base & Document Storage Methods ---
 
-    def get_flags(self, business_id: str) -> List[dict[str, Any]]:
+    def save_document(
+        self,
+        business_id: str,
+        doc_data: Dict[str, Any],
+        author: str = "Founder"
+    ) -> Dict[str, Any]:
         """
-        Returns all flags set for a business.
+        Stores a processed knowledge document and updates the global knowledge index.
         """
-        return self.list_by_tags(business_id, ["flag"])
+        doc_id = str(uuid.uuid4())
+        now_iso = datetime.now(timezone.utc).isoformat()
 
-# Example Usage
-if __name__ == "__main__":
-    # Ensure env variables are loaded (e.g., via dotenv)
-    # import os
-    # os.environ["SUPABASE_URL"] = "http://localhost:8000"
-    # os.environ["SUPABASE_KEY"] = "your_service_role_key"
-    
-    # Initialize the service
-    try:
-        memory_service = SharedMemoryService()
-        
-        # Test business_id
-        test_business_id = "11111111-1111-1111-1111-111111111111"
-        
-        # 1. Set a standard value
-        print("Setting 'agent_context'...")
-        memory_service.set(
-            business_id=test_business_id,
-            key="agent_context",
-            value={"theme": "dark", "instructions": "Be polite"},
-            tags=["context", "ui"]
+        document_record = {
+            "id": doc_id,
+            "business_id": business_id,
+            "title": doc_data.get("title") or doc_data.get("filename") or "Untitled Knowledge Document",
+            "category": doc_data.get("category", "General Knowledge"),
+            "filename": doc_data.get("filename", "document.txt"),
+            "file_type": doc_data.get("file_type", "txt"),
+            "file_size_bytes": doc_data.get("file_size_bytes", 0),
+            "summary": doc_data.get("summary", ""),
+            "content": doc_data.get("content", ""),
+            "chunks": doc_data.get("chunks", []),
+            "metadata": doc_data.get("metadata", {}),
+            "created_at": now_iso,
+            "updated_at": now_iso,
+            "author": author
+        }
+
+        # 1. Save in document store
+        local_doc_key = f"{business_id}:{doc_id}"
+        self._local_docs[local_doc_key] = document_record
+
+        # 2. Store summary in key-value shared memory for quick agent awareness
+        kv_key = f"knowledge:{document_record['category'].lower().replace(' ', '_')}:{doc_id[:8]}"
+        self.set(
+            business_id=business_id,
+            key=kv_key,
+            value={
+                "doc_id": doc_id,
+                "title": document_record["title"],
+                "category": document_record["category"],
+                "filename": document_record["filename"],
+                "summary": document_record["summary"],
+                "file_type": document_record["file_type"]
+            },
+            tags=["knowledge_base", document_record["category"].lower().replace(" ", "_"), document_record["file_type"]],
+            updated_by=author
         )
+
+        # 3. Update global catalog index
+        catalog = self.get(business_id, "knowledge_catalog")
+        catalog_items = catalog.get("value", []) if catalog and isinstance(catalog.get("value"), list) else []
+        catalog_items.append({
+            "id": doc_id,
+            "title": document_record["title"],
+            "category": document_record["category"],
+            "filename": document_record["filename"],
+            "summary": document_record["summary"],
+            "created_at": now_iso
+        })
+        self.set(
+            business_id=business_id,
+            key="knowledge_catalog",
+            value=catalog_items,
+            tags=["catalog", "system"],
+            updated_by="System"
+        )
+
+        return document_record
+
+    def get_document(self, business_id: str, doc_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Retrieves a document by its ID.
+        """
+        local_doc_key = f"{business_id}:{doc_id}"
+        return self._local_docs.get(local_doc_key)
+
+    def list_documents(self, business_id: str, category: Optional[str] = None) -> List[Dict[str, Any]]:
+        """
+        Lists all processed knowledge documents for a business, optionally filtered by category.
+        """
+        docs = [v for k, v in self._local_docs.items() if k.startswith(f"{business_id}:")]
         
-        # 2. Get a standard value
-        print("Getting 'agent_context'...")
-        val = memory_service.get(test_business_id, "agent_context")
-        print(f"Value: {val}")
-        
-        # 3. Set a flag
-        print("Setting 'maintenance_mode' flag to True...")
-        memory_service.set_flag(test_business_id, "maintenance_mode", True)
-        
-        # 4. Get flags (Detect changes via polling)
-        print("Getting all flags...")
-        flags = memory_service.get_flags(test_business_id)
-        print(f"Flags: {flags}")
-        
-        # 5. List by tags
-        print("Listing by tag 'ui'...")
-        ui_elements = memory_service.list_by_tags(test_business_id, ["ui"])
-        print(f"UI Elements: {ui_elements}")
-        
-        # 6. Delete
-        print("Deleting 'agent_context'...")
-        memory_service.delete(test_business_id, "agent_context")
-        
-    except Exception as e:
-        print(f"Example execution failed. Note: A valid Supabase instance must be running. Error: {e}")
+        # Sort by creation date descending
+        docs.sort(key=lambda x: x.get("created_at", ""), reverse=True)
+
+        if category and category != "all":
+            docs = [d for d in docs if d.get("category", "").lower() == category.lower()]
+            
+        return docs
+
+    def delete_document(self, business_id: str, doc_id: str) -> bool:
+        """
+        Removes a document and updates the knowledge index.
+        """
+        local_doc_key = f"{business_id}:{doc_id}"
+        if local_doc_key in self._local_docs:
+            del self._local_docs[local_doc_key]
+            
+            # Remove from catalog
+            catalog = self.get(business_id, "knowledge_catalog")
+            if catalog and isinstance(catalog.get("value"), list):
+                updated_items = [item for item in catalog["value"] if item.get("id") != doc_id]
+                self.set(
+                    business_id=business_id,
+                    key="knowledge_catalog",
+                    value=updated_items,
+                    tags=["catalog", "system"],
+                    updated_by="System"
+                )
+            return True
+        return False
+
+    def search_knowledge(
+        self,
+        business_id: str,
+        query: str,
+        category: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
+        """
+        Keyword and content search across knowledge documents and memory records.
+        """
+        query_terms = query.lower().split()
+        results: List[Dict[str, Any]] = []
+
+        # 1. Search Knowledge Documents
+        docs = self.list_documents(business_id, category=category)
+        for doc in docs:
+            match_score = 0
+            text_to_search = f"{doc.get('title', '')} {doc.get('category', '')} {doc.get('summary', '')} {doc.get('content', '')}".lower()
+            
+            for term in query_terms:
+                if term in text_to_search:
+                    match_score += text_to_search.count(term)
+            
+            if match_score > 0:
+                results.append({
+                    "type": "document",
+                    "id": doc["id"],
+                    "title": doc["title"],
+                    "category": doc["category"],
+                    "filename": doc["filename"],
+                    "summary": doc["summary"],
+                    "match_score": match_score,
+                    "snippet": doc["summary"]
+                })
+
+        # 2. Search Shared Memory Key-Values
+        memories = self.list_all(business_id)
+        for mem in memories:
+            if mem.get("key") == "knowledge_catalog":
+                continue
+            key_str = str(mem.get("key", "")).lower()
+            val_str = str(mem.get("value", "")).lower()
+            combined = f"{key_str} {val_str}"
+            
+            match_score = sum(combined.count(term) for term in query_terms if term in combined)
+            if match_score > 0:
+                results.append({
+                    "type": "memory",
+                    "id": mem.get("id"),
+                    "key": mem.get("key"),
+                    "category": "Shared Memory",
+                    "match_score": match_score,
+                    "snippet": str(mem.get("value"))[:200]
+                })
+
+        # Sort by relevance score
+        results.sort(key=lambda x: x.get("match_score", 0), reverse=True)
+        return results

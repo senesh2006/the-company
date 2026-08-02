@@ -2,7 +2,16 @@ import logging
 import uuid
 from datetime import datetime
 from typing import Any, Optional, List, Dict
-from supabase import create_client, Client
+
+try:
+    from supabase._sync.client import create_client, Client
+except ImportError:
+    try:
+        from supabase import create_client, Client
+    except Exception:
+        create_client = None
+        Client = Any
+
 from app.core.config import settings
 from app.services.governance_service import GovernanceService
 

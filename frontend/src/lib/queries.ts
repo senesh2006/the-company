@@ -17,6 +17,17 @@ export const useAgent = (id: string) => {
     return useQuery({
         queryKey: ['agent', id],
         queryFn: () => api.getAgent(id),
+        enabled: Boolean(id),
+        refetchInterval: 5000,
+        retry: 1,
+        staleTime: 3000,
+    });
+};
+
+export const useHierarchy = () => {
+    return useQuery({
+        queryKey: ['hierarchy'],
+        queryFn: api.getHierarchy,
         refetchInterval: 5000,
         retry: 1,
         staleTime: 3000,
@@ -40,6 +51,61 @@ export const useMemory = () => {
         refetchInterval: 5000,
         retry: 1,
         staleTime: 3000,
+    });
+};
+
+export const useKnowledgeDocuments = (category?: string) => {
+    return useQuery({
+        queryKey: ['knowledge-documents', category || 'all'],
+        queryFn: () => api.getKnowledgeDocuments(category),
+        refetchInterval: 5000,
+        retry: 1,
+        staleTime: 3000,
+    });
+};
+
+export const useKnowledgeDocument = (docId: string) => {
+    return useQuery({
+        queryKey: ['knowledge-document', docId],
+        queryFn: () => api.getKnowledgeDocument(docId),
+        enabled: Boolean(docId),
+        retry: 1,
+    });
+};
+
+export const useUploadDocument = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ file, category, title }: { file: File; category?: string; title?: string }) =>
+            api.uploadKnowledgeDocument(file, category, title),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['knowledge-documents'] });
+            queryClient.invalidateQueries({ queryKey: ['memory'] });
+            queryClient.invalidateQueries({ queryKey: ['company-feed'] });
+        },
+    });
+};
+
+export const useDeleteDocument = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (docId: string) => api.deleteKnowledgeDocument(docId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['knowledge-documents'] });
+            queryClient.invalidateQueries({ queryKey: ['memory'] });
+            queryClient.invalidateQueries({ queryKey: ['company-feed'] });
+        },
+    });
+};
+
+export const useSetMemory = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ key, value, tags }: { key: string; value: any; tags?: string[] }) =>
+            api.setMemory(key, value, tags),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['memory'] });
+        },
     });
 };
 
@@ -91,9 +157,32 @@ export const useUpdateAgentStatus = () => {
     return useMutation({
         mutationFn: ({ id, status }: { id: string, status: AgentStatus }) => 
             api.updateAgentStatus(id, status),
-        onSuccess: (_, variables) => {
+        onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['agents'] });
-            queryClient.invalidateQueries({ queryKey: ['agent', variables.id] });
+        },
+    });
+};
+
+export const usePromoteWorker = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ agentId, targetTier }: { agentId: string; targetTier?: TrustTier }) =>
+            api.promoteWorker(agentId, targetTier),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['agents'] });
+            queryClient.invalidateQueries({ queryKey: ['company-feed'] });
+        },
+    });
+};
+
+export const useDemoteWorker = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ agentId, reason }: { agentId: string; reason?: string }) =>
+            api.demoteWorker(agentId, reason),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['agents'] });
+            queryClient.invalidateQueries({ queryKey: ['company-feed'] });
         },
     });
 };
@@ -103,9 +192,10 @@ export const useInjectInstruction = () => {
     return useMutation({
         mutationFn: ({ id, instruction }: { id: string, instruction: string }) => 
             api.injectInstruction(id, instruction),
-        onSuccess: (_, variables) => {
+        onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['agents'] });
-            queryClient.invalidateQueries({ queryKey: ['agent', variables.id] });
+            queryClient.invalidateQueries({ queryKey: ['tasks'] });
+            queryClient.invalidateQueries({ queryKey: ['company-feed'] });
         },
     });
 };

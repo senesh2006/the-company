@@ -68,7 +68,7 @@ export default function AnalyticsPage() {
           </div>
           <div className="mt-4">
             <p className="text-3xl font-extrabold text-slate-100 font-mono">
-              ${metrics.totalCost?.toFixed(2) || "0.00"}
+              ${(metrics.totalCost ?? 0).toFixed(2)}
             </p>
             <p className="text-[11px] text-emerald-400 mt-1 font-mono flex items-center gap-1">
               <TrendingUp className="w-3 h-3" /> Optimally routed inference
@@ -84,9 +84,9 @@ export default function AnalyticsPage() {
             </div>
           </div>
           <div className="mt-4">
-            <p className="text-3xl font-extrabold text-slate-100 font-mono">{metrics.totalAgents}</p>
+            <p className="text-3xl font-extrabold text-slate-100 font-mono">{metrics.totalAgents ?? 0}</p>
             <p className="text-[11px] text-slate-400 mt-1 font-mono">
-              {metrics.activeAgents} active ({metrics.totalAgents > 0 ? Math.round((metrics.activeAgents / metrics.totalAgents) * 100) : 0}% utilization)
+              {metrics.activeAgents ?? 0} active ({(metrics.totalAgents ?? 0) > 0 ? Math.round(((metrics.activeAgents ?? 0) / (metrics.totalAgents ?? 1)) * 100) : 0}% utilization)
             </p>
           </div>
         </div>
@@ -99,9 +99,9 @@ export default function AnalyticsPage() {
             </div>
           </div>
           <div className="mt-4">
-            <p className="text-3xl font-extrabold text-slate-100 font-mono">{metrics.completedTasks}</p>
+            <p className="text-3xl font-extrabold text-slate-100 font-mono">{metrics.completedTasks ?? 0}</p>
             <p className="text-[11px] text-cyan-400 mt-1 font-mono">
-              {metrics.totalTasks} total dispatched
+              {metrics.totalTasks ?? 0} total dispatched
             </p>
           </div>
         </div>

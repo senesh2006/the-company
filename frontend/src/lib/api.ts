@@ -1,23 +1,25 @@
-import { useAppStore } from './store';
-
-// Types
-export type AgentStatus = 'Running' | 'Paused' | 'Idle' | 'Failed';
+export type AgentStatus = 'Idle' | 'Thinking' | 'Working' | 'Running' | 'Paused' | 'Blocked' | 'Error' | 'Failed' | 'Terminated';
+export type AgentRole = 'Manager' | 'Worker' | 'Specialist';
 export type TrustTier = 'observe' | 'assist' | 'operate';
 export type HiringModel = 'salaried' | 'freelance' | 'contract';
+export type KnowledgeCategory = 
+  | 'Brand Guidelines' 
+  | 'Financial Reports' 
+  | 'Product Documentation' 
+  | 'Customer Personas' 
+  | 'General Knowledge';
 
 export interface Agent {
   id: string;
-  role: string;
   name: string;
+  role: string;
   status: AgentStatus;
-  trust_tier?: TrustTier;
+  trust_tier: TrustTier;
   specialization_id?: string;
   hiring_model?: HiringModel;
   clean_cycles_count?: number;
   authority_limit_usd?: number;
-  business_id?: string;
-  current_task_id?: string;
-  created_at?: string;
+  currentTask?: string;
   system_prompt?: string;
   model?: string;
   capabilities?: string[];
@@ -25,40 +27,73 @@ export interface Agent {
 
 export interface Task {
   id: string;
-  description: string;
-  status: 'pending' | 'queued' | 'assigned' | 'running' | 'completed' | 'failed' | 'rejected' | 'needs_approval';
-  business_id?: string;
-  assignee_id?: string;
+  business_id: string;
+  agent_id?: string;
   assignee_role?: string;
+  status: 'pending' | 'queued' | 'running' | 'completed' | 'failed' | 'needs_approval' | 'rejected';
+  description?: string;
   mandate?: string;
   cadence?: 'once' | 'daily' | 'weekly' | 'on_trigger';
-  priority?: 'low' | 'normal' | 'high' | number;
-  trust_tier?: TrustTier;
+  priority?: 'low' | 'normal' | 'high';
   authority_limit?: Record<string, any>;
+  trust_tier?: TrustTier;
+  specialization_id?: string;
   shared_memory_refs?: string[];
+  files?: string[];
+  expected_output?: Record<string, any>;
   result?: string;
-  retry_count?: number;
-  created_at?: string;
-  updated_at?: string;
+  review_verdict?: string;
+  retry_count: number;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface Metrics {
-  totalAgents: number;
-  activeAgents: number;
-  totalTasks: number;
-  completedTasks: number;
+  burnRate?: number;
   totalCost: number;
-  riskLevel: 'low' | 'medium' | 'high';
-  businessId?: string;
-  business_id?: string;
+  activeAgents: number;
+  totalAgents: number;
+  tasksCompleted?: number;
+  completedTasks: number;
+  totalTasks: number;
+  errorRate?: number;
+  riskLevel?: string;
 }
 
 export interface MemoryEntry {
   id: string;
+  business_id?: string;
   key: string;
-  value: string;
-  updatedBy: string;
-  timestamp: string;
+  value: any;
+  tags?: string[];
+  updatedBy?: string;
+  updated_by?: string;
+  timestamp?: string;
+  created_at?: string;
+}
+
+export interface KnowledgeDocument {
+  id: string;
+  business_id: string;
+  title: string;
+  category: KnowledgeCategory | string;
+  filename: string;
+  file_type: string;
+  file_size_bytes: number;
+  summary: string;
+  content: string;
+  chunks?: string[];
+  metadata?: {
+    pages?: number;
+    columns?: string[];
+    row_count?: number;
+    headers?: string[];
+    word_count?: number;
+    [key: string]: any;
+  };
+  author?: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface AttentionItem {
@@ -118,65 +153,48 @@ export const getBaseUrl = (): string => {
     if (window.location.port === '3000' || window.location.port === '3001') {
       return `${window.location.protocol}//${window.location.hostname}:8000`;
     }
-    return '';
   }
-  const defaultUrl = process.env.NEXT_PUBLIC_API_URL || (process.env.NODE_ENV === 'development' ? 'http://localhost:8000' : '');
-  return defaultUrl.endsWith('/') ? defaultUrl.slice(0, -1) : defaultUrl;
+  return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 };
 
 export const api = {
-  // --- Agents list ---
+  // --- Agents & AI Workers ---
   getAgents: async (): Promise<Agent[]> => {
     const baseUrl = getBaseUrl();
     const res = await fetch(`${baseUrl}/api/v1/agents`);
-    if (!res.ok) {
-      const errorText = await res.text().catch(() => '');
-      throw new Error(`Failed to fetch agents (${res.status}): ${errorText}`);
-    }
-    const data = await res.json();
-    return (data || []).map((agent: any) => ({
-      ...agent,
-      status: agent.status || 'Idle',
-      trust_tier: agent.trust_tier || 'observe',
-      clean_cycles_count: agent.clean_cycles_count || 0,
-      authority_limit_usd: agent.authority_limit_usd ?? (agent.trust_tier === 'operate' ? 1000 : agent.trust_tier === 'assist' ? 100 : 0)
-    }));
+    if (!res.ok) throw new Error(`Failed to fetch agents (${res.status})`);
+    return res.json();
   },
 
-  // --- Single agent ---
-  getAgent: async (id: string): Promise<Agent | null> => {
+  getAgent: async (id: string): Promise<Agent> => {
     const baseUrl = getBaseUrl();
     const res = await fetch(`${baseUrl}/api/v1/agents/${id}`);
-    if (!res.ok) {
-      if (res.status === 404) return null;
-      throw new Error(`Failed to fetch agent details (${res.status})`);
-    }
-    const data = await res.json();
-    if (!data) return null;
-    return {
-      ...data,
-      status: data.status || 'Idle',
-      trust_tier: data.trust_tier || 'observe',
-      clean_cycles_count: data.clean_cycles_count || 0,
-      authority_limit_usd: data.authority_limit_usd ?? (data.trust_tier === 'operate' ? 1000 : data.trust_tier === 'assist' ? 100 : 0)
-    };
+    if (!res.ok) throw new Error(`Failed to fetch agent (${res.status})`);
+    return res.json();
   },
 
-  // --- Promote & Demote Workers ---
-  promoteWorker: async (id: string, target_tier?: TrustTier, reason?: string): Promise<any> => {
+  getHierarchy: async (): Promise<Agent[]> => {
     const baseUrl = getBaseUrl();
-    const res = await fetch(`${baseUrl}/api/v1/agents/${id}/promote`, {
+    const res = await fetch(`${baseUrl}/api/v1/hierarchy`);
+    if (!res.ok) throw new Error(`Failed to fetch hierarchy (${res.status})`);
+    return res.json();
+  },
+
+  // --- Trust Tier Promotion / Demotion ---
+  promoteWorker: async (agentId: string, targetTier?: TrustTier): Promise<any> => {
+    const baseUrl = getBaseUrl();
+    const res = await fetch(`${baseUrl}/api/v1/agents/${agentId}/promote`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ target_tier, reason }),
+      body: JSON.stringify({ target_tier: targetTier }),
     });
     if (!res.ok) throw new Error(`Failed to promote worker (${res.status})`);
     return res.json();
   },
 
-  demoteWorker: async (id: string, reason?: string): Promise<any> => {
+  demoteWorker: async (agentId: string, reason?: string): Promise<any> => {
     const baseUrl = getBaseUrl();
-    const res = await fetch(`${baseUrl}/api/v1/agents/${id}/demote`, {
+    const res = await fetch(`${baseUrl}/api/v1/agents/${agentId}/demote`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ reason }),
@@ -190,7 +208,6 @@ export const api = {
     const baseUrl = getBaseUrl();
     const res = await fetch(`${baseUrl}/api/v1/tasks/feed?limit=${limit}`);
     if (!res.ok) {
-      // Fallback
       return [];
     }
     return res.json();
@@ -228,11 +245,77 @@ export const api = {
     return res.json();
   },
 
-  // --- Memory ---
+  // --- Memory & Key-Value Matrix ---
   getMemory: async (): Promise<MemoryEntry[]> => {
     const baseUrl = getBaseUrl();
     const res = await fetch(`${baseUrl}/api/v1/memory`);
     if (!res.ok) throw new Error(`Failed to fetch memory (${res.status})`);
+    return res.json();
+  },
+
+  setMemory: async (key: string, value: any, tags: string[] = []): Promise<MemoryEntry> => {
+    const baseUrl = getBaseUrl();
+    const res = await fetch(`${baseUrl}/api/v1/memory`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key, value, tags }),
+    });
+    if (!res.ok) throw new Error(`Failed to save memory entry (${res.status})`);
+    return res.json();
+  },
+
+  // --- Knowledge Base & Document Processing ---
+  uploadKnowledgeDocument: async (file: File, category?: string, title?: string): Promise<{ status: string; document: KnowledgeDocument }> => {
+    const baseUrl = getBaseUrl();
+    const formData = new FormData();
+    formData.append('file', file);
+    if (category) formData.append('category', category);
+    if (title) formData.append('title', title);
+
+    const res = await fetch(`${baseUrl}/api/v1/memory/upload`, {
+      method: 'POST',
+      body: formData,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: 'Upload failed' }));
+      throw new Error(err.detail || `Failed to upload document (${res.status})`);
+    }
+    return res.json();
+  },
+
+  getKnowledgeDocuments: async (category?: string): Promise<KnowledgeDocument[]> => {
+    const baseUrl = getBaseUrl();
+    const url = category && category !== 'all' 
+      ? `${baseUrl}/api/v1/memory/documents?category=${encodeURIComponent(category)}`
+      : `${baseUrl}/api/v1/memory/documents`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`Failed to fetch knowledge documents (${res.status})`);
+    return res.json();
+  },
+
+  getKnowledgeDocument: async (docId: string): Promise<KnowledgeDocument> => {
+    const baseUrl = getBaseUrl();
+    const res = await fetch(`${baseUrl}/api/v1/memory/documents/${docId}`);
+    if (!res.ok) throw new Error(`Failed to fetch document ${docId} (${res.status})`);
+    return res.json();
+  },
+
+  deleteKnowledgeDocument: async (docId: string): Promise<void> => {
+    const baseUrl = getBaseUrl();
+    const res = await fetch(`${baseUrl}/api/v1/memory/documents/${docId}`, {
+      method: 'DELETE',
+    });
+    if (!res.ok) throw new Error(`Failed to delete document (${res.status})`);
+  },
+
+  searchKnowledge: async (query: string, category?: string): Promise<any> => {
+    const baseUrl = getBaseUrl();
+    const res = await fetch(`${baseUrl}/api/v1/memory/search`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query, category }),
+    });
+    if (!res.ok) throw new Error(`Failed to search knowledge (${res.status})`);
     return res.json();
   },
 
