@@ -4,6 +4,7 @@ import "./globals.css";
 import { AppProvider } from "@/providers/app-provider";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Topbar } from "@/components/layout/Topbar";
+import { AgentDetailPanel } from "@/components/AgentDetailPanel";
 import { cn } from "@/lib/utils";
 
 const inter = Inter({ 
@@ -13,8 +14,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "The Company - Control Plane",
-  description: "AI Multi-Agent System Dashboard",
+  title: "Company OS — AI Autonomous Workforce Control Plane",
+  description: "Enterprise autonomous multi-worker orchestration, execution monitoring, and operations management.",
 };
 
 export default function RootLayout({
@@ -23,19 +24,20 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning className={cn(inter.variable, "light")}>
+    <html lang="en" suppressHydrationWarning className={cn(inter.variable, "dark")}>
       <head>
         <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
       </head>
-      <body className={cn(inter.className, "bg-surface text-on-surface")}>
-        <AppProvider attribute="class" defaultTheme="light" enableSystem={false}>
+      <body className={cn(inter.className, "bg-[#0b0f17] text-slate-100 min-h-screen antialiased selection:bg-emerald-500/30 selection:text-emerald-200")}>
+        <AppProvider attribute="class" defaultTheme="dark" enableSystem={false}>
           <Sidebar />
           <Topbar />
-          <main className="ml-[280px] pt-24 px-xl pb-xl min-h-screen">
+          <main className="ml-[280px] pt-20 px-6 md:px-10 pb-16 min-h-screen">
             <div className="max-w-[1440px] mx-auto">
               {children}
             </div>
           </main>
+          <AgentDetailPanel />
         </AppProvider>
       </body>
     </html>

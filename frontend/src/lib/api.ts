@@ -11,6 +11,9 @@ export interface Agent {
   business_id?: string;
   current_task_id?: string;
   created_at?: string;
+  system_prompt?: string;
+  model?: string;
+  capabilities?: string[];
 }
 
 export interface Task {
@@ -32,6 +35,8 @@ export interface Metrics {
   completedTasks: number;
   totalCost: number;
   riskLevel: 'low' | 'medium' | 'high';
+  businessId?: string;
+  business_id?: string;
 }
 
 export interface MemoryEntry {

@@ -1,71 +1,106 @@
 "use client";
 
 import { useNeedsAttention } from "@/lib/queries";
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { AlertTriangle, Check, X, Edit, Hand } from "lucide-react";
+import { useAppStore } from "@/lib/store";
+import { AlertTriangle, Check, X, ShieldAlert, CheckCircle2, XCircle, UserCheck } from "lucide-react";
 
 export default function NeedsAttentionPage() {
   const { data: items, isLoading } = useNeedsAttention();
+  const { setSelectedAgentId } = useAppStore();
 
-  if (isLoading) return <div className="text-zinc-500">Loading items...</div>;
+  if (isLoading) {
+    return (
+      <div className="p-12 flex items-center justify-center min-h-[400px]">
+        <div className="flex flex-col items-center gap-4 text-center">
+          <div className="w-10 h-10 border-2 border-emerald-500/20 border-t-emerald-400 rounded-full animate-spin"></div>
+          <p className="text-xs font-mono text-slate-400">Scanning workforce alerts & blockers...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight text-gray-900 flex items-center">
-          <AlertTriangle className="h-8 w-8 text-red-500 mr-3" />
-          Needs Attention
-        </h1>
-        <p className="text-gray-500">Tasks blocked and awaiting human decision.</p>
-      </div>
+    <div className="flex flex-col gap-8">
+      {/* Header */}
+      <header className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-slate-900/90 via-slate-900/60 to-rose-950/30 border border-slate-800/80 p-8 backdrop-blur-xl shadow-2xl">
+        <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-2.5">
+              <span className="px-3 py-1 text-[11px] font-bold uppercase tracking-wider rounded-full bg-rose-500/10 text-rose-400 border border-rose-500/20">
+                Action Required
+              </span>
+              <span className="text-xs text-slate-400 font-mono">Incident & Exception Resolution</span>
+            </div>
+            <h1 className="text-3xl md:text-4xl font-extrabold text-slate-100 tracking-tight flex items-center gap-3">
+              <AlertTriangle className="h-8 w-8 text-rose-400" />
+              Needs Attention
+            </h1>
+            <p className="text-sm text-slate-400 max-w-2xl leading-relaxed">
+              Autonomous AI workers that are currently blocked, requesting manual parameter inputs, or requiring exception handling.
+            </p>
+          </div>
+        </div>
+      </header>
 
       <div className="space-y-4">
         {items?.map((item) => (
-          <Card key={item.id} className="bg-white border-red-200 shadow-sm rounded-2xl overflow-hidden ring-1 ring-red-100">
-            <CardHeader className="pb-2 bg-red-50/50">
-              <div className="flex justify-between items-start">
-                <div>
-                  <CardTitle className="text-lg text-red-600 font-bold">Blocked: {item.agentName}</CardTitle>
-                  <p className="text-sm font-medium text-gray-500 mt-1">Agent ID: <a href={`/agents/${item.agentId}`} className="hover:underline">{item.agentId}</a></p>
+          <div key={item.id} className="bento-card p-6 border-l-4 border-l-rose-500 flex flex-col gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800/80">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="px-2 py-0.5 rounded bg-rose-500/10 text-rose-400 border border-rose-500/20 text-[10px] font-bold uppercase font-mono">
+                    Blocked Worker
+                  </span>
+                  <h3 className="text-sm font-bold text-slate-100">{item.agentName}</h3>
                 </div>
-                <div className="text-right">
-                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">Type</p>
-                  <p className="text-sm font-bold text-amber-600">{item.type}</p>
-                </div>
+                <button 
+                  onClick={() => setSelectedAgentId(item.agentId)}
+                  className="text-xs text-slate-400 hover:text-emerald-400 font-mono mt-1 flex items-center gap-1 transition-colors"
+                >
+                  <UserCheck className="w-3 h-3" />
+                  Worker ID: WRK-{item.agentId?.slice(0, 8)}
+                </button>
               </div>
-            </CardHeader>
-            <CardContent className="space-y-4 pt-4">
-              <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
-                <p className="text-sm font-bold text-gray-700 mb-1">Issue:</p>
-                <p className="text-sm font-medium text-gray-600">{item.title}</p>
+              <span className="px-3 py-1 bg-amber-500/10 text-amber-400 border border-amber-500/20 rounded-full text-xs font-mono font-bold uppercase w-fit">
+                {item.type}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="bg-slate-950/60 p-4 rounded-xl border border-slate-800/80">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Issue Overview</p>
+                <p className="text-xs font-medium text-slate-200">{item.title}</p>
               </div>
-              <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
-                <p className="text-sm font-bold text-gray-700 mb-1">Details:</p>
-                <p className="text-sm font-medium text-gray-600">{item.description}</p>
+              <div className="bg-slate-950/60 p-4 rounded-xl border border-slate-800/80">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Exception Details</p>
+                <p className="text-xs font-medium text-slate-400">{item.description}</p>
               </div>
-            </CardContent>
-            <CardFooter className="flex flex-wrap gap-2 border-t border-gray-100 bg-gray-50/50 pt-4">
-              <Button className="bg-green-100 text-green-700 hover:bg-green-200 border-none shadow-sm font-medium">
-                <Check className="h-4 w-4 mr-2" /> Approve Action
-              </Button>
-              <Button variant="outline" className="bg-white border-gray-200 hover:bg-gray-50 text-gray-700 shadow-sm">
-                <Edit className="h-4 w-4 mr-2" /> Modify Action
-              </Button>
-              <Button variant="outline" className="bg-white border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300 shadow-sm">
-                <X className="h-4 w-4 mr-2" /> Reject & Fail
-              </Button>
-              <Button variant="outline" className="bg-white border-blue-200 text-blue-600 hover:bg-blue-50 hover:border-blue-300 shadow-sm ml-auto">
-                <Hand className="h-4 w-4 mr-2" /> Take Over Manually
-              </Button>
-            </CardFooter>
-          </Card>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3 pt-2">
+              <button className="px-4 py-2 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/30 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5">
+                <Check className="w-4 h-4" /> Approve Action
+              </button>
+              <button className="px-4 py-2 bg-rose-600/20 hover:bg-rose-600/30 text-rose-400 border border-rose-500/30 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5">
+                <X className="w-4 h-4" /> Reject & Abort
+              </button>
+              <button 
+                onClick={() => setSelectedAgentId(item.agentId)}
+                className="px-4 py-2 bg-slate-800/60 hover:bg-slate-800 text-slate-300 border border-slate-700/60 rounded-xl text-xs font-bold transition-all ml-auto"
+              >
+                Inspect Worker Directives
+              </button>
+            </div>
+          </div>
         ))}
+
         {(!items || items.length === 0) && (
-          <div className="flex flex-col items-center justify-center p-12 text-center rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50">
-            <Check className="h-12 w-12 text-green-400 mb-4" />
-            <p className="text-gray-900 text-lg font-bold">All clear!</p>
-            <p className="text-gray-500 font-medium mt-1">No agents require human intervention right now.</p>
+          <div className="bento-card p-12 flex flex-col items-center justify-center text-center gap-4 border-dashed border-slate-800">
+            <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+              <Check className="w-8 h-8" />
+            </div>
+            <h3 className="text-lg font-bold text-slate-200">Workforce Operational</h3>
+            <p className="text-xs text-slate-400 max-w-md">No AI workers require manual intervention or exception handling at this time.</p>
           </div>
         )}
       </div>
