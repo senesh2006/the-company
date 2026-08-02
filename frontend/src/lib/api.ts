@@ -150,11 +150,14 @@ export const getBaseUrl = (): string => {
       const customUrl = process.env.NEXT_PUBLIC_API_URL;
       return customUrl.endsWith('/') ? customUrl.slice(0, -1) : customUrl;
     }
+    // Local development with separate Next.js dev server on port 3000/3001
     if (window.location.port === '3000' || window.location.port === '3001') {
       return `${window.location.protocol}//${window.location.hostname}:8000`;
     }
+    // In production / same-origin deployment (e.g. Railway, Docker), use relative path
+    return '';
   }
-  return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+  return process.env.NEXT_PUBLIC_API_URL || '';
 };
 
 export const api = {
