@@ -30,9 +30,9 @@ interface SpecialistProfile {
   color: string;
   badge?: string;
   trackRecord: {
-    passRate: number; // e.g. 99.4%
-    cleanCyclesPlatform: number; // e.g. 14,200
-    avgPromotionDays: number; // e.g. 3.8 days
+    passRate: number;
+    cleanCyclesPlatform: number;
+    avgPromotionDays: number;
     riskScore: "Minimal" | "Low" | "Medium";
   };
   skills: string[];
@@ -54,7 +54,7 @@ const SPECIALISTS: SpecialistProfile[] = [
     howIWork: "I verify invoices, detect recurring subscription price hikes, and perform multi-point ledger reconciliations before preparing financial digests for founder sign-off.",
     description: "Real-time ledger audit, cash burn forecasting, invoice verification, and automated P&L reporting. Enforces strict authority limits.",
     icon: "account_balance",
-    color: "from-emerald-500/20 to-teal-500/20 text-emerald-400 border-emerald-500/30",
+    color: "from-emerald-50 to-teal-50 text-emerald-700 border-emerald-200",
     badge: "In-House Standard",
     trackRecord: {
       passRate: 99.7,
@@ -79,7 +79,7 @@ const SPECIALISTS: SpecialistProfile[] = [
     howIWork: "I monitor competitor launches and industry signals to draft high-converting content calendars, staging all assets for one-click approval before publishing.",
     description: "Autonomous competitive intelligence gathering, positioning copy drafts, content calendar management, and engagement analytics.",
     icon: "campaign",
-    color: "from-purple-500/20 to-pink-500/20 text-purple-400 border-purple-500/30",
+    color: "from-purple-50 to-pink-50 text-purple-700 border-purple-200",
     badge: "High Growth",
     trackRecord: {
       passRate: 98.9,
@@ -104,7 +104,7 @@ const SPECIALISTS: SpecialistProfile[] = [
     howIWork: "I triage high-volume founder inboxes, protect focus time on calendars, and resolve tier-1 customer inquiries while escalating complaints.",
     description: "Inbox triage, automated scheduling, calendar conflict resolution, and customer helpdesk ticketing. Never issues refunds unattended.",
     icon: "inbox",
-    color: "from-cyan-500/20 to-blue-500/20 text-cyan-400 border-cyan-500/30",
+    color: "from-blue-50 to-cyan-50 text-blue-700 border-blue-200",
     badge: "Essential Ops",
     trackRecord: {
       passRate: 99.4,
@@ -129,7 +129,7 @@ const SPECIALISTS: SpecialistProfile[] = [
     howIWork: "I crawl academic databases, patent filings, and market reports to produce rigorous executive briefs with cross-verified citation graphs.",
     description: "Deep multi-source web and paper synthesis, market mapping, technical competitor breakdowns, and cross-agent context injection.",
     icon: "psychology",
-    color: "from-amber-500/20 to-orange-500/20 text-amber-400 border-amber-500/30",
+    color: "from-amber-50 to-orange-50 text-amber-700 border-amber-200",
     trackRecord: {
       passRate: 99.2,
       cleanCyclesPlatform: 11900,
@@ -153,7 +153,7 @@ const SPECIALISTS: SpecialistProfile[] = [
     howIWork: "I write clean TypeScript and Python code, implement comprehensive unit tests, and submit PRs with clear architectural rationale.",
     description: "End-to-end feature implementation, API integrations, automated refactoring, and database schema migrations.",
     icon: "terminal",
-    color: "from-blue-500/20 to-indigo-500/20 text-blue-400 border-blue-500/30",
+    color: "from-indigo-50 to-blue-50 text-indigo-700 border-indigo-200",
     badge: "High Velocity",
     trackRecord: {
       passRate: 99.1,
@@ -237,19 +237,19 @@ export default function HirePage() {
   });
 
   return (
-    <div className="min-h-screen bg-[#07090e] text-slate-100 p-6 md:p-10">
+    <div className="flex flex-col gap-8 pb-16">
       {/* Header */}
-      <div className="max-w-7xl mx-auto mb-8">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-white/5">
+      <header className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-emerald-800 via-teal-700 to-slate-900 border border-emerald-700/50 p-8 shadow-xl text-white">
+        <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+            <div className="flex items-center gap-2 mb-1.5">
+              <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-white/20 text-white border border-white/30 backdrop-blur-md uppercase tracking-wider">
                 HireMarket v6.0
               </span>
-              <span className="text-xs text-slate-500">• Governed In-House Specialists</span>
+              <span className="text-xs text-emerald-100 font-medium">• Governed In-House Specialists</span>
             </div>
-            <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-white">Recruit AI Workers</h1>
-            <p className="text-sm text-slate-400 mt-1">
+            <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight text-white">Recruit AI Workers</h1>
+            <p className="text-sm text-emerald-50 mt-1 max-w-2xl leading-relaxed">
               Select pre-evaluated specialist profiles with verified platform track records and governed trust tiers.
             </p>
           </div>
@@ -259,31 +259,31 @@ export default function HirePage() {
               placeholder="Search roles or skills..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="bg-white/5 border border-white/10 rounded-xl px-3.5 py-2 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-cyan-500/50 w-64"
+              className="bg-white/15 border border-white/25 rounded-xl px-3.5 py-2 text-xs text-white placeholder-emerald-100/70 focus:outline-none focus:bg-white/20 w-64 backdrop-blur-md"
             />
           </div>
         </div>
 
         {/* Department Filter Pills */}
-        <div className="flex items-center gap-2 overflow-x-auto py-4 no-scrollbar">
+        <div className="flex items-center gap-2 overflow-x-auto pt-6 mt-6 border-t border-emerald-600/40 no-scrollbar">
           {departments.map((dept) => (
             <button
               key={dept}
               onClick={() => setSelectedDepartment(dept)}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap ${
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all whitespace-nowrap ${
                 selectedDepartment === dept
-                  ? "bg-white/15 text-white border border-white/20 shadow-sm"
-                  : "bg-white/5 text-slate-400 hover:text-slate-200 border border-white/5"
+                  ? "bg-white text-emerald-950 shadow-md font-bold"
+                  : "bg-white/10 text-emerald-50 hover:bg-white/20 border border-white/10"
               }`}
             >
               {dept}
             </button>
           ))}
         </div>
-      </div>
+      </header>
 
       {/* Main Grid: Specialists Catalog + Onboarding Configuration */}
-      <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         
         {/* Left Column: Specialist Cards (7 cols) */}
         <div className="lg:col-span-7 space-y-4">
@@ -295,58 +295,58 @@ export default function HirePage() {
                 onClick={() => handleSelectSpecialist(spec)}
                 className={`p-5 rounded-2xl cursor-pointer transition-all border ${
                   isSelected
-                    ? "bg-white/[0.06] border-cyan-500/50 shadow-lg shadow-cyan-500/5 ring-1 ring-cyan-500/30"
-                    : "bg-white/[0.02] border-white/5 hover:bg-white/[0.04] hover:border-white/15"
+                    ? "bg-emerald-50/60 border-emerald-500 shadow-md ring-1 ring-emerald-500/30"
+                    : "bg-white border-slate-200 hover:border-slate-300 hover:shadow-xs"
                 }`}
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex items-center gap-3.5">
                     <div className={`w-11 h-11 rounded-xl bg-gradient-to-br flex items-center justify-center border ${spec.color}`}>
-                      <span className="material-symbols-outlined text-22">{spec.icon}</span>
+                      <span className="material-symbols-outlined text-[22px]">{spec.icon}</span>
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <h3 className="font-semibold text-white text-base">{spec.title}</h3>
+                        <h3 className="font-bold text-slate-900 text-base">{spec.title}</h3>
                         {spec.badge && (
-                          <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-white/10 text-slate-300">
+                          <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">
                             {spec.badge}
                           </span>
                         )}
                       </div>
-                      <p className="text-xs text-slate-400 mt-0.5">{spec.department} • <code className="text-[11px] text-slate-500">{spec.specialization_id}</code></p>
+                      <p className="text-xs text-slate-500 mt-0.5">{spec.department} • <code className="text-[11px] text-slate-600 font-mono">{spec.specialization_id}</code></p>
                     </div>
                   </div>
 
                   <div className="text-right">
-                    <div className="text-sm font-semibold text-white">{spec.pricing.salaried}</div>
-                    <div className="text-[11px] text-emerald-400 font-medium">{spec.trackRecord.passRate}% Pass Rate</div>
+                    <div className="text-sm font-bold text-slate-900">{spec.pricing.salaried}</div>
+                    <div className="text-[11px] text-emerald-700 font-bold">{spec.trackRecord.passRate}% Pass Rate</div>
                   </div>
                 </div>
 
-                <p className="text-xs text-slate-300 mt-3 leading-relaxed">
+                <p className="text-xs text-slate-700 mt-3 leading-relaxed">
                   {spec.description}
                 </p>
 
                 {/* Track Record Stats */}
-                <div className="grid grid-cols-3 gap-2 mt-3.5 pt-3.5 border-t border-white/5 text-center">
-                  <div className="bg-white/[0.02] rounded-lg p-2 border border-white/5">
-                    <div className="text-[10px] uppercase tracking-wider text-slate-500">Platform Clean Cycles</div>
-                    <div className="text-xs font-semibold text-slate-200 mt-0.5">{spec.trackRecord.cleanCyclesPlatform.toLocaleString()}</div>
+                <div className="grid grid-cols-3 gap-2 mt-3.5 pt-3.5 border-t border-slate-100 text-center">
+                  <div className="bg-slate-50 rounded-xl p-2 border border-slate-200/80">
+                    <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Platform Clean Cycles</div>
+                    <div className="text-xs font-bold text-slate-900 mt-0.5 font-mono">{spec.trackRecord.cleanCyclesPlatform.toLocaleString()}</div>
                   </div>
-                  <div className="bg-white/[0.02] rounded-lg p-2 border border-white/5">
-                    <div className="text-[10px] uppercase tracking-wider text-slate-500">Avg Time to Assist</div>
-                    <div className="text-xs font-semibold text-slate-200 mt-0.5">{spec.trackRecord.avgPromotionDays} days</div>
+                  <div className="bg-slate-50 rounded-xl p-2 border border-slate-200/80">
+                    <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Avg Time to Assist</div>
+                    <div className="text-xs font-bold text-slate-900 mt-0.5 font-mono">{spec.trackRecord.avgPromotionDays} days</div>
                   </div>
-                  <div className="bg-white/[0.02] rounded-lg p-2 border border-white/5">
-                    <div className="text-[10px] uppercase tracking-wider text-slate-500">Risk Profile</div>
-                    <div className="text-xs font-semibold text-emerald-400 mt-0.5">{spec.trackRecord.riskScore}</div>
+                  <div className="bg-slate-50 rounded-xl p-2 border border-slate-200/80">
+                    <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Risk Profile</div>
+                    <div className="text-xs font-bold text-emerald-700 mt-0.5">{spec.trackRecord.riskScore}</div>
                   </div>
                 </div>
 
                 {/* Skills */}
                 <div className="flex flex-wrap gap-1.5 mt-3">
                   {spec.skills.map((skill) => (
-                    <span key={skill} className="text-[11px] px-2 py-0.5 rounded-md bg-white/5 text-slate-400 border border-white/5">
+                    <span key={skill} className="text-[11px] px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200 font-medium">
                       {skill}
                     </span>
                   ))}
@@ -359,25 +359,25 @@ export default function HirePage() {
         {/* Right Column: Onboarding & Contract Drawer (5 cols) */}
         <div className="lg:col-span-5">
           {selectedSpecialist ? (
-            <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-6 sticky top-6 backdrop-blur-md">
+            <div className="bg-white border border-slate-200 rounded-2xl p-6 sticky top-6 shadow-md">
               
-              <div className="flex items-center gap-3 pb-4 border-b border-white/5">
+              <div className="flex items-center gap-3 pb-4 border-b border-slate-100">
                 <div className={`w-10 h-10 rounded-xl bg-gradient-to-br flex items-center justify-center border ${selectedSpecialist.color}`}>
-                  <span className="material-symbols-outlined text-20">{selectedSpecialist.icon}</span>
+                  <span className="material-symbols-outlined text-[20px]">{selectedSpecialist.icon}</span>
                 </div>
                 <div>
-                  <h2 className="text-base font-bold text-white">Hire {selectedSpecialist.title}</h2>
-                  <p className="text-xs text-slate-400">Configure mandate contract & governance gates</p>
+                  <h2 className="text-base font-bold text-slate-900">Hire {selectedSpecialist.title}</h2>
+                  <p className="text-xs text-slate-500">Configure mandate contract & governance gates</p>
                 </div>
               </div>
 
               {/* How I Work Statement */}
-              <div className="mt-4 p-3.5 rounded-xl bg-cyan-500/5 border border-cyan-500/20">
-                <div className="flex items-center gap-1.5 text-cyan-400 text-xs font-medium mb-1">
-                  <span className="material-symbols-outlined text-14">psychology</span>
+              <div className="mt-4 p-3.5 rounded-xl bg-emerald-50 border border-emerald-200">
+                <div className="flex items-center gap-1.5 text-emerald-800 text-xs font-bold mb-1">
+                  <span className="material-symbols-outlined text-[14px]">psychology</span>
                   <span>Operational Philosophy (&quot;How I Work&quot;)</span>
                 </div>
-                <p className="text-xs text-slate-300 italic leading-relaxed">
+                <p className="text-xs text-slate-700 italic leading-relaxed font-serif">
                   &quot;{selectedSpecialist.howIWork}&quot;
                 </p>
               </div>
@@ -386,17 +386,17 @@ export default function HirePage() {
                 
                 {/* Worker Name */}
                 <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1">Worker Name / Designation</label>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Worker Name / Designation</label>
                   <input
                     {...register("name")}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-cyan-500/50"
+                    className="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2 text-xs text-slate-900 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
                   />
-                  {errors.name && <p className="text-xs text-rose-400 mt-1">{errors.name.message}</p>}
+                  {errors.name && <p className="text-xs text-rose-600 mt-1">{errors.name.message}</p>}
                 </div>
 
                 {/* Hiring Model Selector (PRD v6.0 §5.2) */}
                 <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1.5">Hiring Model</label>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">Hiring Model</label>
                   <div className="grid grid-cols-3 gap-2">
                     {[
                       { id: "salaried", label: "Salaried", price: selectedSpecialist.pricing.salaried, desc: "Monthly retainer" },
@@ -412,12 +412,12 @@ export default function HirePage() {
                         }}
                         className={`p-2.5 rounded-xl text-left border transition-all ${
                           watch("hiring_model") === model.id
-                            ? "bg-cyan-500/10 border-cyan-500/40 text-white ring-1 ring-cyan-500/20"
-                            : "bg-white/5 border-white/5 text-slate-400 hover:text-slate-200"
+                            ? "bg-emerald-50 border-emerald-500 text-emerald-950 ring-1 ring-emerald-500/30"
+                            : "bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100"
                         }`}
                       >
-                        <div className="text-xs font-semibold">{model.label}</div>
-                        <div className="text-[11px] text-cyan-400 mt-0.5">{model.price}</div>
+                        <div className="text-xs font-bold">{model.label}</div>
+                        <div className="text-[11px] text-emerald-700 font-semibold mt-0.5">{model.price}</div>
                         <div className="text-[9px] text-slate-500 mt-0.5">{model.desc}</div>
                       </button>
                     ))}
@@ -427,14 +427,14 @@ export default function HirePage() {
                 {/* Trust Tier Seeding (PRD v6.0 §5.3 & §6.1) */}
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
-                    <label className="text-xs font-medium text-slate-300">Seeded Trust Tier</label>
-                    <span className="text-[10px] text-slate-400">Earned Trust Protocol</span>
+                    <label className="text-xs font-bold text-slate-700">Seeded Trust Tier</label>
+                    <span className="text-[10px] text-slate-500 font-mono">Earned Trust Protocol</span>
                   </div>
                   <div className="grid grid-cols-3 gap-2">
                     {[
-                      { id: "observe", label: "Observe (Recommended)", desc: "100% review gate", color: "text-amber-400 border-amber-500/30" },
-                      { id: "assist", label: "Assist", desc: "Low-risk unattended", color: "text-blue-400 border-blue-500/30" },
-                      { id: "operate", label: "Operate", desc: "Authority limit $1k", color: "text-emerald-400 border-emerald-500/30" },
+                      { id: "observe", label: "Observe", desc: "100% review gate" },
+                      { id: "assist", label: "Assist", desc: "Low-risk unattended" },
+                      { id: "operate", label: "Operate", desc: "Authority limit $1k" },
                     ].map((tier) => (
                       <button
                         type="button"
@@ -445,12 +445,12 @@ export default function HirePage() {
                         }}
                         className={`p-2.5 rounded-xl text-left border transition-all ${
                           watch("trust_tier") === tier.id
-                            ? "bg-white/10 border-white/30 text-white ring-1 ring-white/20"
-                            : "bg-white/5 border-white/5 text-slate-400 hover:text-slate-200"
+                            ? "bg-emerald-50 border-emerald-500 text-emerald-950 ring-1 ring-emerald-500/30"
+                            : "bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100"
                         }`}
                       >
-                        <div className="text-xs font-semibold">{tier.label}</div>
-                        <div className="text-[10px] text-slate-400 mt-0.5">{tier.desc}</div>
+                        <div className="text-xs font-bold">{tier.label}</div>
+                        <div className="text-[10px] text-slate-500 mt-0.5">{tier.desc}</div>
                       </button>
                     ))}
                   </div>
@@ -458,7 +458,7 @@ export default function HirePage() {
 
                 {/* Tool Connections */}
                 <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1.5">Tool Onboarding & Permissions</label>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">Tool Onboarding & Permissions</label>
                   <div className="flex flex-wrap gap-1.5">
                     {selectedSpecialist.supportedTools.map((tool) => {
                       const isConnected = connectedTools.includes(tool);
@@ -467,13 +467,13 @@ export default function HirePage() {
                           type="button"
                           key={tool}
                           onClick={() => toggleTool(tool)}
-                          className={`text-xs px-2.5 py-1 rounded-lg border flex items-center gap-1.5 transition-all ${
+                          className={`text-xs px-2.5 py-1 rounded-lg border flex items-center gap-1.5 transition-all font-medium ${
                             isConnected
-                              ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
-                              : "bg-white/5 text-slate-400 border-white/5 hover:border-white/15"
+                              ? "bg-emerald-100 text-emerald-800 border-emerald-300"
+                              : "bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200"
                           }`}
                         >
-                          <span className="material-symbols-outlined text-12">
+                          <span className="material-symbols-outlined text-[14px]">
                             {isConnected ? "check_circle" : "add_circle"}
                           </span>
                           <span>{tool}</span>
@@ -485,20 +485,20 @@ export default function HirePage() {
 
                 {/* Initial Mandate Directive */}
                 <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1">Initial Mandate Contract</label>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Initial Mandate Contract</label>
                   <textarea
                     rows={3}
                     {...register("goal")}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-cyan-500/50 resize-none font-mono"
+                    className="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2 text-xs text-slate-900 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 resize-none font-mono"
                   />
-                  {errors.goal && <p className="text-xs text-rose-400 mt-1">{errors.goal.message}</p>}
+                  {errors.goal && <p className="text-xs text-rose-600 mt-1">{errors.goal.message}</p>}
                 </div>
 
                 {/* Action Button */}
                 <button
                   type="submit"
                   disabled={hireAgent.isPending}
-                  className="w-full mt-2 py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white text-sm font-semibold shadow-lg shadow-cyan-500/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                  className="w-full mt-2 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md shadow-emerald-600/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                 >
                   {hireAgent.isPending ? (
                     <>
@@ -507,7 +507,7 @@ export default function HirePage() {
                     </>
                   ) : (
                     <>
-                      <span className="material-symbols-outlined text-18">person_add</span>
+                      <span className="material-symbols-outlined text-[18px]">person_add</span>
                       <span>Execute Mandate & Recruit</span>
                     </>
                   )}
@@ -515,7 +515,7 @@ export default function HirePage() {
               </form>
             </div>
           ) : (
-            <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-8 text-center text-slate-400">
+            <div className="bg-white border border-slate-200 rounded-2xl p-8 text-center text-slate-500 shadow-xs">
               Select a specialist profile from the catalog to configure onboarding.
             </div>
           )}
