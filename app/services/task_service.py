@@ -17,6 +17,15 @@ from app.services.governance_service import GovernanceService
 
 logger = logging.getLogger(__name__)
 
+def is_valid_uuid(val: Any) -> bool:
+    if not val:
+        return False
+    try:
+        uuid.UUID(str(val))
+        return True
+    except (ValueError, AttributeError, TypeError):
+        return False
+
 # In-memory storage fallback for audit feed and agent metadata
 _IN_MEMORY_AUDIT_LOG: List[Dict[str, Any]] = []
 _IN_MEMORY_AGENT_EXTRA: Dict[str, Dict[str, Any]] = {}
@@ -40,17 +49,17 @@ class TaskService:
         agents: List[Dict[str, Any]] = []
         try:
             if settings.SUPABASE_URL and settings.SUPABASE_KEY:
-                response = self.client.table("agents")\
-                    .select("*")\
-                    .eq("business_id", business_id)\
-                    .execute()
+                query = self.client.table("agents").select("*")
+                if is_valid_uuid(business_id):
+                    query = query.eq("business_id", str(business_id))
+                response = query.execute()
                 if response.data and isinstance(response.data, list) and all(isinstance(a, dict) for a in response.data):
                     agents = [dict(a) for a in response.data]
         except Exception as e:
             logger.warning(f"Supabase agents list fallback: {e}")
 
         # Merge local in-memory agents
-        local_agents = [v for k, v in _IN_MEMORY_AGENTS.items() if v.get("business_id") == business_id or business_id == "default-business-id"]
+        local_agents = [v for k, v in _IN_MEMORY_AGENTS.items() if v.get("business_id") == business_id or business_id == "default-business-id" or not is_valid_uuid(business_id)]
         seen_ids = {str(a.get("id")) for a in agents if isinstance(a, dict)}
         for la in local_agents:
             if str(la.get("id")) not in seen_ids:
@@ -100,14 +109,36 @@ class TaskService:
     ) -> dict[str, Any]:
         """Creates a new agent seeded at Observe tier as specified in PRD v6.0 §5.3."""
         try:
-            data = {
-                "business_id": business_id,
-                "name": name,
-                "role": role,
-                "status": status
-            }
-            response = self.client.table("agents").insert(data).execute()
-            agent = response.data[0] if response.data else {}
+            target_biz_id = business_id
+            if not is_valid_uuid(target_biz_id):
+                try:
+                    biz_resp = self.client.table("businesses").select("id").limit(1).execute()
+                    if biz_resp.data:
+                        target_biz_id = biz_resp.data[0]["id"]
+                    else:
+                        new_b = self.client.table("businesses").insert({"name": "Main Business"}).execute()
+                        target_biz_id = new_b.data[0]["id"] if new_b.data else None
+                except Exception:
+                    target_biz_id = None
+
+            if target_biz_id and is_valid_uuid(target_biz_id):
+                data = {
+                    "business_id": str(target_biz_id),
+                    "name": name,
+                    "role": role,
+                    "status": status
+                }
+                response = self.client.table("agents").insert(data).execute()
+                agent = response.data[0] if response.data else {}
+            else:
+                agent = {
+                    "id": f"agent-{uuid.uuid4().hex[:8]}",
+                    "business_id": business_id,
+                    "name": name,
+                    "role": role,
+                    "status": status
+                }
+                _IN_MEMORY_AGENTS[agent["id"]] = agent
             
             agent_id = str(agent.get("id", uuid.uuid4()))
             agent["id"] = agent_id
