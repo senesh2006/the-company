@@ -3,7 +3,7 @@ import logging
 from datetime import datetime
 from typing import TypedDict, Annotated, List, Literal, Optional, Any, Dict
 from langchain_core.messages import AnyMessage, HumanMessage, AIMessage, SystemMessage
-from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.messages import SystemMessage, HumanMessage
 from langchain_openai import ChatOpenAI
 from langgraph.graph import StateGraph, START, END
 from langgraph.prebuilt import create_react_agent
@@ -148,9 +148,7 @@ def maker_node(state: FinanceWorkerState):
 
     revision_context = f"\nPREVIOUS AUDIT REVISION FEEDBACK (FIX THESE):\n{revisions}\n" if revisions else ""
 
-    prompt = ChatPromptTemplate.from_messages([
-        ("system", FINANCE_SYSTEM_PROMPT),
-        ("human", f"""Task: {task_desc}
+    human_content = f"""Task: {task_desc}
 Context: {json.dumps(context)}
 Observations: {state.get('observations', '')}
 {revision_context}
@@ -162,10 +160,14 @@ If creating journal entries or categorizations, provide a structured JSON object
 - Debits ($)
 - Credits ($)
 - Description & Rationale
-Ensure Debits strictly equal Credits.""")
-    ])
+Ensure Debits strictly equal Credits."""
 
-    res = llm.invoke(prompt.format())
+    messages = [
+        SystemMessage(content=FINANCE_SYSTEM_PROMPT),
+        HumanMessage(content=human_content)
+    ]
+
+    res = llm.invoke(messages)
     content = res.content
 
     # Try parsing structured JSON payload

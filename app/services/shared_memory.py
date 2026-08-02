@@ -54,7 +54,7 @@ class SharedMemoryService:
                     .eq("key", key)\
                     .execute()
                     
-                if response.data:
+                if response.data and isinstance(response.data, list) and len(response.data) > 0 and isinstance(response.data[0], dict):
                     return response.data[0]
         except Exception as e:
             logger.warning(f"Supabase read fallback for key '{key}': {e}")
@@ -88,7 +88,7 @@ class SharedMemoryService:
                     "value": value,
                     "tags": tags
                 }
-                if existing:
+                if existing and isinstance(existing, dict) and "id" in existing:
                     response = self.client.table("shared_memory")\
                         .update(data)\
                         .eq("id", existing["id"])\
@@ -97,7 +97,7 @@ class SharedMemoryService:
                     response = self.client.table("shared_memory")\
                         .insert(data)\
                         .execute()
-                if response.data:
+                if response.data and isinstance(response.data, list) and len(response.data) > 0 and isinstance(response.data[0], dict):
                     record = response.data[0]
         except Exception as e:
             logger.warning(f"Supabase write fallback for key '{key}': {e}")
@@ -141,16 +141,16 @@ class SharedMemoryService:
                     .select("*")\
                     .eq("business_id", business_id)\
                     .execute()
-                if response.data:
+                if response.data and isinstance(response.data, list) and all(isinstance(item, dict) for item in response.data):
                     results = response.data
         except Exception as e:
             logger.warning(f"Supabase list fallback: {e}")
 
         # Merge local entries
-        local_items = [v for k, v in self._local_kv.items() if k.startswith(f"{business_id}:")]
-        seen_keys = {item.get("key") for item in results}
+        local_items = [v for k, v in self._local_kv.items() if k.startswith(f"{business_id}:") and isinstance(v, dict)]
+        seen_keys = {item.get("key") for item in results if isinstance(item, dict)}
         for item in local_items:
-            if item.get("key") not in seen_keys:
+            if isinstance(item, dict) and item.get("key") not in seen_keys:
                 results.append(item)
 
         # Default foundational memory seed if empty

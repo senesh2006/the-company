@@ -186,9 +186,10 @@ def test_finance_worker_simple_expense_categorization(mock_checker_llm, mock_mak
     mem = SharedMemoryService()
     saved_audit = mem.get(test_biz_id, f"finance_audit_log_{test_task.id}")
     assert saved_audit is not None
-    assert len(saved_audit) >= 1
-    assert saved_audit[0]["task_id"] == test_task.id
-    assert saved_audit[0]["checker_verdict"]["passed"] is True
+    audit_entries = saved_audit.get("value", []) if isinstance(saved_audit, dict) else saved_audit
+    assert len(audit_entries) >= 1
+    assert audit_entries[0]["task_id"] == test_task.id
+    assert audit_entries[0]["checker_verdict"]["passed"] is True
 
 # ----------------- 6. End-to-End LangGraph Flow: Month-End Close (Supervisor Mode) -----------------
 @patch("app.agents.finance_checker.get_checker_llm")
@@ -246,4 +247,5 @@ def test_finance_worker_month_end_close_supervisor_mode(mock_checker_llm):
     mem = SharedMemoryService()
     audit_trail = mem.get(test_biz_id, f"finance_audit_log_{test_task.id}")
     assert audit_trail is not None
-    assert len(audit_trail) >= 1
+    audit_items = audit_trail.get("value", []) if isinstance(audit_trail, dict) else audit_trail
+    assert len(audit_items) >= 1
