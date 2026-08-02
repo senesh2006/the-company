@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from "react";
 import { User, Session, AuthError } from "@supabase/supabase-js";
 import { supabase, isSupabaseConfigured, updateSupabaseClient } from "./supabase";
 import { getBaseUrl } from "./api";
@@ -24,29 +24,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isConfiguredState, setIsConfiguredState] = useState<boolean>(isSupabaseConfigured());
 
+  const initClient = useCallback(async () => {
+    if (isSupabaseConfigured()) {
+      return supabase;
+    }
+    try {
+      const res = await fetch(`${getBaseUrl()}/api/v1/config`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.supabaseUrl && data?.supabaseKey && !data.supabaseUrl.includes("placeholder-project")) {
+          const client = updateSupabaseClient(data.supabaseUrl, data.supabaseKey);
+          setIsConfiguredState(true);
+          return client;
+        }
+      }
+    } catch (e) {
+      console.warn("Could not load runtime Supabase config:", e);
+    }
+    return supabase;
+  }, []);
+
   useEffect(() => {
     let unsubscribe: (() => void) | undefined;
 
     const setupAuth = async () => {
-      let activeClient = supabase;
-      let configured = isSupabaseConfigured();
-
-      // If not configured via build-time env vars, attempt runtime discovery from backend /api/v1/config
-      if (!configured) {
-        try {
-          const res = await fetch(`${getBaseUrl()}/api/v1/config`);
-          if (res.ok) {
-            const data = await res.json();
-            if (data?.supabaseUrl && data?.supabaseKey && !data.supabaseUrl.includes("placeholder-project")) {
-              activeClient = updateSupabaseClient(data.supabaseUrl, data.supabaseKey);
-              configured = true;
-              setIsConfiguredState(true);
-            }
-          }
-        } catch {
-          // Runtime config fetch optional fallback
-        }
-      }
+      const activeClient = await initClient();
+      const configured = isSupabaseConfigured();
 
       if (!configured) {
         setUser(null);
@@ -56,11 +59,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       // Real Supabase session management
-      activeClient.auth.getSession().then(({ data: { session } }) => {
-        setSession(session);
-        setUser(session?.user ?? null);
+      try {
+        const { data } = await activeClient.auth.getSession();
+        if (data?.session) {
+          setSession(data.session);
+          setUser(data.session.user);
+          // Clean OAuth hash from URL if present
+          if (typeof window !== "undefined" && window.location.hash.includes("access_token")) {
+            window.history.replaceState(null, "", window.location.pathname);
+          }
+        } else {
+          setSession(null);
+          setUser(null);
+        }
+      } catch (err) {
+        console.error("Failed to get Supabase session:", err);
+      } finally {
         setIsLoading(false);
-      });
+      }
 
       const {
         data: { subscription },
@@ -68,6 +84,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setSession(session);
         setUser(session?.user ?? null);
         setIsLoading(false);
+        if (session && typeof window !== "undefined" && window.location.hash.includes("access_token")) {
+          window.history.replaceState(null, "", window.location.pathname);
+        }
       });
 
       unsubscribe = () => subscription.unsubscribe();
@@ -78,18 +97,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => {
       if (unsubscribe) unsubscribe();
     };
-  }, []);
+  }, [initClient]);
 
   const signInWithPassword = async (email: string, password: string) => {
     if (typeof window !== "undefined") {
       localStorage.removeItem("companyos_logged_out");
     }
 
-    if (!isConfiguredState) {
+    const client = await initClient();
+    if (!isSupabaseConfigured()) {
       return { error: { message: "Authentication is not configured" } as unknown as AuthError };
     }
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { error } = await client.auth.signInWithPassword({ email, password });
     return { error };
   };
 
@@ -98,11 +118,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem("companyos_logged_out");
     }
 
-    if (!isConfiguredState) {
+    const client = await initClient();
+    if (!isSupabaseConfigured()) {
       return { error: { message: "Authentication is not configured" } as unknown as AuthError };
     }
 
-    const { error } = await supabase.auth.signUp({
+    const { error } = await client.auth.signUp({
       email,
       password,
       options: {
@@ -119,13 +140,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem("companyos_logged_out");
     }
 
-    if (!isConfiguredState) {
+    const client = await initClient();
+    if (!isSupabaseConfigured()) {
       return { error: { message: "Authentication is not configured" } as unknown as AuthError };
     }
 
     const redirectOrigin = typeof window !== "undefined" ? window.location.origin : undefined;
 
-    const { error } = await supabase.auth.signInWithOAuth({
+    const { error } = await client.auth.signInWithOAuth({
       provider,
       options: {
         redirectTo: redirectOrigin ? `${redirectOrigin}/` : undefined,
@@ -136,8 +158,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     try {
-      if (isConfiguredState) {
-        await supabase.auth.signOut();
+      const client = await initClient();
+      if (isSupabaseConfigured()) {
+        await client.auth.signOut();
       }
     } catch (err) {
       console.error("Signout error:", err);
