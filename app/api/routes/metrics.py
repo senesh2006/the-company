@@ -53,7 +53,7 @@ def get_global_metrics():
     except Exception as e:
         logger.error(f"Failed to fetch metrics: {e}")
         return {
-            "totalAgents": 5,
+            "totalAgents": 0,
             "activeAgents": 0,
             "totalTasks": 0,
             "completedTasks": 0,

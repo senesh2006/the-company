@@ -17,7 +17,8 @@ import {
   ExternalLink,
   ShieldCheck,
   Zap,
-  Sparkles
+  Sparkles,
+  Plus
 } from "lucide-react";
 
 export default function HierarchyPage() {
@@ -33,7 +34,8 @@ export default function HierarchyPage() {
   const engineeringAgents = agents.filter(a => 
     a.role?.toLowerCase().includes("engineer") || 
     a.role?.toLowerCase().includes("code") || 
-    a.role?.toLowerCase().includes("security")
+    a.role?.toLowerCase().includes("security") ||
+    a.role?.toLowerCase().includes("tech")
   );
 
   const opsAgents = agents.filter(a => 
@@ -47,10 +49,11 @@ export default function HierarchyPage() {
   const businessAgents = agents.filter(a => 
     a.role?.toLowerCase().includes("finance") || 
     a.role?.toLowerCase().includes("marketing") || 
-    a.role?.toLowerCase().includes("growth")
+    a.role?.toLowerCase().includes("growth") ||
+    a.role?.toLowerCase().includes("sales")
   );
 
-  const totalBots = agents.length > 0 ? agents.length : 5;
+  const totalBots = agents.length;
 
   return (
     <div className="flex flex-col gap-6 pb-12">
@@ -115,7 +118,7 @@ export default function HierarchyPage() {
                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                 LIVE OVERSIGHT
               </span>
-              <span className="text-[11px] font-mono text-slate-500 font-bold">PRD v6.0 Gate</span>
+              <span className="text-[11px] font-mono text-slate-500 font-bold">Governance Gate</span>
             </div>
           </div>
 
@@ -143,32 +146,36 @@ export default function HierarchyPage() {
                     <Terminal className="w-4 h-4" />
                   </div>
                   <div>
-                    <h3 className="text-xs md:text-sm font-bold text-slate-900">Engineering & Security</h3>
+                    <h3 className="text-xs md:text-sm font-bold text-slate-900">Engineering & Tech</h3>
                     <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Autonomous Pod</p>
                   </div>
                 </div>
 
                 <div className="pt-2 border-t border-slate-100 space-y-2 mt-2">
-                  {(engineeringAgents.length > 0 ? engineeringAgents : [
-                    { id: "agent-eng", name: "Cipher", role: "Software Engineer", status: "Idle", trust_tier: "operate" }
-                  ]).map((agent: any) => (
-                    <div 
-                      key={agent.id}
-                      onClick={() => setSelectedAgent(agent)}
-                      className="bg-slate-50 hover:bg-slate-100 p-2 rounded-xl border border-slate-100 flex items-center justify-between text-xs cursor-pointer transition-colors"
-                    >
-                      <div className="flex items-center gap-2 truncate">
-                        <Bot className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
-                        <div className="truncate">
-                          <p className="font-bold text-slate-900 truncate">{agent.name}</p>
-                          <p className="text-[10px] text-slate-500">{agent.role}</p>
-                        </div>
-                      </div>
-                      <span className="text-[9px] font-bold font-mono uppercase px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200">
-                        {agent.trust_tier || "Assist"}
-                      </span>
+                  {engineeringAgents.length === 0 ? (
+                    <div className="p-3 text-center rounded-xl bg-slate-50 border border-dashed border-slate-200 text-xs text-slate-400">
+                      No engineering agents
                     </div>
-                  ))}
+                  ) : (
+                    engineeringAgents.map((agent: any) => (
+                      <div 
+                        key={agent.id}
+                        onClick={() => setSelectedAgent(agent)}
+                        className="bg-slate-50 hover:bg-slate-100 p-2 rounded-xl border border-slate-100 flex items-center justify-between text-xs cursor-pointer transition-colors"
+                      >
+                        <div className="flex items-center gap-2 truncate">
+                          <Bot className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+                          <div className="truncate">
+                            <p className="font-bold text-slate-900 truncate">{agent.name}</p>
+                            <p className="text-[10px] text-slate-500">{agent.role}</p>
+                          </div>
+                        </div>
+                        <span className="text-[9px] font-bold font-mono uppercase px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          {agent.trust_tier || "Assist"}
+                        </span>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
             </div>
@@ -182,31 +189,35 @@ export default function HierarchyPage() {
                   </div>
                   <div>
                     <h3 className="text-xs md:text-sm font-bold text-slate-900">Core Orchestration</h3>
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Mission Lead</p>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Operations & Data</p>
                   </div>
                 </div>
 
                 <div className="pt-2 border-t border-slate-100 space-y-2 mt-2">
-                  {(opsAgents.length > 0 ? opsAgents : [
-                    { id: "agent-lead", name: "Atlas", role: "Lead Orchestrator", status: "Idle", trust_tier: "assist" }
-                  ]).map((agent: any) => (
-                    <div 
-                      key={agent.id}
-                      onClick={() => setSelectedAgent(agent)}
-                      className="bg-slate-50 hover:bg-slate-100 p-2 rounded-xl border border-slate-100 flex items-center justify-between text-xs cursor-pointer transition-colors"
-                    >
-                      <div className="flex items-center gap-2 truncate">
-                        <Bot className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
-                        <div className="truncate">
-                          <p className="font-bold text-slate-900 truncate">{agent.name}</p>
-                          <p className="text-[10px] text-slate-500">{agent.role}</p>
-                        </div>
-                      </div>
-                      <span className="text-[9px] font-bold font-mono uppercase px-1.5 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200">
-                        {agent.trust_tier || "Assist"}
-                      </span>
+                  {opsAgents.length === 0 ? (
+                    <div className="p-3 text-center rounded-xl bg-slate-50 border border-dashed border-slate-200 text-xs text-slate-400">
+                      No operations agents
                     </div>
-                  ))}
+                  ) : (
+                    opsAgents.map((agent: any) => (
+                      <div 
+                        key={agent.id}
+                        onClick={() => setSelectedAgent(agent)}
+                        className="bg-slate-50 hover:bg-slate-100 p-2 rounded-xl border border-slate-100 flex items-center justify-between text-xs cursor-pointer transition-colors"
+                      >
+                        <div className="flex items-center gap-2 truncate">
+                          <Bot className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+                          <div className="truncate">
+                            <p className="font-bold text-slate-900 truncate">{agent.name}</p>
+                            <p className="text-[10px] text-slate-500">{agent.role}</p>
+                          </div>
+                        </div>
+                        <span className="text-[9px] font-bold font-mono uppercase px-1.5 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200">
+                          {agent.trust_tier || "Assist"}
+                        </span>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
             </div>
@@ -225,27 +236,30 @@ export default function HierarchyPage() {
                 </div>
 
                 <div className="pt-2 border-t border-slate-100 space-y-2 mt-2">
-                  {(businessAgents.length > 0 ? businessAgents : [
-                    { id: "agent-fin", name: "Ledger", role: "Finance Specialist", status: "Idle", trust_tier: "observe" },
-                    { id: "agent-mkt", name: "Echo", role: "Marketing Specialist", status: "Idle", trust_tier: "assist" }
-                  ]).map((agent: any) => (
-                    <div 
-                      key={agent.id}
-                      onClick={() => setSelectedAgent(agent)}
-                      className="bg-slate-50 hover:bg-slate-100 p-2 rounded-xl border border-slate-100 flex items-center justify-between text-xs cursor-pointer transition-colors"
-                    >
-                      <div className="flex items-center gap-2 truncate">
-                        <Bot className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
-                        <div className="truncate">
-                          <p className="font-bold text-slate-900 truncate">{agent.name}</p>
-                          <p className="text-[10px] text-slate-500">{agent.role}</p>
-                        </div>
-                      </div>
-                      <span className="text-[9px] font-bold font-mono uppercase px-1.5 py-0.5 rounded-md bg-purple-50 text-purple-700 border border-purple-200">
-                        {agent.trust_tier || "Observe"}
-                      </span>
+                  {businessAgents.length === 0 ? (
+                    <div className="p-3 text-center rounded-xl bg-slate-50 border border-dashed border-slate-200 text-xs text-slate-400">
+                      No finance/growth agents
                     </div>
-                  ))}
+                  ) : (
+                    businessAgents.map((agent: any) => (
+                      <div 
+                        key={agent.id}
+                        onClick={() => setSelectedAgent(agent)}
+                        className="bg-slate-50 hover:bg-slate-100 p-2 rounded-xl border border-slate-100 flex items-center justify-between text-xs cursor-pointer transition-colors"
+                      >
+                        <div className="flex items-center gap-2 truncate">
+                          <Bot className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+                          <div className="truncate">
+                            <p className="font-bold text-slate-900 truncate">{agent.name}</p>
+                            <p className="text-[10px] text-slate-500">{agent.role}</p>
+                          </div>
+                        </div>
+                        <span className="text-[9px] font-bold font-mono uppercase px-1.5 py-0.5 rounded-md bg-purple-50 text-purple-700 border border-purple-200">
+                          {agent.trust_tier || "Observe"}
+                        </span>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
             </div>
@@ -279,9 +293,9 @@ export default function HierarchyPage() {
             </span>
             <div className="flex items-center gap-2">
               <div className="w-24 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                <div className="h-full bg-emerald-600 rounded-full w-[96%]" />
+                <div className="h-full bg-emerald-600 rounded-full w-full" />
               </div>
-              <span className="text-xs font-bold text-emerald-700 font-mono">96%</span>
+              <span className="text-xs font-bold text-emerald-700 font-mono">100%</span>
             </div>
           </div>
         </div>

@@ -28,51 +28,48 @@ export default function AnalyticsPage() {
 
   // Compute live totals
   const totalCompleted = tasks.filter((t: any) => t.status === "completed").length;
-  const computedTotalSpend = liveMetrics?.totalCost ? Number(liveMetrics.totalCost) : 1248.50;
-  const avgCostPerTask = totalCompleted > 0 ? (computedTotalSpend / totalCompleted).toFixed(2) : "0.42";
+  const computedTotalSpend = liveMetrics?.totalCost ? Number(liveMetrics.totalCost) : 0.00;
+  const avgCostPerTask = totalCompleted > 0 ? (computedTotalSpend / totalCompleted).toFixed(2) : "0.00";
 
   // Spending trend data
+  const hasSpend = computedTotalSpend > 0;
   const trendBars = [
-    { day: "DAY 01", height: "35%", isHigh: false },
-    { day: "", height: "48%", isHigh: false },
-    { day: "", height: "42%", isHigh: false },
-    { day: "DAY 10", height: "55%", isHigh: false },
-    { day: "", height: "68%", isHigh: false },
-    { day: "", height: "60%", isHigh: false },
-    { day: "DAY 20", height: "78%", isHigh: false },
-    { day: "", height: "88%", isHigh: false },
-    { day: "", height: "70%", isHigh: false },
-    { day: "TODAY", height: "95%", isHigh: true },
+    { day: "DAY 01", height: hasSpend ? "25%" : "4%", isHigh: false },
+    { day: "", height: hasSpend ? "38%" : "4%", isHigh: false },
+    { day: "", height: hasSpend ? "32%" : "4%", isHigh: false },
+    { day: "DAY 10", height: hasSpend ? "45%" : "4%", isHigh: false },
+    { day: "", height: hasSpend ? "58%" : "4%", isHigh: false },
+    { day: "", height: hasSpend ? "50%" : "4%", isHigh: false },
+    { day: "DAY 20", height: hasSpend ? "68%" : "4%", isHigh: false },
+    { day: "", height: hasSpend ? "78%" : "4%", isHigh: false },
+    { day: "", height: hasSpend ? "60%" : "4%", isHigh: false },
+    { day: "TODAY", height: hasSpend ? "85%" : "4%", isHigh: true },
   ];
 
   // Dynamic department cost calculation
+  const totalAgentsCount = agents.length;
   const departments = [
-    { name: "Engineering", amount: computedTotalSpend * 0.42, color: "bg-blue-600", dotColor: "bg-blue-600", pct: 42 },
-    { name: "Marketing", amount: computedTotalSpend * 0.28, color: "bg-emerald-600", dotColor: "bg-emerald-600", pct: 28 },
-    { name: "Finance", amount: computedTotalSpend * 0.18, color: "bg-slate-700", dotColor: "bg-slate-700", pct: 18 },
-    { name: "Research & Ops", amount: computedTotalSpend * 0.12, color: "bg-purple-500", dotColor: "bg-purple-500", pct: 12 },
+    { name: "Engineering", amount: computedTotalSpend > 0 ? computedTotalSpend * 0.40 : 0, color: "bg-blue-600", dotColor: "bg-blue-600", pct: totalAgentsCount > 0 ? 40 : 0 },
+    { name: "Marketing", amount: computedTotalSpend > 0 ? computedTotalSpend * 0.30 : 0, color: "bg-emerald-600", dotColor: "bg-emerald-600", pct: totalAgentsCount > 0 ? 30 : 0 },
+    { name: "Finance", amount: computedTotalSpend > 0 ? computedTotalSpend * 0.20 : 0, color: "bg-slate-700", dotColor: "bg-slate-700", pct: totalAgentsCount > 0 ? 20 : 0 },
+    { name: "Research & Ops", amount: computedTotalSpend > 0 ? computedTotalSpend * 0.10 : 0, color: "bg-purple-500", dotColor: "bg-purple-500", pct: totalAgentsCount > 0 ? 10 : 0 },
   ];
 
-  // Live or fallback worker cost breakdown
-  const workerTable = (agents.length > 0 ? agents : [
-    { name: "Atlas", role: "Lead Orchestrator", clean_cycles_count: 12 },
-    { name: "Cipher", role: "Software Engineer", clean_cycles_count: 25 },
-    { name: "Ledger", role: "Finance Specialist", clean_cycles_count: 8 },
-    { name: "Echo", role: "Marketing Specialist", clean_cycles_count: 14 }
-  ]).map((a: any, index: number) => {
-    const tasksDone = a.clean_cycles_count || (15 + index * 8);
-    const cost = (tasksDone * 0.45) + (index * 12);
-    const avg = cost / (tasksDone || 1);
+  // Real worker cost breakdown
+  const workerTable = agents.map((a: any, index: number) => {
+    const tasksDone = a.clean_cycles_count || 0;
+    const cost = a.cost_today_usd || (tasksDone * 0.25);
+    const avg = tasksDone > 0 ? cost / tasksDone : 0;
     const initials = (a.name || "AI").slice(0, 2).toUpperCase();
 
     return {
       initials: initials,
-      name: a.name,
+      name: a.name || "Autonomous Worker",
       department: a.role?.includes("Engineer") ? "Engineering" : a.role?.includes("Finance") ? "Finance" : a.role?.includes("Marketing") ? "Marketing" : "Operations",
       tasksCompleted: tasksDone,
       totalCost: cost,
       avgCost: avg,
-      trend: index % 2 === 0 ? "up" : "flat",
+      trend: "flat",
       avatarBg: index % 3 === 0 ? "bg-emerald-100 text-emerald-800" : index % 3 === 1 ? "bg-blue-100 text-blue-800" : "bg-purple-100 text-purple-800"
     };
   });
@@ -145,9 +142,6 @@ export default function AnalyticsPage() {
               <span className="text-2xl md:text-3xl font-extrabold text-slate-900 font-mono">
                 ${computedTotalSpend.toFixed(2)}
               </span>
-              <span className="text-xs font-bold text-emerald-600 flex items-center gap-0.5">
-                <span>&#9650;</span> +8%
-              </span>
             </div>
             <p className="text-[11px] text-slate-400 font-medium mt-1">
               Active billing cycle computation
@@ -165,9 +159,6 @@ export default function AnalyticsPage() {
               <span className="text-2xl md:text-3xl font-extrabold text-slate-900 font-mono">
                 ${avgCostPerTask}
               </span>
-              <span className="text-xs font-bold text-emerald-600 flex items-center gap-0.5">
-                <span>&#9660;</span> -5%
-              </span>
             </div>
             <p className="text-[11px] text-slate-400 font-medium mt-1">
               Autonomous execution efficiency
@@ -183,12 +174,12 @@ export default function AnalyticsPage() {
           <div className="mt-3">
             <div className="flex items-center gap-2">
               <span className="text-2xl md:text-3xl font-extrabold text-slate-900 font-mono">
-                98.4%
+                100%
               </span>
               <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
             </div>
             <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden mt-2">
-              <div className="h-full bg-emerald-700 rounded-full w-[98.4%]" />
+              <div className="h-full bg-emerald-700 rounded-full w-full" />
             </div>
           </div>
         </div>
@@ -200,7 +191,7 @@ export default function AnalyticsPage() {
           </span>
           <div className="mt-3">
             <span className="text-2xl md:text-3xl font-extrabold text-slate-900 font-mono">
-              {agents.length > 0 ? agents.length : 5} Workers
+              {agents.length} Workers
             </span>
             <p className="text-[11px] text-slate-400 font-medium mt-1">
               {totalCompleted} completed mandates
@@ -293,66 +284,64 @@ export default function AnalyticsPage() {
           <h2 className="text-sm md:text-base font-bold text-slate-900">Worker Efficiency & Cost</h2>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="border-b border-slate-100 bg-slate-50/50 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                <th className="py-3.5 px-6 font-semibold text-slate-500">Worker</th>
-                <th className="py-3.5 px-6 font-semibold text-slate-500">Department</th>
-                <th className="py-3.5 px-6 font-semibold text-slate-500 text-center">Tasks Completed</th>
-                <th className="py-3.5 px-6 font-semibold text-slate-500 text-right">Total Cost</th>
-                <th className="py-3.5 px-6 font-semibold text-slate-500 text-right">Avg. Cost</th>
-                <th className="py-3.5 px-6 font-semibold text-slate-500 text-center">Trend</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 text-xs">
-              {workerTable.map((w) => (
-                <tr key={w.name} className="hover:bg-slate-50/80 transition-colors">
-                  {/* Worker Avatar & Name */}
-                  <td className="py-4 px-6">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-8 h-8 rounded-lg ${w.avatarBg} font-bold flex items-center justify-center text-xs shrink-0`}>
-                        {w.initials}
-                      </div>
-                      <span className="font-bold text-slate-900">{w.name}</span>
-                    </div>
-                  </td>
-
-                  {/* Department */}
-                  <td className="py-4 px-6 text-slate-600 font-medium">
-                    {w.department}
-                  </td>
-
-                  {/* Tasks Completed */}
-                  <td className="py-4 px-6 text-center font-mono font-medium text-slate-700">
-                    {w.tasksCompleted}
-                  </td>
-
-                  {/* Total Cost */}
-                  <td className="py-4 px-6 text-right font-mono font-bold text-slate-900">
-                    ${w.totalCost.toFixed(2)}
-                  </td>
-
-                  {/* Avg. Cost */}
-                  <td className="py-4 px-6 text-right font-mono text-slate-600">
-                    ${w.avgCost.toFixed(2)}
-                  </td>
-
-                  {/* Trend Indicator */}
-                  <td className="py-4 px-6 text-center">
-                    <div className="flex justify-center">
-                      {w.trend === "up" ? (
-                        <TrendingUp className="w-4 h-4 text-emerald-600" />
-                      ) : (
-                        <Minus className="w-4 h-4 text-slate-400" />
-                      )}
-                    </div>
-                  </td>
+        {workerTable.length === 0 ? (
+          <div className="p-12 flex flex-col items-center justify-center text-center gap-2">
+            <Bot className="w-8 h-8 text-slate-300" />
+            <p className="text-xs font-bold text-slate-700">No Worker Telemetry Yet</p>
+            <p className="text-[11px] text-slate-400">Recruit agents to track per-worker execution costs and efficiency.</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b border-slate-100 bg-slate-50/50 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                  <th className="py-3.5 px-6 font-semibold text-slate-500">Worker</th>
+                  <th className="py-3.5 px-6 font-semibold text-slate-500">Department</th>
+                  <th className="py-3.5 px-6 font-semibold text-slate-500 text-center">Tasks Completed</th>
+                  <th className="py-3.5 px-6 font-semibold text-slate-500 text-right">Total Cost</th>
+                  <th className="py-3.5 px-6 font-semibold text-slate-500 text-right">Avg. Cost</th>
+                  <th className="py-3.5 px-6 font-semibold text-slate-500 text-center">Trend</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-xs">
+                {workerTable.map((w) => (
+                  <tr key={w.name} className="hover:bg-slate-50/80 transition-colors">
+                    <td className="py-4 px-6">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-8 h-8 rounded-lg ${w.avatarBg} font-bold flex items-center justify-center text-xs shrink-0`}>
+                          {w.initials}
+                        </div>
+                        <span className="font-bold text-slate-900">{w.name}</span>
+                      </div>
+                    </td>
+
+                    <td className="py-4 px-6 text-slate-600 font-medium">
+                      {w.department}
+                    </td>
+
+                    <td className="py-4 px-6 text-center font-mono font-medium text-slate-700">
+                      {w.tasksCompleted}
+                    </td>
+
+                    <td className="py-4 px-6 text-right font-mono font-bold text-slate-900">
+                      ${w.totalCost.toFixed(2)}
+                    </td>
+
+                    <td className="py-4 px-6 text-right font-mono text-slate-600">
+                      ${w.avgCost.toFixed(2)}
+                    </td>
+
+                    <td className="py-4 px-6 text-center">
+                      <div className="flex justify-center">
+                        <Minus className="w-4 h-4 text-slate-400" />
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* 5. Smart Suggestions Banner */}

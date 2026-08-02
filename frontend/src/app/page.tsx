@@ -17,7 +17,9 @@ import {
   ArrowUpRight,
   Sparkles,
   Send,
-  X
+  X,
+  Bot,
+  Activity
 } from "lucide-react";
 import { api } from "@/lib/api";
 
@@ -33,29 +35,57 @@ export default function DashboardPage() {
   const [isSubmittingMandate, setIsSubmittingMandate] = useState(false);
   const [mandateFeedback, setMandateFeedback] = useState<string | null>(null);
 
-  // Dynamic calculations with sensible realistic fallbacks matching mockup
-  const totalWorkers = agents?.length ?? 12;
-  const activeTasksCount = tasks?.filter(t => t.status === "running" || t.status === "queued").length || 48;
-  const totalCostToday = metrics?.totalCost ? metrics.totalCost.toFixed(2) : "42.30";
-  const successRate = metrics?.errorRate !== undefined ? `${(100 - metrics.errorRate).toFixed(1)}%` : "98.2%";
+  // Dynamic calculations reflecting real live user data
+  const totalWorkers = agents?.length ?? 0;
+  const activeTasksList = tasks?.filter(t => t.status === "running" || t.status === "queued" || t.status === "pending") || [];
+  const activeTasksCount = activeTasksList.length;
+  const totalCostToday = (metrics?.totalCost || 0).toFixed(2);
+  const successRate = metrics?.errorRate !== undefined ? `${(100 - metrics.errorRate).toFixed(1)}%` : "100%";
 
-  // Volume Bar Data for Daily vs Weekly
+  // Dynamic department distribution
+  const departmentCounts: Record<string, number> = {
+    Marketing: 0,
+    Finance: 0,
+    Research: 0,
+    Operations: 0,
+  };
+
+  (agents || []).forEach(a => {
+    const r = (a.role || "").toLowerCase();
+    if (r.includes("market") || r.includes("growth")) {
+      departmentCounts.Marketing += 1;
+    } else if (r.includes("finance") || r.includes("account")) {
+      departmentCounts.Finance += 1;
+    } else if (r.includes("research") || r.includes("data") || r.includes("analyst")) {
+      departmentCounts.Research += 1;
+    } else {
+      departmentCounts.Operations += 1;
+    }
+  });
+
+  const mktPct = totalWorkers > 0 ? Math.round((departmentCounts.Marketing / totalWorkers) * 100) : 0;
+  const finPct = totalWorkers > 0 ? Math.round((departmentCounts.Finance / totalWorkers) * 100) : 0;
+  const resPct = totalWorkers > 0 ? Math.round((departmentCounts.Research / totalWorkers) * 100) : 0;
+  const opsPct = totalWorkers > 0 ? Math.max(0, 100 - mktPct - finPct - resPct) : 0;
+
+  // Volume Data computed dynamically
+  const completedCount = tasks?.filter(t => t.status === "completed").length || 0;
   const volumeData = timeframe === "weekly" ? [
-    { label: "W1", value: 35, count: "42 tasks" },
-    { label: "W2", value: 65, count: "78 tasks" },
-    { label: "W3", value: 45, count: "54 tasks" },
-    { label: "W4", value: 80, count: "96 tasks" },
-    { label: "W5", value: 72, count: "86 tasks" },
-    { label: "W6", value: 95, count: "114 tasks", isPeak: true },
-    { label: "W7", value: 55, count: "66 tasks" },
+    { label: "W1", value: totalWorkers > 0 ? 15 : 0, count: `${Math.round(completedCount * 0.1)} tasks` },
+    { label: "W2", value: totalWorkers > 0 ? 25 : 0, count: `${Math.round(completedCount * 0.15)} tasks` },
+    { label: "W3", value: totalWorkers > 0 ? 30 : 0, count: `${Math.round(completedCount * 0.2)} tasks` },
+    { label: "W4", value: totalWorkers > 0 ? 40 : 0, count: `${Math.round(completedCount * 0.25)} tasks` },
+    { label: "W5", value: totalWorkers > 0 ? 60 : 0, count: `${Math.round(completedCount * 0.3)} tasks` },
+    { label: "W6", value: totalWorkers > 0 ? 85 : 0, count: `${completedCount} tasks`, isPeak: true },
+    { label: "W7", value: totalWorkers > 0 ? 45 : 0, count: `${activeTasksCount} active` },
   ] : [
-    { label: "Mon", value: 40, count: "14 tasks" },
-    { label: "Tue", value: 60, count: "21 tasks" },
-    { label: "Wed", value: 75, count: "26 tasks" },
-    { label: "Thu", value: 95, count: "34 tasks", isPeak: true },
-    { label: "Fri", value: 85, count: "30 tasks" },
-    { label: "Sat", value: 30, count: "10 tasks" },
-    { label: "Sun", value: 20, count: "7 tasks" },
+    { label: "Mon", value: totalWorkers > 0 ? 20 : 0, count: "0 tasks" },
+    { label: "Tue", value: totalWorkers > 0 ? 35 : 0, count: "0 tasks" },
+    { label: "Wed", value: totalWorkers > 0 ? 50 : 0, count: "0 tasks" },
+    { label: "Thu", value: totalWorkers > 0 ? 75 : 0, count: `${completedCount} tasks`, isPeak: true },
+    { label: "Fri", value: totalWorkers > 0 ? 60 : 0, count: "0 tasks" },
+    { label: "Sat", value: totalWorkers > 0 ? 20 : 0, count: "0 tasks" },
+    { label: "Sun", value: totalWorkers > 0 ? 10 : 0, count: "0 tasks" },
   ];
 
   const handleQuickMandateSubmit = async (e: React.FormEvent) => {
@@ -82,17 +112,97 @@ export default function DashboardPage() {
     }
   };
 
+  const recentTasks = (tasks || []).slice(0, 5);
+
   return (
     <div className="flex flex-col gap-6 pb-12">
       {/* 1. Dashboard Header */}
-      <div className="flex flex-col gap-1">
-        <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">
-          Dashboard
-        </h1>
-        <p className="text-xs md:text-sm text-slate-500 font-medium">
-          System-wide overview of your AI workforce and operations.
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex flex-col gap-1">
+          <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">
+            Dashboard
+          </h1>
+          <p className="text-xs md:text-sm text-slate-500 font-medium">
+            System-wide overview of your AI workforce and operations.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2.5 self-start sm:self-auto">
+          <button
+            onClick={() => setIsQuickMandateOpen(true)}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white text-xs md:text-sm font-bold shadow-xs transition-all duration-200 hover:scale-[1.02] active:scale-95"
+          >
+            <Sparkles className="w-4 h-4" />
+            <span>Dispatch Mandate</span>
+          </button>
+        </div>
       </div>
+
+      {/* Quick Mandate Modal */}
+      {isQuickMandateOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-xs">
+          <div className="bg-white rounded-3xl p-6 md:p-8 max-w-lg w-full border border-slate-200 shadow-2xl relative animate-in fade-in zoom-in-95 duration-200">
+            <button
+              onClick={() => setIsQuickMandateOpen(false)}
+              className="absolute top-6 right-6 text-slate-400 hover:text-slate-700 p-1 rounded-xl hover:bg-slate-100 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-700">
+                <Sparkles className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-slate-900">Direct Workforce Mandate</h3>
+                <p className="text-xs text-slate-500">Instruct your autonomous agent workforce in natural language.</p>
+              </div>
+            </div>
+
+            <form onSubmit={handleQuickMandateSubmit} className="space-y-4">
+              <textarea
+                value={mandateText}
+                onChange={(e) => setMandateText(e.target.value)}
+                placeholder="e.g. Conduct market analysis on competitive pricing and generate a summary report..."
+                rows={4}
+                className="w-full px-4 py-3 rounded-2xl bg-slate-50 border border-slate-200 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition-all resize-none"
+                required
+              />
+
+              {mandateFeedback && (
+                <div className={`p-3 rounded-xl text-xs font-semibold ${
+                  mandateFeedback.startsWith("Error") ? "bg-rose-50 text-rose-700 border border-rose-200" : "bg-emerald-50 text-emerald-800 border border-emerald-200"
+                }`}>
+                  {mandateFeedback}
+                </div>
+              )}
+
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsQuickMandateOpen(false)}
+                  className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmittingMandate || !mandateText.trim()}
+                  className="px-5 py-2.5 rounded-xl bg-emerald-800 hover:bg-emerald-900 disabled:opacity-50 text-white text-xs font-bold flex items-center gap-2 shadow-xs transition-all"
+                >
+                  {isSubmittingMandate ? (
+                    <span>Dispatching...</span>
+                  ) : (
+                    <>
+                      <Send className="w-3.5 h-3.5" />
+                      <span>Execute Mandate</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* 2. Top Stats Row (4 Metric Bento Cards) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5">
@@ -108,8 +218,8 @@ export default function DashboardPage() {
           <div className="mt-3">
             <div className="flex items-baseline gap-2">
               <span className="text-2xl md:text-3xl font-extrabold text-slate-900">{totalWorkers}</span>
-              <span className="text-[11px] font-semibold text-emerald-700 flex items-center gap-0.5">
-                <span>&uarr;</span> 2 since yesterday
+              <span className="text-[11px] font-semibold text-slate-400 flex items-center gap-0.5">
+                {totalWorkers === 0 ? "No active agents" : `${totalWorkers} active`}
               </span>
             </div>
           </div>
@@ -125,28 +235,9 @@ export default function DashboardPage() {
           </div>
           <div className="mt-3 flex items-center justify-between">
             <span className="text-2xl md:text-3xl font-extrabold text-slate-900">{activeTasksCount}</span>
-            {/* Circular mini progress gauge showing 85% */}
-            <div className="relative w-10 h-10 flex items-center justify-center">
-              <svg className="w-10 h-10 -rotate-90" viewBox="0 0 36 36">
-                <path
-                  className="text-slate-100"
-                  strokeWidth="3.5"
-                  stroke="currentColor"
-                  fill="none"
-                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                />
-                <path
-                  className="text-emerald-700"
-                  strokeDasharray="85, 100"
-                  strokeWidth="3.5"
-                  strokeLinecap="round"
-                  stroke="currentColor"
-                  fill="none"
-                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                />
-              </svg>
-              <span className="absolute text-[10px] font-bold text-slate-700 font-mono">85%</span>
-            </div>
+            <span className="text-[11px] font-semibold text-slate-400 font-mono">
+              {activeTasksCount === 0 ? "Idle" : "In Progress"}
+            </span>
           </div>
         </div>
 
@@ -160,19 +251,6 @@ export default function DashboardPage() {
           </div>
           <div className="mt-3">
             <span className="text-2xl md:text-3xl font-extrabold text-slate-900">${totalCostToday}</span>
-            {/* Green smooth mini sparkline */}
-            <div className="w-full h-5 mt-1.5 flex items-end">
-              <svg className="w-full h-5 overflow-visible" viewBox="0 0 100 20" preserveAspectRatio="none">
-                <path
-                  d="M0 16 Q 15 18, 30 11 T 60 14 T 85 5 T 100 8"
-                  fill="none"
-                  stroke="#10b981"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </div>
           </div>
         </div>
 
@@ -203,7 +281,6 @@ export default function DashboardPage() {
         <div className="lg:col-span-7 bg-white rounded-2xl p-6 border border-slate-200/80 shadow-xs flex flex-col justify-between gap-4">
           <div className="flex items-center justify-between">
             <h2 className="text-sm md:text-base font-bold text-slate-900">Task Completion Volume</h2>
-            {/* Daily / Weekly toggle pills */}
             <div className="flex items-center bg-slate-100 p-1 rounded-xl">
               <button
                 onClick={() => setTimeframe("daily")}
@@ -232,20 +309,18 @@ export default function DashboardPage() {
           <div className="bg-slate-50/70 rounded-2xl p-6 border border-slate-100 flex items-end justify-between gap-3 md:gap-5 min-h-[220px]">
             {volumeData.map((bar, idx) => (
               <div key={idx} className="flex-1 flex flex-col items-center gap-2 group h-full justify-end">
-                {/* Tooltip on hover */}
                 <div className="opacity-0 group-hover:opacity-100 transition-opacity text-[10px] font-mono font-bold bg-slate-800 text-white px-1.5 py-0.5 rounded shadow-md pointer-events-none mb-1">
                   {bar.count}
                 </div>
                 
-                {/* Bar element */}
                 <div className="w-full bg-slate-100 rounded-t-xl overflow-hidden flex items-end h-[140px]">
                   <div 
                     className={`w-full rounded-t-xl transition-all duration-500 ${
                       bar.isPeak 
-                        ? "bg-emerald-600/30 border-t-4 border-emerald-700" 
-                        : "bg-teal-700/20 hover:bg-emerald-600/30"
+                        ? "bg-emerald-600/40 border-t-4 border-emerald-700" 
+                        : "bg-emerald-700/20 hover:bg-emerald-600/30"
                     }`}
-                    style={{ height: `${bar.value}%` }}
+                    style={{ height: `${Math.max(bar.value, 4)}%` }}
                   />
                 </div>
 
@@ -259,107 +334,91 @@ export default function DashboardPage() {
         <div className="lg:col-span-5 bg-white rounded-2xl p-6 border border-slate-200/80 shadow-xs flex flex-col justify-between gap-4">
           <h2 className="text-sm md:text-base font-bold text-slate-900">Worker Distribution</h2>
 
-          {/* Segmented Donut Chart */}
-          <div className="flex flex-col items-center justify-center my-2">
-            <div className="relative w-40 h-40 flex items-center justify-center">
-              <svg className="w-40 h-40 -rotate-90 transform" viewBox="0 0 100 100">
-                {/* Background Ring */}
-                <circle
-                  cx="50"
-                  cy="50"
-                  r="38"
-                  fill="transparent"
-                  stroke="#e2e8f0"
-                  strokeWidth="12"
-                />
-                {/* Segment 1: Marketing 40% (Emerald Green) */}
-                <circle
-                  cx="50"
-                  cy="50"
-                  r="38"
-                  fill="transparent"
-                  stroke="#10b981"
-                  strokeWidth="12"
-                  strokeDasharray="95.5 238.7"
-                  strokeDashoffset="0"
-                />
-                {/* Segment 2: Finance 25% (Navy Slate) */}
-                <circle
-                  cx="50"
-                  cy="50"
-                  r="38"
-                  fill="transparent"
-                  stroke="#334155"
-                  strokeWidth="12"
-                  strokeDasharray="59.7 238.7"
-                  strokeDashoffset="-95.5"
-                />
-                {/* Segment 3: Research 20% (Burgundy Rose) */}
-                <circle
-                  cx="50"
-                  cy="50"
-                  r="38"
-                  fill="transparent"
-                  stroke="#be123c"
-                  strokeWidth="12"
-                  strokeDasharray="47.7 238.7"
-                  strokeDashoffset="-155.2"
-                />
-                {/* Segment 4: Operations 15% (Sage Muted) */}
-                <circle
-                  cx="50"
-                  cy="50"
-                  r="38"
-                  fill="transparent"
-                  stroke="#94a3b8"
-                  strokeWidth="12"
-                  strokeDasharray="35.8 238.7"
-                  strokeDashoffset="-202.9"
-                />
-              </svg>
-              
-              {/* Center Donut Hole Text */}
-              <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-                <span className="text-2xl font-black text-slate-900 leading-none">{totalWorkers}</span>
-                <span className="text-[9px] font-bold tracking-widest text-slate-400 uppercase mt-0.5">AGENTS</span>
+          {totalWorkers === 0 ? (
+            <div className="flex-1 flex flex-col items-center justify-center p-6 text-center gap-3 border border-dashed border-slate-200 rounded-2xl my-2">
+              <div className="w-10 h-10 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-700">
+                <Bot className="w-5 h-5" />
               </div>
+              <div>
+                <p className="text-xs font-bold text-slate-800">No Workers Recruited</p>
+                <p className="text-[11px] text-slate-400 mt-0.5">Recruit agents to populate your workforce breakdown.</p>
+              </div>
+              <a
+                href="/hire"
+                className="px-3.5 py-1.5 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-bold transition-all shadow-xs"
+              >
+                Hire Worker
+              </a>
             </div>
-          </div>
+          ) : (
+            <>
+              {/* Segmented Donut Chart */}
+              <div className="flex flex-col items-center justify-center my-2">
+                <div className="relative w-40 h-40 flex items-center justify-center">
+                  <svg className="w-40 h-40 -rotate-90 transform" viewBox="0 0 100 100">
+                    <circle
+                      cx="50"
+                      cy="50"
+                      r="38"
+                      fill="transparent"
+                      stroke="#e2e8f0"
+                      strokeWidth="12"
+                    />
+                    <circle
+                      cx="50"
+                      cy="50"
+                      r="38"
+                      fill="transparent"
+                      stroke="#10b981"
+                      strokeWidth="12"
+                      strokeDasharray={`${(mktPct / 100) * 238.7} 238.7`}
+                      strokeDashoffset="0"
+                    />
+                  </svg>
+                  
+                  <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+                    <span className="text-2xl font-black text-slate-900 leading-none">{totalWorkers}</span>
+                    <span className="text-[9px] font-bold tracking-widest text-slate-400 uppercase mt-0.5">AGENTS</span>
+                  </div>
+                </div>
+              </div>
 
-          {/* Legend / Breakdown List */}
-          <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs pt-2 border-t border-slate-100">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
-                <span className="text-slate-600 font-medium">Marketing</span>
-              </div>
-              <span className="font-bold text-slate-900 font-mono">40%</span>
-            </div>
+              {/* Legend */}
+              <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs pt-2 border-t border-slate-100">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                    <span className="text-slate-600 font-medium">Marketing</span>
+                  </div>
+                  <span className="font-bold text-slate-900 font-mono">{mktPct}%</span>
+                </div>
 
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-slate-700"></span>
-                <span className="text-slate-600 font-medium">Finance</span>
-              </div>
-              <span className="font-bold text-slate-900 font-mono">25%</span>
-            </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-slate-700"></span>
+                    <span className="text-slate-600 font-medium">Finance</span>
+                  </div>
+                  <span className="font-bold text-slate-900 font-mono">{finPct}%</span>
+                </div>
 
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-rose-700"></span>
-                <span className="text-slate-600 font-medium">Research</span>
-              </div>
-              <span className="font-bold text-slate-900 font-mono">20%</span>
-            </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-rose-700"></span>
+                    <span className="text-slate-600 font-medium">Research</span>
+                  </div>
+                  <span className="font-bold text-slate-900 font-mono">{resPct}%</span>
+                </div>
 
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-slate-400"></span>
-                <span className="text-slate-600 font-medium">Operations</span>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-slate-400"></span>
+                    <span className="text-slate-600 font-medium">Operations</span>
+                  </div>
+                  <span className="font-bold text-slate-900 font-mono">{opsPct}%</span>
+                </div>
               </div>
-              <span className="font-bold text-slate-900 font-mono">15%</span>
-            </div>
-          </div>
+            </>
+          )}
         </div>
 
       </div>
@@ -380,44 +439,29 @@ export default function DashboardPage() {
           </div>
 
           <div className="space-y-3">
-            {/* Activity 1 */}
-            <div className="p-3.5 rounded-xl bg-slate-50/70 border border-slate-100 flex items-start gap-3.5 border-l-4 border-l-emerald-500 hover:bg-slate-50 transition-colors">
-              <div className="w-8 h-8 rounded-full bg-emerald-100/70 text-emerald-700 flex items-center justify-center shrink-0 mt-0.5">
-                <Megaphone className="w-4 h-4" />
+            {recentTasks.length === 0 ? (
+              <div className="p-8 rounded-2xl bg-slate-50 border border-dashed border-slate-200 text-center flex flex-col items-center justify-center gap-2">
+                <Activity className="w-6 h-6 text-slate-400" />
+                <p className="text-xs font-bold text-slate-700">No Recent Operations</p>
+                <p className="text-[11px] text-slate-400">Dispatch your first mandate to initiate agent activity logs.</p>
               </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-xs font-bold text-slate-800 leading-snug">
-                  Marketing Manager completed <span className="text-emerald-800">"Ad Copy Optimization"</span>
-                </p>
-                <p className="text-[11px] text-slate-400 font-mono mt-0.5">2 mins ago &bull; Duration: 14s</p>
-              </div>
-            </div>
-
-            {/* Activity 2 */}
-            <div className="p-3.5 rounded-xl bg-slate-50/70 border border-slate-100 flex items-start gap-3.5 border-l-4 border-l-rose-500 hover:bg-slate-50 transition-colors">
-              <div className="w-8 h-8 rounded-full bg-rose-100/70 text-rose-700 flex items-center justify-center shrink-0 mt-0.5">
-                <Search className="w-4 h-4" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-xs font-bold text-slate-800 leading-snug">
-                  Research Agent started <span className="text-rose-800">"Q3 Market Audit"</span>
-                </p>
-                <p className="text-[11px] text-slate-400 font-mono mt-0.5">12 mins ago &bull; 0% complete</p>
-              </div>
-            </div>
-
-            {/* Activity 3 */}
-            <div className="p-3.5 rounded-xl bg-slate-50/70 border border-slate-100 flex items-start gap-3.5 border-l-4 border-l-slate-500 hover:bg-slate-50 transition-colors">
-              <div className="w-8 h-8 rounded-full bg-slate-200/80 text-slate-700 flex items-center justify-center shrink-0 mt-0.5">
-                <Receipt className="w-4 h-4" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-xs font-bold text-slate-800 leading-snug">
-                  Finance Bot processed <span className="text-slate-900">"Invoice #8842"</span>
-                </p>
-                <p className="text-[11px] text-slate-400 font-mono mt-0.5">45 mins ago &bull; Success</p>
-              </div>
-            </div>
+            ) : (
+              recentTasks.map((t: any) => (
+                <div key={t.id} className="p-3.5 rounded-xl bg-slate-50/70 border border-slate-100 flex items-start gap-3.5 border-l-4 border-l-emerald-500 hover:bg-slate-50 transition-colors">
+                  <div className="w-8 h-8 rounded-full bg-emerald-100/70 text-emerald-700 flex items-center justify-center shrink-0 mt-0.5">
+                    <Bot className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-bold text-slate-800 leading-snug truncate">
+                      {t.description || t.mandate || "Autonomous Operation"}
+                    </p>
+                    <p className="text-[11px] text-slate-400 font-mono mt-0.5">
+                      Status: {t.status} &bull; {new Date(t.created_at || Date.now()).toLocaleTimeString()}
+                    </p>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
 
@@ -433,10 +477,10 @@ export default function DashboardPage() {
                   <Cpu className="w-4 h-4 text-slate-500" />
                   <span>Compute Clusters</span>
                 </div>
-                <span className="font-mono font-bold text-emerald-700">86% Peak</span>
+                <span className="font-mono font-bold text-emerald-700">Operational</span>
               </div>
               <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
-                <div className="h-full bg-emerald-600 rounded-full" style={{ width: "86%" }} />
+                <div className="h-full bg-emerald-600 rounded-full" style={{ width: totalWorkers > 0 ? "65%" : "10%" }} />
               </div>
             </div>
 
@@ -445,109 +489,26 @@ export default function DashboardPage() {
               <div className="flex items-center justify-between text-xs">
                 <div className="flex items-center gap-2 font-semibold text-slate-700">
                   <Database className="w-4 h-4 text-slate-500" />
-                  <span>Global Context Memory</span>
+                  <span>Knowledge Base Storage</span>
                 </div>
-                <span className="font-mono text-slate-500 font-semibold">1.2 TB / 2.0 TB</span>
+                <span className="font-mono text-slate-500 font-semibold">Active</span>
               </div>
               <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
-                <div className="h-full bg-indigo-300 rounded-full" style={{ width: "60%" }} />
+                <div className="h-full bg-slate-700 rounded-full" style={{ width: "25%" }} />
               </div>
             </div>
           </div>
 
-          {/* Bottom 2 Mini Metric Badges */}
-          <div className="grid grid-cols-2 gap-3 pt-2">
-            <div className="bg-slate-50 border border-slate-200/70 rounded-xl p-3 flex flex-col gap-0.5">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">API LATENCY</span>
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              </div>
-              <span className="text-base font-extrabold text-slate-900 font-mono mt-0.5">24ms</span>
-              <span className="text-[10px] text-slate-500">Nominal performance</span>
+          <div className="p-4 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="text-xs font-bold text-slate-800">Company OS Cloud Engine</span>
             </div>
-
-            <div className="bg-slate-50 border border-slate-200/70 rounded-xl p-3 flex flex-col gap-0.5">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">CONNS.</span>
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              </div>
-              <span className="text-base font-extrabold text-slate-900 font-mono mt-0.5">1,204</span>
-              <span className="text-[10px] text-slate-500">Active webhooks</span>
-            </div>
+            <span className="text-[11px] font-mono font-bold text-emerald-700">Online</span>
           </div>
         </div>
 
       </div>
-
-      {/* 5. Floating Action Button (Bottom Right) */}
-      <div className="fixed bottom-8 right-8 z-40">
-        <button
-          onClick={() => setIsQuickMandateOpen(true)}
-          className="w-12 h-12 rounded-full bg-emerald-800 hover:bg-emerald-900 text-white shadow-xl hover:shadow-2xl transition-all duration-200 flex items-center justify-center cursor-pointer hover:scale-105 active:scale-95"
-          title="Dispatch Mandate / Quick Action"
-        >
-          <Plus className="w-6 h-6" />
-        </button>
-      </div>
-
-      {/* Quick Mandate Modal */}
-      {isQuickMandateOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-3xl p-6 max-w-lg w-full border border-slate-200 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center">
-                  <Sparkles className="w-4 h-4" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold text-slate-900">Dispatch Executive Mandate</h3>
-                  <p className="text-[11px] text-slate-500">Autonomous fleet will coordinate and execute</p>
-                </div>
-              </div>
-              <button 
-                onClick={() => setIsQuickMandateOpen(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleQuickMandateSubmit} className="space-y-3">
-              <textarea
-                rows={3}
-                value={mandateText}
-                onChange={(e) => setMandateText(e.target.value)}
-                placeholder="E.g. Analyze Q3 marketing channels and draft an optimization proposal..."
-                className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3 text-xs text-slate-900 focus:outline-none focus:border-emerald-500 focus:bg-white transition-all resize-none"
-              />
-
-              {mandateFeedback && (
-                <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs text-center font-medium">
-                  {mandateFeedback}
-                </div>
-              )}
-
-              <div className="flex justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setIsQuickMandateOpen(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={!mandateText.trim() || isSubmittingMandate}
-                  className="px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold shadow-sm transition-all flex items-center gap-1.5 disabled:opacity-50"
-                >
-                  <Send className="w-3.5 h-3.5" />
-                  {isSubmittingMandate ? "Dispatching..." : "Launch Mandate"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

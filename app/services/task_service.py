@@ -59,24 +59,11 @@ class TaskService:
             logger.warning(f"Supabase agents list fallback: {e}")
 
         # Merge local in-memory agents
-        local_agents = [v for k, v in _IN_MEMORY_AGENTS.items() if v.get("business_id") == business_id or business_id == "default-business-id" or not is_valid_uuid(business_id)]
+        local_agents = [v for k, v in _IN_MEMORY_AGENTS.items() if v.get("business_id") == business_id]
         seen_ids = {str(a.get("id")) for a in agents if isinstance(a, dict)}
         for la in local_agents:
             if str(la.get("id")) not in seen_ids:
                 agents.append(dict(la))
-
-        if not agents:
-            # Seed 5 default specialists according to PRD v6.0
-            default_specialists = [
-                {"id": "agent-lead", "business_id": business_id, "name": "Atlas (Lead Orchestrator)", "role": "Lead Orchestrator", "status": "Idle", "trust_tier": "assist", "authority_limit_usd": 500.0, "clean_cycles_count": 12},
-                {"id": "agent-eng", "business_id": business_id, "name": "Cipher (Software Engineer)", "role": "Software Engineer", "status": "Idle", "trust_tier": "operate", "authority_limit_usd": 1000.0, "clean_cycles_count": 25},
-                {"id": "agent-fin", "business_id": business_id, "name": "Ledger (Finance Specialist)", "role": "Finance Specialist", "status": "Idle", "trust_tier": "observe", "authority_limit_usd": 0.0, "clean_cycles_count": 8},
-                {"id": "agent-mkt", "business_id": business_id, "name": "Echo (Growth Specialist)", "role": "Marketing Specialist", "status": "Idle", "trust_tier": "assist", "authority_limit_usd": 150.0, "clean_cycles_count": 14},
-                {"id": "agent-ops", "business_id": business_id, "name": "Nexus (Research Specialist)", "role": "Research Specialist", "status": "Idle", "trust_tier": "assist", "authority_limit_usd": 100.0, "clean_cycles_count": 10}
-            ]
-            for da in default_specialists:
-                _IN_MEMORY_AGENTS[da["id"]] = da
-            agents = [dict(a) for a in _IN_MEMORY_AGENTS.values()]
 
         # Merge in-memory extra fields (trust_tier, clean_cycles, etc.)
         for a in agents:

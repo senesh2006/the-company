@@ -1,31 +1,29 @@
 "use client";
 
 import { useState } from "react";
-import { useAgents, useMetrics, useTasks } from "@/lib/queries";
+import { useAgents, useMetrics } from "@/lib/queries";
 import { useAppStore } from "@/lib/store";
 import { 
   Plus, 
   SlidersHorizontal, 
   ArrowUpDown, 
-  List, 
   LayoutGrid, 
+  List, 
+  Bot, 
+  Megaphone, 
+  Briefcase, 
+  Search, 
+  Settings, 
   Radio, 
   Cpu, 
   CreditCard, 
   CheckCircle2,
-  TrendingUp,
-  Megaphone,
-  Briefcase,
-  Search,
-  Settings,
-  Bot,
-  Sparkles
+  ChevronDown
 } from "lucide-react";
 
-export default function WorkersPage() {
-  const { data: agents, isLoading: isLoadingAgents } = useAgents();
+export default function AgentsPage() {
+  const { data: agents, isLoading } = useAgents();
   const { data: metrics } = useMetrics();
-  const { data: tasks } = useTasks();
   const { setSelectedAgentId } = useAppStore();
 
   const [filterDepartment, setFilterDepartment] = useState<string>("all");
@@ -35,65 +33,12 @@ export default function WorkersPage() {
   const [viewMode, setViewMode] = useState<"table" | "grid">("table");
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
 
-  // Default mock workers mapping if empty or supplementary
-  const defaultWorkersList = [
-    {
-      id: "agent-marketing-mgr",
-      name: "Marketing Manager",
-      sublabel: "Growth & Social",
-      department: "Marketing",
-      status: "Running",
-      currentTask: "Creating LinkedIn content calendar",
-      progress: 96.8,
-      costToday: 1.24,
-      avatarBg: "bg-emerald-50 border-emerald-200 text-emerald-700",
-      icon: Megaphone
-    },
-    {
-      id: "agent-finance-worker",
-      name: "Finance Agent",
-      sublabel: "Ledger & Audits",
-      department: "Finance",
-      status: "Paused",
-      currentTask: "Waiting for approval on refund",
-      progress: 45.0,
-      costToday: 0.86,
-      avatarBg: "bg-blue-50 border-blue-200 text-blue-700",
-      icon: Briefcase
-    },
-    {
-      id: "agent-research-worker",
-      name: "Research Agent",
-      sublabel: "Market Insights",
-      department: "Research",
-      status: "Running",
-      currentTask: "Competitor analysis",
-      progress: 53.1,
-      costToday: 2.10,
-      avatarBg: "bg-purple-50 border-purple-200 text-purple-700",
-      icon: Search
-    },
-    {
-      id: "agent-admin-worker",
-      name: "Admin Agent",
-      sublabel: "Ops & Scheduling",
-      department: "Operations",
-      status: "Idle",
-      currentTask: "—",
-      progress: 0.0,
-      costToday: 0.12,
-      avatarBg: "bg-slate-100 border-slate-200 text-slate-600",
-      icon: Settings
-    }
-  ];
-
-  // Merge database agents if available, preserving the mockup structure
+  // Map real database agents
   const workers = (agents && agents.length > 0)
-    ? agents.map((a: any, idx: number) => {
-        const matchingDefault = defaultWorkersList[idx % defaultWorkersList.length];
+    ? agents.map((a: any) => {
         const r = (a.role || "").toLowerCase();
         let dept = "Operations";
-        let sub = "Specialist";
+        let sub = a.role || "Specialist";
         let icon = Bot;
         let bg = "bg-slate-100 border-slate-200 text-slate-700";
 
@@ -116,18 +61,18 @@ export default function WorkersPage() {
 
         return {
           id: a.id,
-          name: a.name || matchingDefault.name,
+          name: a.name || "Autonomous Agent",
           sublabel: sub,
           department: dept,
-          status: a.status || matchingDefault.status,
-          currentTask: a.current_task_title || matchingDefault.currentTask,
-          progress: a.task_progress ?? matchingDefault.progress,
-          costToday: a.cost_today_usd ?? matchingDefault.costToday,
+          status: a.status || "Idle",
+          currentTask: a.current_task_title || "Standby for directives",
+          progress: a.task_progress ?? 0,
+          costToday: a.cost_today_usd ?? 0.0,
           avatarBg: bg,
           icon: icon
         };
       })
-    : defaultWorkersList;
+    : [];
 
   // Filter & Sort Logic
   const filteredWorkers = workers.filter((w) => {
@@ -290,8 +235,25 @@ export default function WorkersPage() {
         </div>
       </div>
 
-      {/* 3. Workers Content (Table / Grid) */}
-      {viewMode === "table" ? (
+      {/* 3. Workers Content (Table / Grid or Empty State) */}
+      {filteredWorkers.length === 0 ? (
+        <div className="bg-white rounded-3xl p-12 flex flex-col items-center justify-center text-center gap-3 border border-dashed border-slate-200 shadow-xs">
+          <div className="w-12 h-12 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-700">
+            <Bot className="w-6 h-6" />
+          </div>
+          <h3 className="text-base font-bold text-slate-900">No Workers Recruited Yet</h3>
+          <p className="text-xs text-slate-500 max-w-sm">
+            Deploy specialized autonomous AI agents to handle marketing, finance, research, and technical operations.
+          </p>
+          <a
+            href="/hire"
+            className="mt-2 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-bold shadow-xs transition-all"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>Hire Your First Worker</span>
+          </a>
+        </div>
+      ) : viewMode === "table" ? (
         <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
@@ -486,10 +448,10 @@ export default function WorkersPage() {
           </div>
           <div className="mt-3">
             <span className="text-2xl md:text-3xl font-extrabold text-slate-900">
-              {agents?.length || 12}
+              {agents?.length || 0}
             </span>
-            <p className="text-[11px] font-semibold text-emerald-700 mt-1 flex items-center gap-1">
-              <span>&#9650;</span> 2 since yesterday
+            <p className="text-[11px] font-semibold text-slate-400 mt-1 flex items-center gap-1">
+              <span>&#9650;</span> {agents?.length || 0} deployed
             </p>
           </div>
         </div>
@@ -503,9 +465,11 @@ export default function WorkersPage() {
             </div>
           </div>
           <div className="mt-3">
-            <span className="text-2xl md:text-3xl font-extrabold text-slate-900">84%</span>
+            <span className="text-2xl md:text-3xl font-extrabold text-slate-900">
+              {(agents?.length || 0) > 0 ? "Normal" : "Idle"}
+            </span>
             <p className="text-[11px] text-slate-400 font-medium mt-1">
-              Peak usage at 14:00
+              Autonomous execution ready
             </p>
           </div>
         </div>
@@ -520,10 +484,10 @@ export default function WorkersPage() {
           </div>
           <div className="mt-3">
             <span className="text-2xl md:text-3xl font-extrabold text-slate-900">
-              ${metrics?.totalCost ? metrics.totalCost.toFixed(2) : "42.30"}
+              ${(metrics?.totalCost || 0).toFixed(2)}
             </span>
-            <p className="text-[11px] font-semibold text-rose-600 mt-1 flex items-center gap-1">
-              <span>&#9650;</span> 12% above avg
+            <p className="text-[11px] font-semibold text-emerald-700 mt-1 flex items-center gap-1">
+              <span>&#9650;</span> Real-time telemetry
             </p>
           </div>
         </div>
@@ -538,10 +502,10 @@ export default function WorkersPage() {
           </div>
           <div className="mt-3">
             <span className="text-2xl md:text-3xl font-extrabold text-slate-900">
-              {metrics?.completedTasks || 156}
+              {metrics?.completedTasks || 0}
             </span>
             <p className="text-[11px] text-slate-500 font-medium mt-1">
-              {metrics?.errorRate !== undefined ? `${(100 - metrics.errorRate).toFixed(1)}%` : "98.2%"} success rate
+              {metrics?.errorRate !== undefined ? `${(100 - metrics.errorRate).toFixed(1)}%` : "100%"} success rate
             </p>
           </div>
         </div>

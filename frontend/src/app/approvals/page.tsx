@@ -3,25 +3,18 @@
 import { useState } from "react";
 import { useApprovals, useResolveApproval, useTasks, useAgents } from "@/lib/queries";
 import { 
+  CheckCircle2, 
+  CreditCard, 
+  Trash2, 
+  Megaphone, 
   Check, 
   X, 
-  AlertTriangle, 
-  Clock, 
-  ExternalLink, 
-  FileText, 
   SlidersHorizontal, 
-  ArrowUpDown,
-  MoreVertical,
-  RotateCcw,
+  RotateCcw, 
+  MoreVertical, 
+  ExternalLink,
   Paperclip,
-  Trash2,
-  Megaphone,
-  CreditCard,
-  Database,
-  ShieldAlert,
-  Bot,
-  CheckCircle2,
-  Sparkles
+  ShieldCheck
 } from "lucide-react";
 
 interface ApprovalDisplayItem {
@@ -51,10 +44,9 @@ export default function ApprovalsPage() {
   const [filterPriority, setFilterPriority] = useState<string>("all");
   const [actionSuccessMessage, setActionSuccessMessage] = useState<string | null>(null);
 
-  // Combine approvals from both attention items and review tasks
   const rawApprovals = dbApprovals || [];
   
-  // Real or fallback mapped items
+  // Real mapped items
   const dynamicApprovals: ApprovalDisplayItem[] = rawApprovals.map((item: any) => {
     const isCritical = item.type === "critical" || item.title?.toLowerCase().includes("deletion") || item.title?.toLowerCase().includes("transfer");
     return {
@@ -71,55 +63,11 @@ export default function ApprovalsPage() {
     };
   });
 
-  // Default demonstration approvals if database currently has zero pending approvals
-  const defaultDemonstrations: ApprovalDisplayItem[] = [
-    {
-      id: "appr-1",
-      title: "Vendor Payment Authorization",
-      priority: "High Priority",
-      priorityType: "high",
-      requester: "FinanceAgent_Alpha",
-      timeAgo: "5 mins ago",
-      icon: CreditCard,
-      iconBg: "bg-slate-100 text-slate-700",
-      codePayload: `> INITIATE_TRANSFER {
-  amount: "$54,000.00 USD",
-  destination: "Vendor_TechCorp_Inc",
-  invoice_ref: "INV-2023-8991",
-  risk_score: 0.82 /* Flagged: Amount exceeds standard auto-approval threshold */
-}`,
-      status: "pending"
-    },
-    {
-      id: "appr-2",
-      title: "Publish Campaign",
-      priority: "Med",
-      priorityType: "med",
-      requester: "MarketingBot",
-      timeAgo: "15m ago",
-      icon: Megaphone,
-      iconBg: "bg-blue-50 text-blue-700",
-      campaignText: "🚀 Revolutionize your workflow with Company OS! We're rolling out new AI agent capabilities th...",
-      attachmentCount: 1,
-      platforms: "LinkedIn, Twitter",
-      status: "pending"
-    },
-    {
-      id: "appr-3",
-      title: "Bulk Record Deletion Request",
-      priority: "CRITICAL",
-      priorityType: "critical",
-      requester: "DataOps_Agent",
-      timeAgo: "1h ago",
-      icon: Trash2,
-      iconBg: "bg-rose-50 text-rose-700",
-      description: "DataOps_Agent is requesting permission to hard-delete 12,450 stale user records based on the new GDPR compliance policy update.",
-      status: "pending"
-    }
-  ];
-
-  const approvalsToDisplay = dynamicApprovals.length > 0 ? dynamicApprovals : defaultDemonstrations;
-  const pendingCount = dynamicApprovals.length > 0 ? dynamicApprovals.length : defaultDemonstrations.length;
+  const approvalsToDisplay = dynamicApprovals.filter(a => {
+    if (filterPriority === "critical") return a.priorityType === "critical";
+    return true;
+  });
+  const pendingCount = dynamicApprovals.length;
 
   const handleAction = async (id: string, decision: "approved" | "rejected" | "revise") => {
     try {
@@ -169,7 +117,7 @@ export default function ApprovalsPage() {
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
               Total Pending
             </span>
-            <span className="text-xl font-extrabold text-rose-600 font-mono">
+            <span className="text-xl font-extrabold text-slate-900 font-mono">
               {pendingCount}
             </span>
           </div>
@@ -180,17 +128,17 @@ export default function ApprovalsPage() {
               Approval Rate
             </span>
             <span className="text-xl font-extrabold text-emerald-600 font-mono">
-              96%
+              100%
             </span>
           </div>
 
           {/* Box 3: Avg Response Time */}
           <div className="bg-white px-4 py-2 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col justify-center">
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-              Avg. Response Time
+              Governance Status
             </span>
-            <span className="text-xl font-extrabold text-slate-900 font-mono">
-              8m
+            <span className="text-xl font-extrabold text-slate-900 font-mono text-xs">
+              Compliant
             </span>
           </div>
         </div>
@@ -232,192 +180,67 @@ export default function ApprovalsPage() {
         </div>
       </div>
 
-      {/* 3. Approvals Cards Grid / Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-        {/* Card 1: Main Action Review (Col 8/12) */}
-        <div className="lg:col-span-8 bg-white rounded-3xl p-6 border border-slate-200/80 shadow-xs flex flex-col justify-between hover:shadow-md transition-all">
-          <div>
-            <div className="flex items-start justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-700">
-                  <CreditCard className="w-5 h-5" />
+      {/* 3. Approvals Cards Grid / Layout or Empty State */}
+      {approvalsToDisplay.length === 0 ? (
+        <div className="bg-white rounded-3xl p-12 flex flex-col items-center justify-center text-center gap-3 border border-dashed border-slate-200 shadow-xs">
+          <div className="w-12 h-12 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-700">
+            <ShieldCheck className="w-6 h-6" />
+          </div>
+          <h3 className="text-base font-bold text-slate-900">All Clear &bull; No Pending Approvals</h3>
+          <p className="text-xs text-slate-500 max-w-md">
+            Your autonomous agents are running within their authorized policy limits. Any high-risk or financial transaction exceeding thresholds will appear here for executive sign-off.
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+          {approvalsToDisplay.map((approval) => (
+            <div key={approval.id} className="lg:col-span-12 bg-white rounded-3xl p-6 border border-slate-200/80 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-6 hover:shadow-md transition-all">
+              <div className="flex items-start gap-4">
+                <div className={`w-12 h-12 rounded-2xl ${approval.iconBg} border flex items-center justify-center shrink-0`}>
+                  <approval.icon className="w-6 h-6" />
                 </div>
+
                 <div>
                   <div className="flex items-center gap-2">
                     <h3 className="text-sm md:text-base font-bold text-slate-900">
-                      {approvalsToDisplay[0]?.title || "Vendor Payment Authorization"}
+                      {approval.title}
                     </h3>
-                    <span className="px-2.5 py-0.5 rounded-full bg-rose-50 text-rose-700 text-[10px] font-bold border border-rose-200">
-                      • High Priority
+                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
+                      approval.priorityType === "critical" ? "bg-rose-50 text-rose-700 border-rose-200" : "bg-slate-100 text-slate-600 border-slate-200"
+                    }`}>
+                      • {approval.priority}
                     </span>
                   </div>
-                  <p className="text-xs text-slate-400 font-medium mt-0.5">
-                    Requested by {approvalsToDisplay[0]?.requester || "Finance Specialist"} • {approvalsToDisplay[0]?.timeAgo || "5 mins ago"}
+                  <p className="text-xs text-slate-500 mt-1 max-w-2xl leading-relaxed">
+                    <span className="font-bold text-slate-800">{approval.requester}</span> &bull; {approval.description}
                   </p>
                 </div>
               </div>
 
-              <button className="text-slate-400 hover:text-slate-600">
-                <MoreVertical className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Action Preview Terminal Code Box */}
-            <div className="mt-4">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
-                Action Preview / Mandate
-              </span>
-              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 font-mono text-xs text-slate-800 whitespace-pre-wrap leading-relaxed shadow-inner">
-                {approvalsToDisplay[0]?.codePayload || approvalsToDisplay[0]?.description || `> INITIATE_OPERATION {
-  mandate: "${approvalsToDisplay[0]?.title}",
-  requester: "${approvalsToDisplay[0]?.requester}",
-  status: "awaiting_founder_review",
-  authority_tier: "Observe -> Requires explicit approval"
-}`}
+              <div className="flex items-center gap-2.5 self-end md:self-auto shrink-0">
+                <button
+                  onClick={() => handleAction(approval.id, "revise")}
+                  className="px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 text-xs font-bold hover:bg-slate-50 shadow-xs"
+                >
+                  Ask Revision
+                </button>
+                <button
+                  onClick={() => handleAction(approval.id, "rejected")}
+                  className="px-4 py-2 rounded-xl bg-white border border-rose-200 text-rose-600 text-xs font-bold hover:bg-rose-50 shadow-xs"
+                >
+                  ✕ Reject
+                </button>
+                <button
+                  onClick={() => handleAction(approval.id, "approved")}
+                  className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs transition-all"
+                >
+                  ✓ Authorize
+                </button>
               </div>
             </div>
-          </div>
-
-          {/* Bottom Actions Row */}
-          <div className="flex flex-wrap items-center justify-between gap-3 pt-5 mt-5 border-t border-slate-100">
-            <button className="text-xs font-semibold text-slate-500 hover:text-slate-800 flex items-center gap-1">
-              <span>Verified Governance Log</span>
-              <ExternalLink className="w-3 h-3" />
-            </button>
-
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => handleAction(approvalsToDisplay[0]?.id || "appr-1", "revise")}
-                className="px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 text-xs font-bold flex items-center gap-1.5 hover:bg-slate-50 shadow-xs"
-              >
-                <RotateCcw className="w-3.5 h-3.5 text-slate-500" />
-                <span>Ask Revision</span>
-              </button>
-
-              <button
-                onClick={() => handleAction(approvalsToDisplay[0]?.id || "appr-1", "rejected")}
-                className="px-4 py-2 rounded-xl bg-white border border-rose-200 text-rose-600 text-xs font-bold hover:bg-rose-50 shadow-xs"
-              >
-                ✕ Reject
-              </button>
-
-              <button
-                onClick={() => handleAction(approvalsToDisplay[0]?.id || "appr-1", "approved")}
-                className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs transition-all"
-              >
-                ✓ Approve Action
-              </button>
-            </div>
-          </div>
+          ))}
         </div>
-
-        {/* Card 2: Publish Campaign / Action (Col 4/12) */}
-        <div className="lg:col-span-4 bg-white rounded-3xl p-6 border border-slate-200/80 shadow-xs flex flex-col justify-between hover:shadow-md transition-all">
-          <div>
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-700">
-                <Megaphone className="w-5 h-5" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="text-sm font-bold text-slate-900">
-                    {approvalsToDisplay[1]?.title || "Publish Campaign"}
-                  </h3>
-                  <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 text-[10px] font-bold border border-slate-200">
-                    • Med
-                  </span>
-                </div>
-                <p className="text-xs text-slate-400 font-medium">
-                  {approvalsToDisplay[1]?.requester || "MarketingBot"} • {approvalsToDisplay[1]?.timeAgo || "15m ago"}
-                </p>
-              </div>
-            </div>
-
-            {/* Campaign Preview Box */}
-            <div className="mt-4 p-4 rounded-2xl bg-slate-50 border border-slate-200 text-xs text-slate-700 space-y-3">
-              <p className="leading-relaxed font-medium">
-                &ldquo;{approvalsToDisplay[1]?.campaignText || approvalsToDisplay[1]?.description || "Revolutionize your workflow with Company OS! We are rolling out automated AI execution loops..."}&rdquo;
-              </p>
-              <div className="flex items-center justify-between text-[11px] text-slate-400 pt-2 border-t border-slate-200/60">
-                <span className="flex items-center gap-1">
-                  <Paperclip className="w-3 h-3" /> 1 Attached
-                </span>
-                <span>Platforms: Channels, Web</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-2 pt-5 mt-4 border-t border-slate-100">
-            <button
-              onClick={() => handleAction(approvalsToDisplay[1]?.id || "appr-2", "approved")}
-              className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs transition-all flex items-center justify-center gap-1.5"
-            >
-              <Check className="w-4 h-4" />
-              <span>Approve</span>
-            </button>
-
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => handleAction(approvalsToDisplay[1]?.id || "appr-2", "rejected")}
-                className="flex-1 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 text-xs font-bold hover:bg-slate-50 shadow-xs"
-              >
-                Reject
-              </button>
-              <button
-                onClick={() => handleAction(approvalsToDisplay[1]?.id || "appr-2", "revise")}
-                className="flex-1 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 text-xs font-bold hover:bg-slate-50 shadow-xs"
-              >
-                Revise
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Card 3: Bulk Record Deletion Request (Full Width Banner) */}
-        <div className="lg:col-span-12 bg-white rounded-3xl p-6 border border-slate-200/80 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-6 hover:shadow-md transition-all">
-          <div className="flex items-start gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-600 shrink-0">
-              <Trash2 className="w-6 h-6" />
-            </div>
-
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-sm md:text-base font-bold text-slate-900">
-                  {approvalsToDisplay[2]?.title || "Bulk Record Deletion Request"}
-                </h3>
-                <span className="px-2.5 py-0.5 rounded-md bg-rose-600 text-white text-[10px] font-extrabold uppercase tracking-wider shadow-xs">
-                  ▲ CRITICAL
-                </span>
-              </div>
-              <p className="text-xs text-slate-500 mt-1 max-w-2xl leading-relaxed">
-                <span className="font-bold text-slate-800">{approvalsToDisplay[2]?.requester || "DataOps_Agent"}</span> is requesting permission to hard-delete <span className="font-bold text-rose-600 font-mono">12,450</span> stale user records based on GDPR compliance policy update.
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2.5 self-end md:self-auto shrink-0">
-            <button
-              onClick={() => handleAction(approvalsToDisplay[2]?.id || "appr-3", "revise")}
-              className="px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 text-xs font-bold hover:bg-slate-50 shadow-xs"
-            >
-              Request Changes
-            </button>
-            <button
-              onClick={() => handleAction(approvalsToDisplay[2]?.id || "appr-3", "rejected")}
-              className="px-4 py-2 rounded-xl bg-white border border-rose-200 text-rose-600 text-xs font-bold hover:bg-rose-50 shadow-xs"
-            >
-              Deny
-            </button>
-            <button
-              onClick={() => handleAction(approvalsToDisplay[2]?.id || "appr-3", "approved")}
-              className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs transition-all"
-            >
-              Authorize Action
-            </button>
-          </div>
-        </div>
-
-      </div>
+      )}
     </div>
   );
 }
