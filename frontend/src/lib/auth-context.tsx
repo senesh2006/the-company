@@ -2,7 +2,8 @@
 
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { User, Session, AuthError } from "@supabase/supabase-js";
-import { supabase, isSupabaseConfigured } from "./supabase";
+import { supabase, isSupabaseConfigured, updateSupabaseClient } from "./supabase";
+import { getBaseUrl } from "./api";
 
 interface AuthContextType {
   user: User | null;
@@ -21,45 +22,75 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const isConfigured = isSupabaseConfigured();
+  const [isConfiguredState, setIsConfiguredState] = useState<boolean>(isSupabaseConfigured());
 
   useEffect(() => {
-    if (!isConfigured) {
-      // Demo mock founder profile for local dev when keys are not yet provisioned
-      const mockUser = {
-        id: "founder-001",
-        email: "executive@companyos.ai",
-        user_metadata: { full_name: "Executive Founder", role: "admin" },
-        app_metadata: { provider: "email" },
-        aud: "authenticated",
-        created_at: new Date().toISOString(),
-      } as unknown as User;
+    let unsubscribe: (() => void) | undefined;
 
-      setUser(mockUser);
-      setIsLoading(false);
-      return;
-    }
+    const setupAuth = async () => {
+      let activeClient = supabase;
+      let configured = isSupabaseConfigured();
 
-    // Real Supabase session management
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setIsLoading(false);
-    });
+      // If not configured via build-time env vars, attempt runtime discovery from backend /api/v1/config
+      if (!configured) {
+        try {
+          const res = await fetch(`${getBaseUrl()}/api/v1/config`);
+          if (res.ok) {
+            const data = await res.json();
+            if (data?.supabaseUrl && data?.supabaseKey && !data.supabaseUrl.includes("placeholder-project")) {
+              activeClient = updateSupabaseClient(data.supabaseUrl, data.supabaseKey);
+              configured = true;
+              setIsConfiguredState(true);
+            }
+          }
+        } catch {
+          // Runtime config fetch optional fallback
+        }
+      }
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setIsLoading(false);
-    });
+      if (!configured) {
+        // Demo mock founder profile for local dev when keys are not yet provisioned
+        const mockUser = {
+          id: "founder-001",
+          email: "executive@companyos.ai",
+          user_metadata: { full_name: "Executive Founder", role: "admin" },
+          app_metadata: { provider: "email" },
+          aud: "authenticated",
+          created_at: new Date().toISOString(),
+        } as unknown as User;
 
-    return () => subscription.unsubscribe();
-  }, [isConfigured]);
+        setUser(mockUser);
+        setIsLoading(false);
+        return;
+      }
+
+      // Real Supabase session management
+      activeClient.auth.getSession().then(({ data: { session } }) => {
+        setSession(session);
+        setUser(session?.user ?? null);
+        setIsLoading(false);
+      });
+
+      const {
+        data: { subscription },
+      } = activeClient.auth.onAuthStateChange((_event, session) => {
+        setSession(session);
+        setUser(session?.user ?? null);
+        setIsLoading(false);
+      });
+
+      unsubscribe = () => subscription.unsubscribe();
+    };
+
+    setupAuth();
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, []);
 
   const signInWithPassword = async (email: string, password: string) => {
-    if (!isConfigured) {
+    if (!isConfiguredState) {
       setUser({
         id: "founder-001",
         email,
@@ -76,7 +107,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signUpWithPassword = async (email: string, password: string, fullName?: string) => {
-    if (!isConfigured) {
+    if (!isConfiguredState) {
       setUser({
         id: "founder-001",
         email,
@@ -101,22 +132,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signInWithOAuth = async (provider: "github" | "google") => {
-    if (!isConfigured) {
-      alert("Please configure NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY to enable live OAuth.");
+    if (!isConfiguredState) {
       return { error: null };
     }
-
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
       options: {
-        redirectTo: `${window.location.origin}/`,
+        redirectTo: typeof window !== "undefined" ? `${window.location.origin}/` : undefined,
       },
     });
     return { error };
   };
 
   const signOut = async () => {
-    if (isConfigured) {
+    if (isConfiguredState) {
       await supabase.auth.signOut();
     }
     setUser(null);
@@ -129,7 +158,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user,
         session,
         isLoading,
-        isConfigured,
+        isConfigured: isConfiguredState,
         signInWithPassword,
         signUpWithPassword,
         signInWithOAuth,
