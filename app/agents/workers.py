@@ -3,12 +3,11 @@ from typing import Literal
 from pydantic import BaseModel, Field
 from langchain_core.messages import HumanMessage, AIMessage
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_openai import ChatOpenAI
 from langgraph.graph import StateGraph, START, END
 from langgraph.prebuilt import create_react_agent
 from langgraph.constants import Send
 
-from app.core.config import settings
+from app.agents.llm_factory import get_llm
 from app.agents.state import OrchestratorState, WorkerResult, SubOrchestrationState, TaskNode, AgentStatus
 from app.agents.researcher import get_research_agent
 from app.agents.tool_registry import registry
@@ -23,25 +22,16 @@ class WorkerComplexityDecision(BaseModel):
     thoughts: str = Field(description="Reasoning on the complexity of the task.")
     decision: Literal["execute_directly", "spawn_subworkers"] = Field(description="Whether to execute directly using tools, or spawn a team of sub-workers.")
 
-def get_complexity_analyzer(role: str):
-    llm = ChatOpenAI(
-        model="accounts/fireworks/models/kimi-k3" if settings.FIREWORKS_API_KEY else "gpt-4o",
-        api_key=settings.FIREWORKS_API_KEY or settings.OPENAI_API_KEY,
-        base_url="https://api.fireworks.ai/inference/v1" if settings.FIREWORKS_API_KEY else None,
-        temperature=0.0
-    )
+def get_complexity_analyzer(role: str, model_id: str = None):
+    llm = get_llm(model_id=model_id, role=role, temperature=0.0)
     prompt = ChatPromptTemplate.from_messages([
         ("system", f"You are an in-house Specialist AI Worker ({role}). You have been assigned a mandate. Decide if it requires a team of sub-specialists or if you can do it yourself."),
         ("human", "Task / Mandate: {task_description}")
     ])
     return prompt | llm.with_structured_output(WorkerComplexityDecision)
 
-def make_level3_worker_node(role: str):
-    llm = ChatOpenAI(
-        model="accounts/fireworks/models/kimi-k3" if settings.FIREWORKS_API_KEY else "gpt-4o",
-        api_key=settings.FIREWORKS_API_KEY or settings.OPENAI_API_KEY,
-        base_url="https://api.fireworks.ai/inference/v1" if settings.FIREWORKS_API_KEY else None
-    )
+def make_level3_worker_node(role: str, model_id: str = None):
+    llm = get_llm(model_id=model_id, role=role)
     tools = registry.get_langchain_tools("assistant") 
     worker_agent = create_react_agent(llm, tools, state_modifier=f"You are a Temporary Sub-Worker acting as {role}.")
     
@@ -113,7 +103,7 @@ def execute_sub_orchestration(business_id: str, main_task: TaskNode, researcher_
         
     for r in needed_roles:
         node_name = f"subworker_{r}"
-        workflow.add_node(node_name, make_level3_worker_node(r))
+        workflow.add_node(node_name, make_level3_worker_node(r, model_id=None))
         workflow.add_edge(node_name, "sub_router")
         
     workflow.add_conditional_edges("sub_router", sub_router, [f"subworker_{r}" for r in needed_roles] + [END])
@@ -134,6 +124,7 @@ def make_specialist_worker_node(agent_data: dict):
     name = agent_data.get("name", "Specialist")
     trust_tier = agent_data.get("trust_tier", "observe")
     business_id = agent_data.get("business_id", "default-business-id")
+    agent_model_id = agent_data.get("model")
     
     # Ensure role tools are registered
     if "admin" in role.lower() or "operations" in role.lower():
@@ -143,14 +134,10 @@ def make_specialist_worker_node(agent_data: dict):
     elif "accountant" in role.lower() or "finance" in role.lower():
         register_finance_tools(business_id=business_id, agent_id=agent_id)
         
-    analyzer = get_complexity_analyzer(role)
-    researcher = get_research_agent()
+    analyzer = get_complexity_analyzer(role, model_id=agent_model_id)
+    researcher = get_research_agent(model_id=agent_model_id)
     
-    llm = ChatOpenAI(
-        model="accounts/fireworks/models/kimi-k3" if settings.FIREWORKS_API_KEY else "gpt-4o",
-        api_key=settings.FIREWORKS_API_KEY or settings.OPENAI_API_KEY,
-        base_url="https://api.fireworks.ai/inference/v1" if settings.FIREWORKS_API_KEY else None
-    )
+    llm = get_llm(model_id=agent_model_id, role=role)
     tools = registry.get_langchain_tools(role)
     worker_agent = create_react_agent(
         llm, 

@@ -4,8 +4,7 @@ import logging
 from typing import Dict, Any, List, Optional, Tuple, Literal
 from pydantic import BaseModel, Field
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_openai import ChatOpenAI
-from app.core.config import settings
+from app.agents.llm_factory import get_llm
 
 logger = logging.getLogger(__name__)
 
@@ -84,13 +83,8 @@ class CheckerVerdict(BaseModel):
     suggested_revisions: Optional[str] = None
     audit_summary: str = ""
 
-def get_checker_llm():
-    return ChatOpenAI(
-        model="accounts/fireworks/models/kimi-k3" if settings.FIREWORKS_API_KEY else "gpt-4o",
-        api_key=settings.FIREWORKS_API_KEY or settings.OPENAI_API_KEY,
-        base_url="https://api.fireworks.ai/inference/v1" if settings.FIREWORKS_API_KEY else None,
-        temperature=0.0
-    )
+def get_checker_llm(model_id: str = None):
+    return get_llm(model_id=model_id, role="Finance Manager", temperature=0.0)
 
 class FinanceCheckerEngine:
     """
@@ -274,12 +268,13 @@ class FinanceCheckerEngine:
         cls,
         task_description: str,
         maker_output: str,
-        shared_context: Dict[str, Any]
+        shared_context: Dict[str, Any],
+        model_id: str = None
     ) -> Tuple[bool, float, List[str]]:
         """
         Independent LLM evaluation running adversarial/skeptical audit review.
         """
-        llm = get_checker_llm()
+        llm = get_checker_llm(model_id=model_id)
         prompt = ChatPromptTemplate.from_messages([
             ("system", """You are the Senior Compliance & Financial Audit Checker (SOX/GAAP compliant).
 Your job is to independently and critically review the proposed Maker financial actions or reports.
@@ -332,7 +327,8 @@ Output JSON only:
         cls,
         task_description: str,
         maker_output: Any,
-        shared_context: Dict[str, Any]
+        shared_context: Dict[str, Any],
+        model_id: str = None
     ) -> CheckerVerdict:
         """
         Comprehensive Maker-Checker evaluation pipeline.
@@ -342,7 +338,9 @@ Output JSON only:
         anomaly_res = cls.verify_anomalies(maker_output, shared_context)
 
         output_str = json.dumps(maker_output) if isinstance(maker_output, (dict, list)) else str(maker_output)
-        llm_passed, llm_conf, llm_findings = cls.run_llm_policy_review(task_description, output_str, shared_context)
+        llm_passed, llm_conf, llm_findings = cls.run_llm_policy_review(
+            task_description, output_str, shared_context, model_id=model_id
+        )
 
         # Aggregate verdicts
         all_passed = math_res.passed and coa_res.passed and anomaly_res.passed and llm_passed

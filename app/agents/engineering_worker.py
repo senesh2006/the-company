@@ -2,12 +2,11 @@ import json
 from typing import TypedDict, Annotated, List, Literal, Optional
 from langchain_core.messages import AnyMessage, HumanMessage, AIMessage, SystemMessage
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_openai import ChatOpenAI
 from langgraph.graph import StateGraph, START, END
 from langgraph.prebuilt import create_react_agent
 import operator
 
-from app.core.config import settings
+from app.agents.llm_factory import get_llm
 from app.agents.state import OrchestratorState, WorkerResult, TaskNode
 from app.agents.workers import execute_sub_orchestration, task_service, get_research_agent
 from app.agents.tool_registry import registry
@@ -36,6 +35,7 @@ How you work:
 class EngineeringWorkerState(TypedDict):
     business_id: str
     task: TaskNode
+    model_id: Optional[str]
     messages: Annotated[list[AnyMessage], operator.add]
     shared_context: dict
     plan: str
@@ -47,17 +47,12 @@ class EngineeringWorkerState(TypedDict):
     final_output: str
     needs_sub_workers: bool
 
-def get_llm():
-    return ChatOpenAI(
-        model="accounts/fireworks/models/kimi-k3" if settings.FIREWORKS_API_KEY else "gpt-4o",
-        api_key=settings.FIREWORKS_API_KEY or settings.OPENAI_API_KEY,
-        base_url="https://api.fireworks.ai/inference/v1" if settings.FIREWORKS_API_KEY else None,
-        temperature=0.1
-    )
+def get_engineering_llm(model_id: str = None):
+    return get_llm(model_id=model_id, role="EngineeringWorker", temperature=0.1)
 
 def understand_and_context(state: EngineeringWorkerState):
     """Understand Task -> Load context from Shared Memory."""
-    llm = get_llm()
+    llm = get_engineering_llm(model_id=state.get("model_id"))
     context = str(state.get("shared_context", {}))
     
     prompt = ChatPromptTemplate.from_messages([
@@ -78,7 +73,7 @@ def understand_and_context(state: EngineeringWorkerState):
 
 def plan(state: EngineeringWorkerState):
     """Plan technical implementation."""
-    llm = get_llm()
+    llm = get_engineering_llm(model_id=state.get("model_id"))
     prompt = ChatPromptTemplate.from_messages([
         ("system", SYSTEM_PROMPT),
         ("human", "Task: {task}\nObservations: {observations}\nWrite a technical execution plan including file modifications, test requirements, and architecture strategy.")
@@ -88,7 +83,7 @@ def plan(state: EngineeringWorkerState):
 
 def act(state: EngineeringWorkerState):
     """Act using the React agent with engineering tools."""
-    llm = get_llm()
+    llm = get_engineering_llm(model_id=state.get("model_id"))
     role = state["task"].assignee_role or "Coder"
     tools = registry.get_langchain_tools(role)
     if not tools:
@@ -103,7 +98,7 @@ def act(state: EngineeringWorkerState):
 
 def reflect(state: EngineeringWorkerState):
     """Reflect on code quality, testing, and potential risks."""
-    llm = get_llm()
+    llm = get_engineering_llm(model_id=state.get("model_id"))
     prompt = ChatPromptTemplate.from_messages([
         ("system", SYSTEM_PROMPT),
         ("human", "Task: {task}\nPlan: {plan}\nExecution Output: {output}\nReflect on code quality and correctness. Produce JSON with 'confidence' (0.0 to 1.0), 'side_effects' (list of strings like 'Created file', 'Updated schema'), and 'reflection'.")
@@ -138,7 +133,7 @@ def decide(state: EngineeringWorkerState) -> Literal["spawn_subworkers", "END"]:
 
 def spawn_subworkers(state: EngineeringWorkerState):
     """Switch to Temporary Supervisor mode and spawn engineering sub-workers."""
-    researcher = get_research_agent()
+    researcher = get_research_agent(model_id=state.get("model_id"))
     plan = researcher.invoke({
         "task_description": f"Break down this engineering objective for specialized sub-workers (Frontend Dev, Backend Dev, QA): {state['task'].description}",
         "context": str(state.get("shared_context", {}))
@@ -182,6 +177,7 @@ def make_engineering_worker_node(agent_data: dict):
     """
     role = agent_data["role"]
     agent_id = agent_data["id"]
+    agent_model_id = agent_data.get("model")
     
     def node_func(state: OrchestratorState):
         task = None
@@ -198,6 +194,7 @@ def make_engineering_worker_node(agent_data: dict):
         worker_state = EngineeringWorkerState(
             business_id=business_id,
             task=task,
+            model_id=agent_model_id,
             messages=[],
             shared_context=state.get("shared_context", {}),
             plan="",

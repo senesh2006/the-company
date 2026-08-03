@@ -5,7 +5,7 @@ import { useAppStore } from '@/lib/store';
 import { useAgent, useUpdateAgentStatus, useInjectInstruction } from '@/lib/queries';
 import { api, TrustTier } from '@/lib/api';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Play, Pause, Power, Terminal, Send, ShieldCheck, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { X, Play, Pause, Power, Terminal, Send, ShieldCheck, ArrowUpRight, ArrowDownRight, BrainCircuit } from 'lucide-react';
 
 export function AgentDetailPanel() {
   const { selectedAgentId, setSelectedAgentId } = useAppStore();
@@ -165,6 +165,15 @@ export function AgentDetailPanel() {
                     <span className="text-[10px] text-slate-500 uppercase font-semibold block">Specialization</span>
                     <span className="text-xs font-semibold text-slate-700 font-mono mt-0.5 truncate block">
                       {agent.specialization_id || 'standard-v1'}
+                    </span>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-white border border-slate-200 col-span-2">
+                    <div className="flex items-center justify-center gap-1.5">
+                      <BrainCircuit className="w-3.5 h-3.5 text-slate-400" />
+                      <span className="text-[10px] text-slate-500 uppercase font-semibold block">LLM Model</span>
+                    </div>
+                    <span className="text-xs font-semibold text-slate-700 font-mono mt-0.5 truncate block">
+                      {agent.model || 'gpt-4o-mini'}
                     </span>
                   </div>
                 </div>

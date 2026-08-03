@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { MarkdownRenderer } from '@/components/MarkdownRenderer';
 import { useTasks, useAgents, useCreateTask } from "@/lib/queries";
 import { 
   Plus, 
@@ -542,8 +543,8 @@ export default function TasksPage() {
                 </div>
 
                 {selectedTask.rawTask?.result ? (
-                  <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 text-emerald-400 text-xs font-mono whitespace-pre-wrap overflow-x-auto leading-relaxed shadow-inner max-h-[420px] select-text">
-                    {selectedTask.rawTask.result}
+                  <div className="p-4 rounded-2xl bg-white border border-slate-200 overflow-x-auto leading-relaxed shadow-inner max-h-[420px] select-text">
+                    <MarkdownRenderer content={selectedTask.rawTask.result} />
                   </div>
                 ) : (
                   <div className="p-8 rounded-2xl bg-slate-50 border border-slate-200 text-center text-slate-400 space-y-2">

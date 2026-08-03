@@ -1,8 +1,7 @@
 from typing import List, Optional
 from pydantic import BaseModel, Field
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_openai import ChatOpenAI
-from app.core.config import settings
+from app.agents.llm_factory import get_llm
 from app.agents.state import TaskNode
 
 class ResearchPlanOutput(BaseModel):
@@ -10,13 +9,8 @@ class ResearchPlanOutput(BaseModel):
     recommended_subtasks: List[TaskNode] = Field(description="The list of sub-tasks needed to complete the objective.")
     execution_order: str = Field(description="Explanation of whether these can run in parallel or sequentially.")
 
-def get_research_agent():
-    llm = ChatOpenAI(
-        model="accounts/fireworks/models/kimi-k3" if settings.FIREWORKS_API_KEY else "gpt-4o",
-        api_key=settings.FIREWORKS_API_KEY or settings.OPENAI_API_KEY,
-        base_url="https://api.fireworks.ai/inference/v1" if settings.FIREWORKS_API_KEY else None,
-        temperature=0.2
-    )
+def get_research_agent(model_id: str = None):
+    llm = get_llm(model_id=model_id, role="Research Specialist", temperature=0.2)
 
     prompt = ChatPromptTemplate.from_messages([
         ("system", """You are the Lead Research Agent. A Specialist Worker has escalated a complex task to you.

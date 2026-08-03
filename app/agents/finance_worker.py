@@ -4,12 +4,11 @@ from datetime import datetime
 from typing import TypedDict, Annotated, List, Literal, Optional, Any, Dict
 from langchain_core.messages import AnyMessage, HumanMessage, AIMessage, SystemMessage
 from langchain_core.messages import SystemMessage, HumanMessage
-from langchain_openai import ChatOpenAI
 from langgraph.graph import StateGraph, START, END
 from langgraph.prebuilt import create_react_agent
 import operator
 
-from app.core.config import settings
+from app.agents.llm_factory import get_llm
 from app.agents.state import OrchestratorState, WorkerResult, TaskNode
 from app.agents.workers import task_service, get_research_agent
 from app.agents.finance_tools import register_finance_tools, register_subworker_tools
@@ -42,6 +41,7 @@ Check for mathematical equality, valid Chart of Accounts usage, tax compliance, 
 class FinanceWorkerState(TypedDict):
     business_id: str
     task: TaskNode
+    model_id: Optional[str]
     messages: Annotated[list[AnyMessage], operator.add]
     shared_context: dict
     plan: str
@@ -62,13 +62,8 @@ class FinanceWorkerState(TypedDict):
     circuit_breaker_tripped: bool
     circuit_breaker_reason: Optional[str]
 
-def get_finance_llm(temperature: float = 0.0):
-    return ChatOpenAI(
-        model="accounts/fireworks/models/kimi-k3" if settings.FIREWORKS_API_KEY else "gpt-4o",
-        api_key=settings.FIREWORKS_API_KEY or settings.OPENAI_API_KEY,
-        base_url="https://api.fireworks.ai/inference/v1" if settings.FIREWORKS_API_KEY else None,
-        temperature=temperature
-    )
+def get_finance_llm(model_id: str = None, temperature: float = 0.0):
+    return get_llm(model_id=model_id, role="Finance Manager", temperature=temperature)
 
 circuit_breaker = FinancialCircuitBreaker(CircuitBreakerConfig(
     max_steps_per_task=10,
@@ -128,7 +123,7 @@ def maker_node(state: FinanceWorkerState):
     Step 2: LLM Maker drafts journal entries, expense categorizations, reports, or proposed tool actions.
     Takes into account any previous revision feedback from the Checker.
     """
-    llm = get_finance_llm(temperature=0.0)
+    llm = get_finance_llm(model_id=state.get("model_id"), temperature=0.0)
     task_desc = state["task"].description
     context = state.get("shared_context", {})
     revisions = state.get("checker_verdict", {}).get("suggested_revisions") if state.get("checker_verdict") else None
@@ -252,7 +247,8 @@ def checker_node(state: FinanceWorkerState):
     verdict: CheckerVerdict = FinanceCheckerEngine.execute_checker(
         task_description=task_desc,
         maker_output=maker_out,
-        shared_context=context
+        shared_context=context,
+        model_id=state.get("model_id")
     )
 
     revisions_count = state.get("revisions_count", 0)
@@ -416,7 +412,8 @@ def spawn_subworkers_node(state: FinanceWorkerState):
     verdict = FinanceCheckerEngine.execute_checker(
         task_description=f"Month-End Close Package Verification: {task_desc}",
         maker_output=closing_package,
-        shared_context=state.get("shared_context", {})
+        shared_context=state.get("shared_context", {}),
+        model_id=state.get("model_id")
     )
 
     return {
@@ -468,6 +465,7 @@ def make_finance_worker_node(agent_data: dict):
     """
     role = agent_data["role"]
     agent_id = agent_data["id"]
+    agent_model_id = agent_data.get("model")
 
     def node_func(state: OrchestratorState):
         task = None
@@ -487,6 +485,7 @@ def make_finance_worker_node(agent_data: dict):
         worker_state = FinanceWorkerState(
             business_id=business_id,
             task=task,
+            model_id=agent_model_id,
             messages=[],
             shared_context=state.get("shared_context", {}),
             plan="",

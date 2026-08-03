@@ -4,6 +4,25 @@ export type AgentStatus = 'Idle' | 'Thinking' | 'Working' | 'Running' | 'Paused'
 export type AgentRole = 'Manager' | 'Worker' | 'Specialist';
 export type TrustTier = 'observe' | 'assist' | 'operate';
 export type HiringModel = 'salaried' | 'freelance' | 'contract';
+export type ModelId = 'kimi-k3' | 'gpt-4o' | 'gpt-4o-mini' | 'llama-3.1-70b' | 'llama-3.1-8b';
+
+export interface ModelOption {
+  id: ModelId;
+  name: string;
+  provider: string;
+  tier: 'fast' | 'standard' | 'power';
+}
+
+export const AVAILABLE_MODELS: ModelOption[] = [
+  { id: 'kimi-k3', name: 'Kimi K3', provider: 'Fireworks', tier: 'power' },
+  { id: 'gpt-4o', name: 'GPT-4o', provider: 'OpenAI', tier: 'standard' },
+  { id: 'gpt-4o-mini', name: 'GPT-4o Mini', provider: 'OpenAI', tier: 'fast' },
+  { id: 'llama-3.1-70b', name: 'Llama 3.1 70B', provider: 'Fireworks', tier: 'standard' },
+  { id: 'llama-3.1-8b', name: 'Llama 3.1 8B', provider: 'Fireworks', tier: 'fast' },
+];
+
+export const DEFAULT_MODEL: ModelId = 'gpt-4o-mini';
+
 export type KnowledgeCategory = 
   | 'Brand Guidelines' 
   | 'Financial Reports' 

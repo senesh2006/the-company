@@ -1,6 +1,5 @@
 from typing import Literal, List, Optional
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_openai import ChatOpenAI
 from pydantic import BaseModel, Field
 import uuid
 from langgraph.constants import Send, END
@@ -9,6 +8,7 @@ from app.core.config import settings
 from app.agents.state import OrchestratorState, TaskNode
 from app.services.task_service import TaskService
 from app.services.shared_memory import SharedMemoryService
+from app.agents.llm_factory import get_llm
 
 task_service = TaskService()
 memory_service = SharedMemoryService()
@@ -19,12 +19,8 @@ class SupervisorDecision(BaseModel):
     new_tasks: list[TaskNode] = Field(default=[], description="Any new high-level mandates to dispatch to specialist workers.")
     executive_brief: Optional[str] = Field(None, description="Brief summary of company operations for the founder.")
 
-def get_supervisor_agent(roles: list[str], business_id: str):
-    llm = ChatOpenAI(
-        model="accounts/fireworks/models/kimi-k3" if settings.FIREWORKS_API_KEY else "gpt-4o",
-        api_key=settings.FIREWORKS_API_KEY or settings.OPENAI_API_KEY,
-        base_url="https://api.fireworks.ai/inference/v1" if settings.FIREWORKS_API_KEY else None
-    )
+def get_supervisor_agent(roles: list[str], business_id: str, model_id: str = None):
+    llm = get_llm(model_id=model_id, role="default", temperature=0.0)
 
     # Fetch shared memory context for cross-agent coordination
     memory_items = memory_service.list_by_business(business_id)

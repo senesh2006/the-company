@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useHireAgent, useAgents } from "@/lib/queries";
+import { api, AVAILABLE_MODELS, DEFAULT_MODEL, ModelId } from "@/lib/api";
 import Link from "next/link";
 import { 
   Search, 
@@ -18,7 +19,8 @@ import {
   Layers,
   Cpu,
   Lock,
-  Workflow
+  Workflow,
+  BrainCircuit
 } from "lucide-react";
 
 export default function HirePage() {
@@ -35,6 +37,13 @@ export default function HirePage() {
   const [customRole, setCustomRole] = useState("Marketing Manager");
   const [customGoal, setCustomGoal] = useState("");
   const [customTrustTier, setCustomTrustTier] = useState<"observe" | "assist" | "operate">("observe");
+  const [customModel, setCustomModel] = useState<ModelId>(DEFAULT_MODEL);
+
+  // Selected model per specialist card
+  const [specialistModels, setSpecialistModels] = useState<Record<string, ModelId>>({
+    specialist_marketing: DEFAULT_MODEL,
+    specialist_finance: "gpt-4o",
+  });
 
   // The 2 Real Specialist Workers Built into the System
   const systemSpecialists = [
@@ -55,7 +64,8 @@ export default function HirePage() {
         "Human-in-the-Loop Confidence Thresholds (< 0.85)"
       ],
       architecture: "LangGraph Reflexion Engine with Research Sub-Orchestration",
-      defaultTier: "observe" as const
+      defaultTier: "observe" as const,
+      defaultModel: "gpt-4o-mini" as ModelId
     },
     {
       id: "specialist-finance",
@@ -74,7 +84,8 @@ export default function HirePage() {
         "Zero-Unattended Money Movement Guardrails"
       ],
       architecture: "Dual-Node Maker-Checker LangGraph with Circuit Breaker",
-      defaultTier: "observe" as const
+      defaultTier: "observe" as const,
+      defaultModel: "gpt-4o" as ModelId
     }
   ];
 
@@ -95,19 +106,20 @@ export default function HirePage() {
     );
   };
 
-  const handleHire = async (name: string, role: string, description: string) => {
+  const handleHire = async (name: string, role: string, description: string, model: ModelId = DEFAULT_MODEL) => {
     try {
       await hireAgent.mutateAsync({
         name: name,
         role: role,
         trust_tier: "observe",
         hiring_model: "salaried",
+        model: model,
         goal: `Initialize and oversee autonomous workflows for ${name}`
       });
-      setHireSuccessMessage(`Successfully recruited ${name} into your active AI workforce!`);
+      setHireSuccessMessage(`Successfully recruited ${name} using ${model}!`);
       setTimeout(() => setHireSuccessMessage(null), 5000);
     } catch (err: any) {
-      setHireSuccessMessage(`Recruited ${name} into your active AI workforce.`);
+      setHireSuccessMessage(`Recruited ${name} using ${model}.`);
       setTimeout(() => setHireSuccessMessage(null), 5000);
     }
   };
@@ -122,10 +134,12 @@ export default function HirePage() {
         role: customRole,
         trust_tier: customTrustTier,
         hiring_model: "salaried",
+        model: customModel,
         goal: customGoal.trim() || `Deploy specialized AI agent: ${customName.trim()}`
       });
       setCustomName("");
       setCustomGoal("");
+      setCustomModel(DEFAULT_MODEL);
       setShowDeployModal(false);
       setHireSuccessMessage(`Successfully deployed custom specialist ${customName}!`);
       setTimeout(() => setHireSuccessMessage(null), 5000);
@@ -295,32 +309,65 @@ export default function HirePage() {
                   </div>
 
                   {/* Footer / Action */}
-                  <div className="pt-6 mt-6 border-t border-slate-100 flex items-center justify-between">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[10px] font-bold uppercase text-slate-400">Initial Tier:</span>
-                      <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300 uppercase">
-                        {specialist.defaultTier} (Review Gate)
-                      </span>
+                  <div className="pt-6 mt-6 border-t border-slate-100 space-y-3">
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-1.5">
+                        <BrainCircuit className="w-3.5 h-3.5 text-slate-400" />
+                        <span className="text-[10px] font-bold uppercase text-slate-400">Model:</span>
+                      </div>
+                      <select
+                        disabled={hired}
+                        value={specialistModels[specialist.id] || specialist.defaultModel}
+                        onChange={(e) =>
+                          setSpecialistModels((prev) => ({
+                            ...prev,
+                            [specialist.id]: e.target.value as ModelId,
+                          }))
+                        }
+                        className="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-[10px] text-slate-700 font-semibold focus:outline-none focus:border-emerald-500 disabled:opacity-60"
+                      >
+                        {AVAILABLE_MODELS.map((m) => (
+                          <option key={m.id} value={m.id}>
+                            {m.name} ({m.provider})
+                          </option>
+                        ))}
+                      </select>
                     </div>
 
-                    {hired ? (
-                      <Link
-                        href="/agents"
-                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold transition-colors"
-                      >
-                        <span>View Worker</span>
-                        <ArrowRight className="w-3.5 h-3.5" />
-                      </Link>
-                    ) : (
-                      <button
-                        onClick={() => handleHire(specialist.name, specialist.role, specialist.description)}
-                        disabled={hireAgent.isPending}
-                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs transition-all cursor-pointer hover:scale-[1.02] active:scale-98 disabled:opacity-50"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                        <span>Recruit Specialist</span>
-                      </button>
-                    )}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[10px] font-bold uppercase text-slate-400">Initial Tier:</span>
+                        <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300 uppercase">
+                          {specialist.defaultTier} (Review Gate)
+                        </span>
+                      </div>
+
+                      {hired ? (
+                        <Link
+                          href="/agents"
+                          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold transition-colors"
+                        >
+                          <span>View Worker</span>
+                          <ArrowRight className="w-3.5 h-3.5" />
+                        </Link>
+                      ) : (
+                        <button
+                          onClick={() =>
+                            handleHire(
+                              specialist.name,
+                              specialist.role,
+                              specialist.description,
+                              specialistModels[specialist.id] || specialist.defaultModel
+                            )
+                          }
+                          disabled={hireAgent.isPending}
+                          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs transition-all cursor-pointer hover:scale-[1.02] active:scale-98 disabled:opacity-50"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>Recruit Specialist</span>
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               );
@@ -442,6 +489,31 @@ export default function HirePage() {
                     <option value="operate">Operate ($1,000 limit)</option>
                   </select>
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                  LLM Model
+                </label>
+                <div className="flex items-center gap-2">
+                  <BrainCircuit className="w-4 h-4 text-slate-400" />
+                  <select
+                    value={customModel}
+                    onChange={(e) => setCustomModel(e.target.value as ModelId)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:bg-white focus:outline-none focus:border-emerald-500 font-semibold"
+                  >
+                    {AVAILABLE_MODELS.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.name} ({m.provider}) — {m.tier}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <p className="text-[10px] text-slate-500 mt-1.5 ml-6">
+                  {customRole === "Finance Manager"
+                    ? "GPT-4o is recommended for precise accounting and audit reasoning."
+                    : "GPT-4o Mini is the fastest and most cost-effective default for routine tasks."}
+                </p>
               </div>
 
               <div>

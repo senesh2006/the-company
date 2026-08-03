@@ -2,12 +2,11 @@ import json
 from typing import TypedDict, Annotated, List, Literal, Optional
 from langchain_core.messages import AnyMessage, HumanMessage, AIMessage, SystemMessage
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_openai import ChatOpenAI
 from langgraph.graph import StateGraph, START, END
 from langgraph.prebuilt import create_react_agent
 import operator
 
-from app.core.config import settings
+from app.agents.llm_factory import get_llm
 from app.agents.state import OrchestratorState, WorkerResult, TaskNode
 from app.agents.workers import execute_sub_orchestration, task_service, get_research_agent
 from app.agents.marketing_tools import register_marketing_tools
@@ -43,6 +42,7 @@ You are proactive, strategic, and reliable. You care deeply about consistent bra
 class MarketingWorkerState(TypedDict):
     business_id: str
     task: TaskNode
+    model_id: Optional[str]
     messages: Annotated[list[AnyMessage], operator.add]
     shared_context: dict
     plan: str
@@ -54,17 +54,12 @@ class MarketingWorkerState(TypedDict):
     final_output: str
     needs_sub_workers: bool
 
-def get_llm():
-    return ChatOpenAI(
-        model="accounts/fireworks/models/kimi-k3" if settings.FIREWORKS_API_KEY else "gpt-4o",
-        api_key=settings.FIREWORKS_API_KEY or settings.OPENAI_API_KEY,
-        base_url="https://api.fireworks.ai/inference/v1" if settings.FIREWORKS_API_KEY else None,
-        temperature=0.2
-    )
+def get_marketing_llm(model_id: str = None):
+    return get_llm(model_id=model_id, role="Marketing Manager", temperature=0.2)
 
 def understand_and_context(state: MarketingWorkerState):
     """Understand Task -> Load context from Shared Memory."""
-    llm = get_llm()
+    llm = get_marketing_llm(model_id=state.get("model_id"))
     # Mocking shared memory context injection
     context = str(state.get("shared_context", {}))
     
@@ -86,7 +81,7 @@ def understand_and_context(state: MarketingWorkerState):
 
 def plan(state: MarketingWorkerState):
     """Plan."""
-    llm = get_llm()
+    llm = get_marketing_llm(model_id=state.get("model_id"))
     prompt = ChatPromptTemplate.from_messages([
         ("system", SYSTEM_PROMPT),
         ("human", "Task: {task}\nObservations: {observations}\nWrite a step-by-step execution plan using the allowed MCP tools.")
@@ -96,7 +91,7 @@ def plan(state: MarketingWorkerState):
 
 def act(state: MarketingWorkerState):
     """Act using the React agent with MCP tools."""
-    llm = get_llm()
+    llm = get_marketing_llm(model_id=state.get("model_id"))
     tools = registry.get_langchain_tools("Marketing Manager")
     
     react_agent = create_react_agent(llm, tools, state_modifier=SYSTEM_PROMPT)
@@ -108,7 +103,7 @@ def act(state: MarketingWorkerState):
 
 def reflect(state: MarketingWorkerState):
     """Reflect on quality and alignment."""
-    llm = get_llm()
+    llm = get_marketing_llm(model_id=state.get("model_id"))
     prompt = ChatPromptTemplate.from_messages([
         ("system", SYSTEM_PROMPT),
         ("human", "Task: {task}\nPlan: {plan}\nExecution Output: {output}\nReflect on the brand alignment. Produce JSON with 'confidence' (0.0 to 1.0), 'side_effects' (list of strings like 'Spent money', 'Posted tweet'), and 'reflection'.")
@@ -143,7 +138,7 @@ def decide(state: MarketingWorkerState) -> Literal["spawn_subworkers", "END"]:
 
 def spawn_subworkers(state: MarketingWorkerState):
     """Switch to Temporary Supervisor mode and spawn sub-workers."""
-    researcher = get_research_agent()
+    researcher = get_research_agent(model_id=state.get("model_id"))
     plan = researcher.invoke({
         "task_description": state["task"].description,
         "context": str(state.get("shared_context", {}))
@@ -187,6 +182,7 @@ def make_marketing_worker_node(agent_data: dict):
     """
     role = agent_data["role"]
     agent_id = agent_data["id"]
+    agent_model_id = agent_data.get("model")
     
     def node_func(state: OrchestratorState):
         task = None
@@ -206,6 +202,7 @@ def make_marketing_worker_node(agent_data: dict):
         worker_state = MarketingWorkerState(
             business_id=business_id,
             task=task,
+            model_id=agent_model_id,
             messages=[],
             shared_context=state.get("shared_context", {}),
             plan="",

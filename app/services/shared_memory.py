@@ -369,3 +369,30 @@ class SharedMemoryService:
         # Sort by relevance score
         results.sort(key=lambda x: x.get("match_score", 0), reverse=True)
         return results
+
+    def clear(self, business_id: str) -> bool:
+        """Delete all key-value shared memory entries for a business."""
+        keys_to_remove = [k for k in self._local_kv if k.startswith(f"{business_id}:")]
+        for k in keys_to_remove:
+            self._local_kv.pop(k, None)
+
+        client = self.client
+        if client:
+            try:
+                client.table("shared_memory").delete().eq("business_id", business_id).execute()
+            except Exception as e:
+                logger.warning(f"Error clearing shared memory in Supabase for business {business_id}: {e}")
+        return True
+
+    def get_context(self, business_id: str) -> Dict[str, Any]:
+        """Retrieve all key-value context entries as a dictionary for a business."""
+        items = self.list_all(business_id=business_id)
+        context = {}
+        for item in items:
+            context[item.get("key", "")] = item.get("value")
+        return context
+
+
+def shared_memory_service():
+    """Dependency injection helper for FastAPI."""
+    return SharedMemoryService()
