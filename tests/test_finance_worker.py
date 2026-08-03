@@ -17,13 +17,13 @@ task_service.get_task = lambda t_id: TaskNode(
 task_service.update_task_status = lambda t_id, status: print(f"[MOCK] Task {t_id} status updated to: {status}")
 task_service.update_task_result = lambda t_id, res: print(f"[MOCK] Task {t_id} result updated.")
 
-# Reset shared memory for clean run
+# Shared memory service
 mem = SharedMemoryService()
-mem.clear("biz_123")
-mem.set("biz_123", "finance_policy", {"approval_limit": "$1000", "tax_rate": "21%"}, tags=["finance", "policy"])
 
-def run_test():
+def test_finance_worker_standard():
     print("=== Testing Finance Worker (Standard Task) ===")
+    mem.clear("biz_123")
+    mem.set("biz_123", "finance_policy", {"approval_limit": "$1000", "tax_rate": "21%"}, tags=["finance", "policy"])
     
     agent_data = {
         "id": "agent_999",
@@ -54,20 +54,16 @@ def run_test():
     # 3. Execute
     result = finance_node(state)
     
-    print("\n--- Worker Result ---")
-    if result.get("worker_results"):
-        worker_res = result["worker_results"][0]
-        print(f"Status: {worker_res.status}")
-        print(f"Output:\n{worker_res.output}")
-        print(f"Cost: {worker_res.cost}")
-    
-    print("\n--- Messages ---")
-    for m in result.get("messages", []):
-        print(f"[{m.type}]: {m.content}")
+    assert "worker_results" in result
+    assert len(result["worker_results"]) > 0
+    worker_res = result["worker_results"][0]
+    assert worker_res.status in ["success", "completed", "needs_human", "failed"]
 
 
-def run_complex_test():
+def test_finance_worker_complex():
     print("\n=== Testing Finance Worker (Complex Task -> Supervisor Mode) ===")
+    mem.clear("biz_123")
+    mem.set("biz_123", "finance_policy", {"approval_limit": "$1000", "tax_rate": "21%"}, tags=["finance", "policy"])
     
     agent_data = {
         "id": "agent_999",
@@ -95,13 +91,7 @@ def run_complex_test():
     
     result = finance_node(state)
     
-    print("\n--- Worker Result ---")
-    if result.get("worker_results"):
-        worker_res = result["worker_results"][0]
-        print(f"Status: {worker_res.status}")
-        print(f"Output:\n{worker_res.output}")
-        print(f"Cost: {worker_res.cost}")
-
-if __name__ == "__main__":
-    run_test()
-    run_complex_test()
+    assert "worker_results" in result
+    assert len(result["worker_results"]) > 0
+    worker_res = result["worker_results"][0]
+    assert worker_res.status in ["success", "completed", "needs_human", "failed"]

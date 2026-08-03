@@ -3,7 +3,7 @@ from app.agents.state import TaskNode
 from app.agents.researcher import ResearchPlanOutput
 from app.agents.workers import execute_sub_orchestration
 
-def test_hierarchy():
+def test_hierarchy_sub_orchestration():
     business_id = "test_business"
     main_task = TaskNode(
         id=str(uuid.uuid4()),
@@ -26,6 +26,5 @@ def test_hierarchy():
     
     print("\nFINAL SYNTHESIS:")
     print(result)
-
-if __name__ == "__main__":
-    test_hierarchy()
+    assert result is not None
+    assert isinstance(result, str)

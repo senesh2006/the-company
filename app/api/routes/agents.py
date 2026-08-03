@@ -200,10 +200,16 @@ class UpdateStatusPayload(BaseModel):
 def update_agent_status(agent_id: str, payload: UpdateStatusPayload, user = Depends(get_current_user)):
     """Updates the status of an agent."""
     try:
-        response = task_service.client.table("agents").update({"status": payload.status}).eq("id", agent_id).execute()
-        if not response.data:
+        existing = task_service.client.table("agents").select("*").eq("id", agent_id).execute()
+        if not existing.data:
             raise HTTPException(status_code=404, detail="Agent not found")
-        return response.data[0]
+            
+        updated = task_service.update_agent_status(agent_id, payload.status)
+        if updated:
+            return updated
+        agent_data = existing.data[0]
+        agent_data["status"] = payload.status
+        return agent_data
     except HTTPException:
         raise
     except Exception as e:

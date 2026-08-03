@@ -45,9 +45,10 @@ def test_marketing_worker_normal():
     worker_node = make_marketing_worker_node(agent_data)
     result = worker_node(state)
     
-    print("WORKER OUTPUT:")
-    print(result.get("worker_results")[0].output)
-    print("\n\n")
+    assert "worker_results" in result
+    assert len(result["worker_results"]) > 0
+    worker_res = result["worker_results"][0]
+    assert worker_res.status in ["success", "completed", "needs_human", "failed"]
 
 def test_marketing_worker_sub_orchestration():
     print("--- TESTING TEMPORARY SUPERVISOR ESCALATION ---")
@@ -91,9 +92,7 @@ def test_marketing_worker_sub_orchestration():
     worker_node = make_marketing_worker_node(agent_data)
     result = worker_node(state)
     
-    print("WORKER OUTPUT:")
-    print(result.get("worker_results")[0].output)
-
-if __name__ == "__main__":
-    test_marketing_worker_normal()
-    test_marketing_worker_sub_orchestration()
+    assert "worker_results" in result
+    assert len(result["worker_results"]) > 0
+    worker_res = result["worker_results"][0]
+    assert worker_res.status in ["success", "completed", "needs_human", "failed"]

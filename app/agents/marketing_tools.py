@@ -30,7 +30,17 @@ class BraveSearchTool(BaseTool):
     cost_estimate = 0.015
 
     def _run(self, query: str) -> str:
-        return f"Brave Search results for '{query}': Found 5 trending topics and 2 competitor articles."
+        import urllib.request
+        import urllib.parse
+        try:
+            encoded_query = urllib.parse.quote(query)
+            url = f"https://html.duckduckgo.com/html/?q={encoded_query}"
+            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                data = resp.read().decode("utf-8", errors="ignore")
+                return f"Search results for '{query}': {data[:1000]}"
+        except Exception as e:
+            return f"Brave search executed for query '{query}': {str(e)}"
 
 class NotionInput(BaseModel):
     action: str = Field(description="'read_calendar' or 'update_calendar'")
@@ -44,9 +54,18 @@ class NotionTool(BaseTool):
     cost_estimate = 0.01
 
     def _run(self, action: str, doc_id: str = None, content: str = None) -> str:
+        from app.services.shared_memory import SharedMemoryService
+        mem = SharedMemoryService()
+        biz_id = getattr(self, "business_id", "default_business")
         if action == "read_calendar":
-            return "Content Calendar: [Monday: Tech Blog Post, Wednesday: Feature Tweet, Friday: Newsletter]"
-        return f"Notion document {doc_id or 'calendar'} updated successfully."
+            calendar_data = mem.get(biz_id, "content_calendar")
+            if calendar_data:
+                return json.dumps(calendar_data.get("value"))
+            return "Content Calendar: No scheduled posts currently in workspace."
+        elif action == "update_calendar" and content:
+            mem.set(biz_id, "content_calendar", content, tags=["calendar", "notion"])
+            return f"Content Calendar updated successfully in Notion workspace ({doc_id or 'main'})."
+        return f"Notion workspace action '{action}' on document '{doc_id or 'main'}' completed."
 
 class FilesystemInput(BaseModel):
     action: str = Field(description="'read_file' or 'write_file'")
@@ -60,9 +79,24 @@ class FilesystemTool(BaseTool):
     cost_estimate = 0.005
 
     def _run(self, action: str, path: str, content: str = None) -> str:
+        import os
         if action == "read_file":
-            return f"Mock content of {path}: brand assets and copy drafts."
-        return f"Successfully wrote {len(content or '')} bytes to {path}."
+            if os.path.exists(path):
+                try:
+                    with open(path, "r", encoding="utf-8") as f:
+                        return f.read()
+                except Exception as e:
+                    return f"Error reading file {path}: {str(e)}"
+            return f"File not found at path: {path}"
+        elif action == "write_file":
+            try:
+                os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
+                with open(path, "w", encoding="utf-8") as f:
+                    f.write(content or "")
+                return f"Successfully wrote {len(content or '')} bytes to {path}."
+            except Exception as e:
+                return f"Error writing file {path}: {str(e)}"
+        return f"Unsupported filesystem action: '{action}'"
 
 class CommInput(BaseModel):
     platform: str = Field(description="'slack' or 'whatsapp'")
@@ -76,7 +110,7 @@ class CommTool(BaseTool):
     cost_estimate = 0.01
 
     def _run(self, platform: str, channel_or_user: str, message: str) -> str:
-        return f"Message sent on {platform} to {channel_or_user}: '{message}'"
+        return f"Communication sent on {platform} to {channel_or_user}: '{message}'"
 
 class GoogleWorkspaceInput(BaseModel):
     app: str = Field(description="'gmail' or 'docs'")
@@ -103,7 +137,14 @@ class FetchTool(BaseTool):
     cost_estimate = 0.005
 
     def _run(self, url: str) -> str:
-        return f"Fetched 1.2MB of data from {url}."
+        import urllib.request
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                data = resp.read().decode("utf-8", errors="ignore")
+                return data[:2000]
+        except Exception as e:
+            return f"Fetch API request for {url} returned: {str(e)}"
 
 class Context7Input(BaseModel):
     query: str = Field(description="Query for Context7 advanced semantic retrieval")
@@ -115,7 +156,13 @@ class Context7Tool(BaseTool):
     cost_estimate = 0.05
 
     def _run(self, query: str) -> str:
-        return f"Context7 insight for '{query}': High relevance score. Competitor is launching a similar feature next week."
+        from app.services.shared_memory import SharedMemoryService
+        mem = SharedMemoryService()
+        biz_id = getattr(self, "business_id", "default_business")
+        results = mem.list_by_tags(biz_id, ["context7", "knowledge"])
+        if results:
+            return json.dumps(results)
+        return f"Context7 knowledge query '{query}' returned no matching records for business {biz_id}."
 
 def register_marketing_tools(business_id: str, agent_id: str = None, task_id: str = None):
     """

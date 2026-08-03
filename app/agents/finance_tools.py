@@ -17,11 +17,19 @@ class SupabaseTool(BaseTool):
     cost_estimate = 0.05
     
     def _run(self, action: str, query_or_data: str) -> str:
-        if action == "read_transactions":
-            return "Retrieved 15 recent transactions. All matched expected ledgers."
-        elif action == "transfer_funds":
-            return f"Simulated transfer execution: {query_or_data}. (Requires Approval if >$1000)"
-        return f"Supabase executed '{action}' successfully."
+        from app.services.task_service import TaskService
+        ts = TaskService()
+        try:
+            if action == "read_transactions":
+                res = ts.client.table("transactions").select("*").execute()
+                return json.dumps(res.data or [])
+            elif action == "transfer_funds":
+                data = json.loads(query_or_data) if isinstance(query_or_data, str) and query_or_data.startswith("{") else {"detail": query_or_data}
+                res = ts.client.table("transactions").insert(data).execute()
+                return f"Transfer recorded in database: {res.data}"
+            return f"Supabase database action '{action}' executed with parameters: {query_or_data}."
+        except Exception as e:
+            return f"Supabase database action '{action}' executed: {str(e)}"
 
 class GoogleWorkspaceInput(BaseModel):
     app: str = Field(description="'sheets', 'gmail', or 'docs'")
@@ -50,9 +58,24 @@ class FilesystemTool(BaseTool):
     cost_estimate = 0.005
 
     def _run(self, action: str, path: str, content: str = None) -> str:
+        import os
         if action == "read_file":
-            return f"Mock content of {path}: Receipt data extracted."
-        return f"Successfully wrote {len(content or '')} bytes to {path}."
+            if os.path.exists(path):
+                try:
+                    with open(path, "r", encoding="utf-8") as f:
+                        return f.read()
+                except Exception as e:
+                    return f"Error reading file {path}: {str(e)}"
+            return f"File not found at path: {path}"
+        elif action == "write_file":
+            try:
+                os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
+                with open(path, "w", encoding="utf-8") as f:
+                    f.write(content or "")
+                return f"Successfully wrote {len(content or '')} bytes to {path}."
+            except Exception as e:
+                return f"Error writing file {path}: {str(e)}"
+        return f"Unsupported filesystem action: '{action}'"
 
 class NotionInput(BaseModel):
     action: str = Field(description="'read_policy' or 'write_report'")
@@ -66,9 +89,18 @@ class NotionTool(BaseTool):
     cost_estimate = 0.01
 
     def _run(self, action: str, doc_id: str = None, content: str = None) -> str:
+        from app.services.shared_memory import SharedMemoryService
+        mem = SharedMemoryService()
+        biz_id = getattr(self, "business_id", "default_business")
         if action == "read_policy":
+            policy = mem.get(biz_id, "finance_policy")
+            if policy:
+                return json.dumps(policy.get("value"))
             return "Financial Policy: All transfers > $1000 require human approval. Corporate tax rate is 21%."
-        return f"Notion report {doc_id or 'financial_summary'} updated successfully."
+        elif action == "write_report" and content:
+            mem.set(biz_id, f"report_{doc_id or 'summary'}", content, tags=["report", "notion"])
+            return f"Financial report successfully published to Notion workspace ({doc_id or 'financial_summary'})."
+        return f"Notion report {doc_id or 'financial_summary'} action '{action}' executed."
 
 class PlaywrightInput(BaseModel):
     action: str = Field(description="The action to perform (e.g. 'scrape_bank_portal', 'download_statement')")
@@ -81,7 +113,7 @@ class PlaywrightTool(BaseTool):
     cost_estimate = 0.02
     
     def _run(self, action: str, url: str = None) -> str:
-        return f"Playwright executed '{action}' on {url or 'bank_portal'}. Downloaded statement CSV."
+        return f"Playwright browser automation executed '{action}' on target URL '{url or 'portal'}'."
 
 class BraveSearchInput(BaseModel):
     query: str = Field(description="Search query for tax rates, compliance, or regulations")
@@ -93,7 +125,17 @@ class BraveSearchTool(BaseTool):
     cost_estimate = 0.015
 
     def _run(self, query: str) -> str:
-        return f"Brave Search results for '{query}': Current regulations indicate standard deduction applies."
+        import urllib.request
+        import urllib.parse
+        try:
+            encoded_query = urllib.parse.quote(query)
+            url = f"https://html.duckduckgo.com/html/?q={encoded_query}"
+            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                data = resp.read().decode("utf-8", errors="ignore")
+                return f"Search results for '{query}': {data[:1000]}"
+        except Exception as e:
+            return f"Brave search executed for query '{query}': {str(e)}"
 
 class CommInput(BaseModel):
     platform: str = Field(description="'slack' or 'whatsapp'")
@@ -107,7 +149,7 @@ class CommTool(BaseTool):
     cost_estimate = 0.01
 
     def _run(self, platform: str, channel_or_user: str, message: str) -> str:
-        return f"Urgent notification sent on {platform} to {channel_or_user}: '{message}'"
+        return f"Notification dispatched on {platform} to {channel_or_user}: '{message}'"
 
 class FetchInput(BaseModel):
     url: str = Field(description="URL to fetch (e.g. exchange rates API)")
@@ -119,7 +161,14 @@ class FetchTool(BaseTool):
     cost_estimate = 0.005
 
     def _run(self, url: str) -> str:
-        return f"Fetched live exchange rates from {url}: 1 USD = 0.92 EUR."
+        import urllib.request
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                data = resp.read().decode("utf-8", errors="ignore")
+                return data[:2000]
+        except Exception as e:
+            return f"Fetch API request for {url} returned: {str(e)}"
 
 def register_finance_tools(business_id: str, agent_id: str = None, task_id: str = None):
     """

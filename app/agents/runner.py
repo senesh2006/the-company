@@ -1,7 +1,12 @@
 import asyncio
 from typing import Optional
-from psycopg_pool import ConnectionPool
-from langgraph.checkpoint.postgres import PostgresSaver
+try:
+    from psycopg_pool import ConnectionPool
+    from langgraph.checkpoint.postgres import PostgresSaver
+    HAS_POSTGRES = True
+except ImportError:
+    HAS_POSTGRES = False
+
 from langchain_core.messages import HumanMessage
 from app.core.config import settings
 from app.agents.graph import create_team_graph
@@ -16,7 +21,7 @@ class TeamRunner:
         
         self.graph = create_team_graph(self.business_id, self.task_id)
         
-        self.use_postgres = bool(settings.POSTGRES_SERVER)
+        self.use_postgres = bool(settings.POSTGRES_SERVER) and HAS_POSTGRES
         if self.use_postgres:
             conn_string = f"postgresql://{settings.POSTGRES_USER}:{settings.POSTGRES_PASSWORD}@{settings.POSTGRES_SERVER}:{settings.POSTGRES_PORT}/{settings.POSTGRES_DB}"
             self.pool = ConnectionPool(conninfo=conn_string, max_size=10)
