@@ -6,158 +6,156 @@ from app.core.config import settings
 logger = logging.getLogger(__name__)
 
 class SharedMemoryService:
+    _local_store: dict = {}
+
     def __init__(self, supabase_client: Optional[Client] = None):
         self._client = supabase_client
 
     @property
-    def client(self) -> Client:
+    def client(self) -> Optional[Client]:
         if self._client:
             return self._client
-        if not settings.SUPABASE_URL or not settings.SUPABASE_KEY:
-            raise ValueError("SUPABASE_URL and SUPABASE_KEY must be set in environment variables to use SharedMemoryService.")
-        self._client = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
-        return self._client
+        if settings.SUPABASE_URL and settings.SUPABASE_KEY:
+            try:
+                self._client = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
+                return self._client
+            except Exception as e:
+                logger.warning(f"Could not connect to Supabase: {e}")
+                return None
+        return None
             
     def get(self, business_id: str, key: str) -> Optional[dict[str, Any]]:
-        """
-        Fetch a specific key from shared memory for a business.
-        """
-        try:
-            response = self.client.table("shared_memory")\
-                .select("*")\
-                .eq("business_id", business_id)\
-                .eq("key", key)\
-                .execute()
-                
-            if response.data:
-                return response.data[0]
-            return None
-        except Exception as e:
-            logger.error(f"Error fetching shared memory for business {business_id}, key {key}: {e}")
-            raise e
+        """Fetch a specific key from shared memory for a business."""
+        client = self.client
+        if client:
+            try:
+                response = client.table("shared_memory")\
+                    .select("*")\
+                    .eq("business_id", business_id)\
+                    .eq("key", key)\
+                    .execute()
+                if response.data:
+                    return response.data[0]
+            except Exception as e:
+                logger.warning(f"Error fetching shared memory from Supabase for business {business_id}, key {key}: {e}")
+        return self._local_store.get(f"{business_id}:{key}")
 
     def set(self, business_id: str, key: str, value: Any, tags: List[str] = []) -> dict[str, Any]:
-        """
-        Insert or update a key in shared memory. 
-        Note: Supabase standard `upsert` requires a unique constraint on (business_id, key). 
-        Since we didn't define a unique constraint, we will do a manual check or rely on the primary key.
-        We'll do a get-then-update/insert.
-        """
-        try:
-            existing = self.get(business_id, key)
-            
-            data = {
-                "business_id": business_id,
-                "key": key,
-                "value": value,
-                "tags": tags
-            }
-            
-            if existing:
-                # Update existing record
-                response = self.client.table("shared_memory")\
-                    .update(data)\
-                    .eq("id", existing["id"])\
-                    .execute()
-            else:
-                # Insert new record
-                response = self.client.table("shared_memory")\
-                    .insert(data)\
-                    .execute()
-                    
-            return response.data[0] if response.data else {}
-        except Exception as e:
-            logger.error(f"Error setting shared memory for business {business_id}, key {key}: {e}")
-            raise e
+        """Insert or update a key in shared memory."""
+        entry = {
+            "business_id": business_id,
+            "key": key,
+            "value": value,
+            "tags": tags
+        }
+        self._local_store[f"{business_id}:{key}"] = entry
+        client = self.client
+        if client:
+            try:
+                existing = self.get(business_id, key)
+                if existing and "id" in existing:
+                    response = client.table("shared_memory")\
+                        .update(entry)\
+                        .eq("id", existing["id"])\
+                        .execute()
+                else:
+                    response = client.table("shared_memory")\
+                        .insert(entry)\
+                        .execute()
+                if response.data:
+                    return response.data[0]
+            except Exception as e:
+                logger.warning(f"Error setting shared memory in Supabase for business {business_id}, key {key}: {e}")
+        return entry
 
     def delete(self, business_id: str, key: str) -> bool:
-        """
-        Delete a key from shared memory.
-        """
-        try:
-            response = self.client.table("shared_memory")\
-                .delete()\
-                .eq("business_id", business_id)\
-                .eq("key", key)\
-                .execute()
-            return len(response.data) > 0
-        except Exception as e:
-            logger.error(f"Error deleting shared memory for business {business_id}, key {key}: {e}")
-            raise e
+        """Delete a key from shared memory."""
+        self._local_store.pop(f"{business_id}:{key}", None)
+        client = self.client
+        if client:
+            try:
+                response = client.table("shared_memory")\
+                    .delete()\
+                    .eq("business_id", business_id)\
+                    .eq("key", key)\
+                    .execute()
+                return len(response.data) > 0
+            except Exception as e:
+                logger.warning(f"Error deleting shared memory in Supabase for business {business_id}, key {key}: {e}")
+        return True
 
     def list_by_tags(self, business_id: str, tags: List[str]) -> List[dict[str, Any]]:
-        """
-        List shared memory items containing the specified tags.
-        """
-        try:
-            response = self.client.table("shared_memory")\
-                .select("*")\
-                .eq("business_id", business_id)\
-                .contains("tags", tags)\
-                .execute()
-            return response.data
-        except Exception as e:
-            logger.error(f"Error listing shared memory by tags for business {business_id}: {e}")
-            raise e
+        """List shared memory items containing the specified tags."""
+        client = self.client
+        if client:
+            try:
+                response = client.table("shared_memory")\
+                    .select("*")\
+                    .eq("business_id", business_id)\
+                    .contains("tags", tags)\
+                    .execute()
+                if response.data is not None:
+                    return response.data
+            except Exception as e:
+                logger.warning(f"Error listing shared memory by tags in Supabase for business {business_id}: {e}")
+        items = []
+        for k, v in self._local_store.items():
+            if k.startswith(f"{business_id}:") and any(t in v.get("tags", []) for t in tags):
+                items.append(v)
+        return items
 
     def set_flag(self, business_id: str, flag_name: str, value: bool) -> dict[str, Any]:
-        """
-        Sets a boolean flag in shared memory.
-        """
+        """Sets a boolean flag in shared memory."""
         key = f"flag:{flag_name}"
         return self.set(business_id=business_id, key=key, value=value, tags=["flag"])
 
     def get_flags(self, business_id: str) -> List[dict[str, Any]]:
-        """
-        Returns all flags set for a business.
-        """
+        """Returns all flags set for a business."""
         return self.list_by_tags(business_id, ["flag"])
 
-# Example Usage
-if __name__ == "__main__":
-    # Ensure env variables are loaded (e.g., via dotenv)
-    # import os
-    # os.environ["SUPABASE_URL"] = "http://localhost:8000"
-    # os.environ["SUPABASE_KEY"] = "your_service_role_key"
-    
-    # Initialize the service
-    try:
-        memory_service = SharedMemoryService()
-        
-        # Test business_id
-        test_business_id = "11111111-1111-1111-1111-111111111111"
-        
-        # 1. Set a standard value
-        print("Setting 'agent_context'...")
-        memory_service.set(
-            business_id=test_business_id,
-            key="agent_context",
-            value={"theme": "dark", "instructions": "Be polite"},
-            tags=["context", "ui"]
-        )
-        
-        # 2. Get a standard value
-        print("Getting 'agent_context'...")
-        val = memory_service.get(test_business_id, "agent_context")
-        print(f"Value: {val}")
-        
-        # 3. Set a flag
-        print("Setting 'maintenance_mode' flag to True...")
-        memory_service.set_flag(test_business_id, "maintenance_mode", True)
-        
-        # 4. Get flags (Detect changes via polling)
-        print("Getting all flags...")
-        flags = memory_service.get_flags(test_business_id)
-        print(f"Flags: {flags}")
-        
-        # 5. List by tags
-        print("Listing by tag 'ui'...")
-        ui_elements = memory_service.list_by_tags(test_business_id, ["ui"])
-        print(f"UI Elements: {ui_elements}")
-        
-        # 6. Delete
-        print("Deleting 'agent_context'...")
-        memory_service.delete(test_business_id, "agent_context")
-        
-    except Exception as e:
-        print(f"Example execution failed. Note: A valid Supabase instance must be running. Error: {e}")
+    def list_all(self, business_id: Optional[str] = None) -> List[dict[str, Any]]:
+        """List all shared memory entries, optionally filtered by business_id."""
+        client = self.client
+        if client:
+            try:
+                query = client.table("shared_memory").select("*")
+                if business_id:
+                    query = query.eq("business_id", business_id)
+                response = query.execute()
+                if response.data is not None:
+                    return response.data
+            except Exception as e:
+                logger.warning(f"Error listing shared memory in Supabase: {e}")
+        items = []
+        for k, v in self._local_store.items():
+            if not business_id or k.startswith(f"{business_id}:"):
+                items.append(v)
+        return items
+
+    def list_by_business(self, business_id: str) -> List[dict[str, Any]]:
+        """List all shared memory entries for a specific business."""
+        return self.list_all(business_id=business_id)
+
+    def clear(self, business_id: str) -> bool:
+        """Delete all shared memory entries for a business."""
+        keys_to_remove = [k for k in self._local_store if k.startswith(f"{business_id}:")]
+        for k in keys_to_remove:
+            self._local_store.pop(k, None)
+        client = self.client
+        if client:
+            try:
+                client.table("shared_memory")\
+                    .delete()\
+                    .eq("business_id", business_id)\
+                    .execute()
+            except Exception as e:
+                logger.warning(f"Error clearing shared memory in Supabase for business {business_id}: {e}")
+        return True
+
+    def get_context(self, business_id: str) -> dict[str, Any]:
+        """Retrieve all key-value context entries as a dictionary for a business."""
+        items = self.list_all(business_id=business_id)
+        context = {}
+        for item in items:
+            context[item["key"]] = item.get("value")
+        return context
