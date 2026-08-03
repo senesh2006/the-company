@@ -9,8 +9,8 @@ interface MarkdownRendererProps {
 
 /**
  * Lightweight markdown formatter for agent output.
- * Converts markdown tables, bold, italic, code blocks, and lists to clean HTML
- * so the output does not render as raw ASCII art.
+ * Converts markdown tables, ASCII tables, bold, italic, code blocks, and lists
+ * into clean HTML so the output does not render as raw ASCII art.
  */
 export function MarkdownRenderer({ content, className = "" }: MarkdownRendererProps) {
   const html = useMemo(() => formatMarkdown(content), [content]);
@@ -57,67 +57,16 @@ function formatMarkdown(content: string): string {
     .replace(/__(.+?)__/g, "<strong>$1</strong>")
     .replace(/_(.+?)_/g, "<em>$1</em>");
 
-  // Convert markdown tables to HTML tables.
-  processed = processed.replace(
-    /(?:\|(.+?)\|\n\|(?:[-:\|\s]+?)\|\n)((?:\|.+?\|\n?)+)/g,
-    (match, headerRow, bodyRows) => {
-      const headers = headerRow
-        .split("|")
-        .map((h: string) => h.trim())
-        .filter(Boolean);
-      const rows = bodyRows
-        .trim()
-        .split("\n")
-        .map((line: string) =>
-          line
-            .split("|")
-            .map((cell: string) => cell.trim())
-            .filter(Boolean)
-        )
-        .filter((row: string[]) => row.length > 0);
-
-      const headerHtml = `<thead class="bg-slate-100"><tr>${headers
-        .map((h: string) => `<th class="px-3 py-2 text-left text-[10px] font-bold text-slate-600 border-b border-slate-200">${h}</th>`)
-        .join("")}</tr></thead>`;
-      const bodyHtml = `<tbody>${rows
-        .map(
-          (row: string[]) =>
-            `<tr>${row
-              .map((cell: string) => `<td class="px-3 py-2 text-[11px] text-slate-700 border-b border-slate-100">${cell}</td>`)
-              .join("")}</tr>`
-        )
-        .join("")}</tbody>`;
-      return `<div class="overflow-x-auto rounded-xl border border-slate-200 my-3"><table class="w-full text-left border-collapse">${headerHtml}${bodyHtml}</table></div>`;
-    }
-  );
+  // Process pipe-delimited table blocks line by line.
+  processed = convertPipeTableBlocks(processed);
 
   // Convert simple ASCII tables (lines with at least 3 columns separated by 2+ spaces).
+  // Avoid lines that already contain pipes (handled above) or that look like single sentences.
   processed = processed.replace(
-    /((?:^\s*\S+(?:\s{2,}\S+)+\s*$\n?)+)/gm,
+    /((?:^\s*\S+(?:\s{2,}\S+){2,}\s*$(?:\n?))+)/gm,
     (block: string) => {
-      const lines = block.trim().split("\n").filter((l) => l.trim());
-      if (lines.length < 2) return block;
-
-      const rows = lines.map((line) => line.trim().split(/\s{2,}/).filter(Boolean));
-      if (rows.some((r) => r.length < 2)) return block;
-
-      // Treat first line as header if it looks like headers (no numbers or differs from rest).
-      const hasNumericRow = rows.some((r) => r.some((c) => /^[\$\d,.-]+$/.test(c)));
-      const header = hasNumericRow ? rows[0] : rows[0];
-      const body = hasNumericRow ? rows.slice(1) : rows;
-
-      const headerHtml = `<thead class="bg-slate-100"><tr>${header
-        .map((h: string) => `<th class="px-3 py-2 text-left text-[10px] font-bold text-slate-600 border-b border-slate-200">${h}</th>`)
-        .join("")}</tr></thead>`;
-      const bodyHtml = `<tbody>${body
-        .map(
-          (row: string[]) =>
-            `<tr>${row
-              .map((cell: string) => `<td class="px-3 py-2 text-[11px] text-slate-700 border-b border-slate-100">${cell}</td>`)
-              .join("")}</tr>`
-        )
-        .join("")}</tbody>`;
-      return `<div class="overflow-x-auto rounded-xl border border-slate-200 my-3"><table class="w-full text-left border-collapse">${headerHtml}${bodyHtml}</table></div>`;
+      if (block.includes("|")) return block;
+      return convertAsciiTable(block);
     }
   );
 
@@ -174,4 +123,134 @@ function formatMarkdown(content: string): string {
   });
 
   return processed;
+}
+
+function isPipeTableLine(line: string): boolean {
+  const trimmed = line.trim();
+  return trimmed.startsWith("|") && trimmed.endsWith("|");
+}
+
+function isSeparatorLine(line: string): boolean {
+  const cells = splitPipeCells(line);
+  return cells.length > 0 && cells.every((c) => /^[-:\s]+$/.test(c.trim()));
+}
+
+function splitPipeCells(row: string): string[] {
+  return row
+    .trim()
+    .replace(/^\|/, "")
+    .replace(/\|$/, "")
+    .split("|")
+    .map((c) => c.trim());
+}
+
+function isEmptyRow(row: string[]): boolean {
+  return row.length === 0 || row.every((c) => c.trim() === "");
+}
+
+function convertPipeTableBlocks(content: string): string {
+  const lines = content.split("\n");
+  const result: string[] = [];
+  let i = 0;
+
+  while (i < lines.length) {
+    const line = lines[i];
+
+    if (isPipeTableLine(line)) {
+      // Gather the whole table block.
+      const blockLines: string[] = [line];
+      let j = i + 1;
+      while (j < lines.length && isPipeTableLine(lines[j])) {
+        blockLines.push(lines[j]);
+        j++;
+      }
+
+      if (blockLines.length >= 2) {
+        const tableHtml = convertPipeTableBlock(blockLines);
+        result.push(tableHtml);
+        i = j;
+        continue;
+      }
+    }
+
+    result.push(line);
+    i++;
+  }
+
+  return result.join("\n");
+}
+
+function convertPipeTableBlock(lines: string[]): string {
+  const rows = lines.map(splitPipeCells);
+  const maxCols = Math.max(...rows.map((r) => r.length));
+
+  if (maxCols < 2) return lines.join("\n");
+
+  let headers: string[];
+  let body: string[][];
+
+  if (rows.length > 1 && isSeparatorLine(lines[1])) {
+    headers = rows[0].map((c) => c.trim());
+    body = rows.slice(2).filter((r) => !isEmptyRow(r));
+  } else {
+    headers = rows[0].map((c) => c.trim());
+    body = rows.slice(1).filter((r) => !isEmptyRow(r));
+  }
+
+  while (headers.length < maxCols) headers.push("");
+  body = body.map((r) => {
+    const padded = [...r];
+    while (padded.length < maxCols) padded.push("");
+    return padded.slice(0, maxCols);
+  });
+
+  return buildTableHtml(headers, body);
+}
+
+function convertAsciiTable(block: string): string {
+  const lines = block.trim().split("\n").map((l) => l.trim()).filter((l) => l);
+  if (lines.length < 2) return block;
+
+  const rows = lines.map((line) => line.split(/\s{2,}/).map((c) => c.trim()).filter((c) => c !== ""));
+  if (rows.some((r) => r.length < 2)) return block;
+
+  const maxCols = Math.max(...rows.map((r) => r.length));
+  const headers = rows[0].map((c) => c.trim());
+  const body = rows.slice(1).filter((r) => !isEmptyRow(r));
+
+  while (headers.length < maxCols) headers.push("");
+  const paddedBody = body.map((r) => {
+    const padded = [...r];
+    while (padded.length < maxCols) padded.push("");
+    return padded.slice(0, maxCols);
+  });
+
+  return buildTableHtml(headers, paddedBody);
+}
+
+function buildTableHtml(headers: string[], body: string[][]): string {
+  const cellClass = "px-2 py-1.5 text-[11px] text-slate-700 border-b border-slate-100 align-top whitespace-normal break-words min-w-0";
+  const headerClass = "px-2 py-1.5 text-left text-[10px] font-bold text-slate-600 border-b border-slate-200 align-top whitespace-normal break-words min-w-0";
+
+  const headerHtml = `<thead class="bg-slate-50"><tr>${headers
+    .map((h) => `<th class="${headerClass}">${h}</th>`)
+    .join("")}</tr></thead>`;
+
+  const bodyHtml = `<tbody>${body
+    .map(
+      (row) =>
+        `<tr>${row
+          .map((cell) => `<td class="${cellClass}">${cell}</td>`)
+          .join("")}</tr>`
+    )
+    .join("")}</tbody>`;
+
+  return `
+    <div class="overflow-x-auto rounded-xl border border-slate-200 my-3">
+      <table class="w-full text-left border-collapse table-fixed">
+        ${headerHtml}
+        ${bodyHtml}
+      </table>
+    </div>
+  `;
 }
