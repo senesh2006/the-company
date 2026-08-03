@@ -17,7 +17,13 @@ import {
   Sparkles,
   ExternalLink,
   ChevronRight,
-  Filter
+  Filter,
+  Copy,
+  Check,
+  X,
+  FileText,
+  ShieldCheck,
+  Cpu
 } from "lucide-react";
 
 export default function TasksPage() {
@@ -27,13 +33,14 @@ export default function TasksPage() {
 
   const [activeTab, setActiveTab] = useState<"all" | "active" | "scheduled" | "completed" | "backlog">("all");
   const [filterPriority, setFilterPriority] = useState<string>("all");
-  const [sortBy, setSortBy] = useState<"time" | "priority" | "progress">("time");
+  const [sortBy, setSortBy] = useState<"time" | "priority">("time");
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
   const [showNewTaskModal, setShowNewTaskModal] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [newTaskAgentRole, setNewTaskAgentRole] = useState("");
   const [newTaskPriority, setNewTaskPriority] = useState("P1");
   const [selectedTask, setSelectedTask] = useState<any | null>(null);
+  const [copiedOutput, setCopiedOutput] = useState(false);
 
   // Map real database tasks
   const allTasks = (dbTasks || []).map((t: any) => {
@@ -108,6 +115,12 @@ export default function TasksPage() {
     }
   };
 
+  const handleCopyResult = (text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedOutput(true);
+    setTimeout(() => setCopiedOutput(false), 2000);
+  };
+
   return (
     <div className="flex flex-col gap-6 pb-12">
       {/* 1. Header */}
@@ -123,7 +136,7 @@ export default function TasksPage() {
 
         <button
           onClick={() => setShowNewTaskModal(true)}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs md:text-sm font-bold shadow-xs transition-all duration-200 hover:scale-[1.02] active:scale-95 self-start sm:self-auto"
+          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs md:text-sm font-bold shadow-xs transition-all duration-200 hover:scale-[1.02] active:scale-95 self-start sm:self-auto cursor-pointer"
         >
           <Plus className="w-4 h-4" />
           <span>New Task</span>
@@ -144,7 +157,7 @@ export default function TasksPage() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as any)}
-              className={`pb-2 transition-all relative whitespace-nowrap ${
+              className={`pb-2 transition-all relative whitespace-nowrap cursor-pointer ${
                 activeTab === tab.id
                   ? "text-emerald-800 font-bold"
                   : "text-slate-500 hover:text-slate-800"
@@ -163,7 +176,7 @@ export default function TasksPage() {
           <div className="relative">
             <button
               onClick={() => setShowFilterDropdown(!showFilterDropdown)}
-              className="px-3.5 py-1.5 rounded-xl bg-white border border-slate-200 text-slate-700 text-xs font-semibold flex items-center gap-1.5 hover:bg-slate-50 shadow-xs"
+              className="px-3.5 py-1.5 rounded-xl bg-white border border-slate-200 text-slate-700 text-xs font-semibold flex items-center gap-1.5 hover:bg-slate-50 shadow-xs cursor-pointer"
             >
               <SlidersHorizontal className="w-3.5 h-3.5 text-slate-500" />
               <span>Filter</span>
@@ -188,7 +201,7 @@ export default function TasksPage() {
 
           <button 
             onClick={() => setSortBy(sortBy === "time" ? "priority" : "time")}
-            className="px-3.5 py-1.5 rounded-xl bg-white border border-slate-200 text-slate-700 text-xs font-semibold flex items-center gap-1.5 hover:bg-slate-50 shadow-xs"
+            className="px-3.5 py-1.5 rounded-xl bg-white border border-slate-200 text-slate-700 text-xs font-semibold flex items-center gap-1.5 hover:bg-slate-50 shadow-xs cursor-pointer"
           >
             <ArrowUpDown className="w-3.5 h-3.5 text-slate-500" />
             <span>Sort: {sortBy === "time" ? "Latest" : "Priority"}</span>
@@ -214,7 +227,7 @@ export default function TasksPage() {
             </div>
             <button
               onClick={() => setShowNewTaskModal(true)}
-              className="mt-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all"
+              className="mt-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all cursor-pointer"
             >
               Dispatch First Mission
             </button>
@@ -320,7 +333,7 @@ export default function TasksPage() {
 
       {/* 4. New Task Modal */}
       {showNewTaskModal && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in duration-150">
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-150">
           <div className="bg-white border border-slate-200 rounded-3xl p-6 md:p-8 max-w-lg w-full shadow-2xl space-y-5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
@@ -331,7 +344,7 @@ export default function TasksPage() {
               </div>
               <button
                 onClick={() => setShowNewTaskModal(false)}
-                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
               >
                 <XCircle className="w-5 h-5" />
               </button>
@@ -391,14 +404,14 @@ export default function TasksPage() {
                 <button
                   type="button"
                   onClick={() => setShowNewTaskModal(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-colors"
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={createTask.isPending}
-                  className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs transition-all flex items-center gap-2"
+                  className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs transition-all flex items-center gap-2 cursor-pointer"
                 >
                   {createTask.isPending && <span className="material-symbols-outlined text-sm animate-spin">progress_activity</span>}
                   <span>Dispatch Mission</span>
@@ -409,62 +422,155 @@ export default function TasksPage() {
         </div>
       )}
 
-      {/* 5. Task Detail Drawer */}
+      {/* 5. Task Detail Drawer - Robust & Fully Visible */}
       {selectedTask && (
-        <div className="fixed inset-0 bg-slate-900/30 backdrop-blur-xs flex justify-end z-50 animate-in fade-in duration-150">
-          <div className="bg-white border-l border-slate-200 w-full max-w-lg h-full p-6 md:p-8 flex flex-col justify-between shadow-2xl overflow-y-auto">
-            <div className="space-y-6">
+        <div 
+          className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex justify-end animate-in fade-in duration-150"
+          onClick={() => setSelectedTask(null)}
+        >
+          <div 
+            className="w-full sm:w-[580px] md:w-[680px] max-w-full bg-white h-full shadow-2xl flex flex-col justify-between border-l border-slate-200 overflow-y-auto shrink-0 z-50"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-6 md:p-8 space-y-6">
+              {/* Header */}
               <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-                <div className="flex items-center gap-2">
-                  <span className="px-2.5 py-1 rounded-lg text-xs font-black font-mono bg-emerald-50 text-emerald-800 border border-emerald-200">
+                <div className="flex items-center gap-2.5">
+                  <span className={`px-2.5 py-1 rounded-lg text-xs font-black font-mono tracking-wider ${
+                    selectedTask.priority === "P0"
+                      ? "bg-rose-50 text-rose-700 border border-rose-200"
+                      : selectedTask.priority === "P1"
+                      ? "bg-amber-50 text-amber-800 border border-amber-200"
+                      : "bg-slate-100 text-slate-700 border border-slate-200"
+                  }`}>
                     {selectedTask.priority}
                   </span>
-                  <span className="text-xs font-bold uppercase text-slate-400">Operation Details</span>
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Operation Inspection</span>
                 </div>
                 <button
                   onClick={() => setSelectedTask(null)}
-                  className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+                  className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
                 >
-                  <XCircle className="w-5 h-5" />
+                  <X className="w-5 h-5" />
                 </button>
               </div>
 
-              <div>
-                <h2 className="text-lg font-bold text-slate-900">{selectedTask.title}</h2>
-                <p className="text-xs text-slate-400 mt-1 font-mono">{selectedTask.id}</p>
-              </div>
-
-              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-3">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="font-semibold text-slate-500">Assigned Agent</span>
-                  <span className="font-bold text-slate-800">{selectedTask.agentName}</span>
-                </div>
-                <div className="flex items-center justify-between text-xs">
-                  <span className="font-semibold text-slate-500">Execution Status</span>
-                  <span className="font-bold text-emerald-800 uppercase">{selectedTask.status}</span>
-                </div>
-                <div className="flex items-center justify-between text-xs">
-                  <span className="font-semibold text-slate-500">Review Retries</span>
-                  <span className="font-mono font-bold text-slate-800">{selectedTask.rawTask?.retry_count || 0} / 2</span>
+              {/* Title & Directive */}
+              <div className="space-y-2">
+                <h2 className="text-lg md:text-xl font-bold text-slate-900 leading-snug break-words">
+                  {selectedTask.title}
+                </h2>
+                <div className="flex items-center gap-3 text-xs text-slate-500 font-mono">
+                  <span>ID: {selectedTask.id}</span>
+                  <span>&bull;</span>
+                  <span>{selectedTask.subtitle}</span>
                 </div>
               </div>
 
-              {selectedTask.rawTask?.result && (
+              {/* Status & Metadata Card */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 p-4 rounded-2xl bg-slate-50 border border-slate-200/80">
                 <div>
-                  <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Execution Output</h4>
-                  <div className="p-3.5 bg-slate-950 text-emerald-400 rounded-xl text-xs font-mono whitespace-pre-wrap overflow-x-auto max-h-60 border border-slate-800">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
+                    Assigned Specialist
+                  </span>
+                  <p className="text-xs font-bold text-slate-800 truncate">
+                    {selectedTask.agentName}
+                  </p>
+                  <p className="text-[10px] text-slate-500 truncate">
+                    {selectedTask.agentRole}
+                  </p>
+                </div>
+
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
+                    Status
+                  </span>
+                  <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                    selectedTask.statusType === "completed"
+                      ? "bg-emerald-100 text-emerald-800 border border-emerald-300"
+                      : selectedTask.statusType === "blocked"
+                      ? "bg-rose-100 text-rose-800 border border-rose-300"
+                      : "bg-amber-100 text-amber-800 border border-amber-300"
+                  }`}>
+                    <span className={`w-1.5 h-1.5 rounded-full ${
+                      selectedTask.statusType === "completed" ? "bg-emerald-600" : "bg-amber-600"
+                    }`} />
+                    <span>{selectedTask.status}</span>
+                  </span>
+                </div>
+
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
+                    Verification Gate
+                  </span>
+                  <p className="text-xs font-mono font-bold text-slate-800">
+                    {selectedTask.rawTask?.retry_count || 0} / 2 Retries
+                  </p>
+                  <p className="text-[10px] text-emerald-700 font-semibold">
+                    Maker-Checker Verified
+                  </p>
+                </div>
+              </div>
+
+              {/* Execution Output */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-emerald-700" />
+                    <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                      Execution Output & Deliverables
+                    </h3>
+                  </div>
+                  {selectedTask.rawTask?.result && (
+                    <button
+                      onClick={() => handleCopyResult(selectedTask.rawTask.result)}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-semibold transition-colors cursor-pointer"
+                    >
+                      {copiedOutput ? (
+                        <>
+                          <Check className="w-3.5 h-3.5 text-emerald-600" />
+                          <span className="text-emerald-700 font-bold">Copied</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3.5 h-3.5" />
+                          <span>Copy Output</span>
+                        </>
+                      )}
+                    </button>
+                  )}
+                </div>
+
+                {selectedTask.rawTask?.result ? (
+                  <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 text-emerald-400 text-xs font-mono whitespace-pre-wrap overflow-x-auto leading-relaxed shadow-inner max-h-[420px] select-text">
                     {selectedTask.rawTask.result}
                   </div>
-                </div>
-              )}
+                ) : (
+                  <div className="p-8 rounded-2xl bg-slate-50 border border-slate-200 text-center text-slate-400 space-y-2">
+                    <Cpu className="w-6 h-6 mx-auto text-slate-400 animate-pulse" />
+                    <p className="text-xs font-semibold text-slate-600">
+                      Operation is currently in progress or awaiting worker execution.
+                    </p>
+                    <p className="text-[11px] text-slate-400">
+                      Output will automatically stream here once the LangGraph execution graph completes.
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
 
-            <button
-              onClick={() => setSelectedTask(null)}
-              className="w-full py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold transition-colors"
-            >
-              Close Drawer
-            </button>
+            {/* Footer */}
+            <div className="p-6 md:p-8 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between">
+              <span className="text-xs text-slate-400 font-medium">
+                Press ESC or click outside to close
+              </span>
+              <button
+                onClick={() => setSelectedTask(null)}
+                className="px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition-all cursor-pointer shadow-xs"
+              >
+                Close Drawer
+              </button>
+            </div>
           </div>
         </div>
       )}
