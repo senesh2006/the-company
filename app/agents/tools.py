@@ -1,11 +1,20 @@
 import json
-from typing import Any, List, Optional
+import logging
+import uuid
+from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field
 from app.agents.tool_registry import BaseTool, registry
 from app.services.shared_memory import SharedMemoryService
+from app.services.mcp_client import mcp_call_or_default
+
+logger = logging.getLogger(__name__)
 
 # Initialize the global memory service
 memory_service = SharedMemoryService()
+
+def _common_mcp_call(mcp_name: str, tool_name: str, arguments: Dict[str, Any], default_result: Any) -> Any:
+    """Call a real MCP server if configured, otherwise return the default mock result."""
+    return mcp_call_or_default(mcp_name, tool_name, arguments, default_result)
 
 # --- Shared Memory Tools ---
 
@@ -118,7 +127,13 @@ class SearchWebTool(BaseTool):
     cost_estimate = 0.01
 
     def _run(self, query: str) -> str:
-        return f"Search results for '{query}': Found 3 relevant market intelligence resources indicating that the query is valid."
+        default = f"Search results for '{query}': Found 3 relevant market intelligence resources indicating that the query is valid."
+        return _common_mcp_call(
+            "brave",
+            "search",
+            {"query": query},
+            default,
+        )
 
 # --- Communication Tools ---
 
@@ -134,7 +149,13 @@ class SendEmailTool(BaseTool):
     cost_estimate = 0.05
 
     def _run(self, to_email: str, subject: str, body: str) -> str:
-        return f"Email successfully queued to {to_email} with subject '{subject}'."
+        default = f"Email successfully queued to {to_email} with subject '{subject}'."
+        return _common_mcp_call(
+            "email",
+            "send_email",
+            {"to_email": to_email, "subject": subject, "body": body},
+            default,
+        )
 
 # --- Scheduling Tools ---
 
@@ -151,7 +172,75 @@ class CreateCalendarEventTool(BaseTool):
     cost_estimate = 0.05
 
     def _run(self, title: str, start_time: str, end_time: str, attendees: List[str]) -> str:
-        return f"Event '{title}' scheduled from {start_time} to {end_time} with {len(attendees)} attendees."
+        default = f"Event '{title}' scheduled from {start_time} to {end_time} with {len(attendees)} attendees."
+        return _common_mcp_call(
+            "calendar",
+            "create_event",
+            {"title": title, "start_time": start_time, "end_time": end_time, "attendees": attendees},
+            default,
+        )
+
+# --- Inter-Department Collaboration Tool ---
+
+class RequestCollaborationInput(BaseModel):
+    target_role: str = Field(description="The role or department to request help from (e.g. 'Finance Manager', 'Engineering Worker')")
+    request: str = Field(description="What you need from the other department")
+    context: Optional[str] = Field(None, description="Additional context that will help the target department")
+    blocking: bool = Field(default=False, description="If true, the current task will wait for the collaboration result")
+
+class RequestCollaborationTool(BaseTool):
+    name = "request_department_collaboration"
+    description = "Request a collaboration from another department. The target department will receive a subtask and the result will be stored in shared memory under a unique key."
+    args_schema = RequestCollaborationInput
+    cost_estimate = 0.02
+
+    def __init__(self, business_id: str, main_task_id: str = None):
+        self.business_id = business_id
+        self.main_task_id = main_task_id
+
+    def _run(self, target_role: str, request: str, context: Optional[str] = None, blocking: bool = False) -> str:
+        from app.core.config import settings
+        from app.services.mcp_client import get_mcp_client
+
+        collaboration_id = str(uuid.uuid4())
+        memory_key = f"collaboration_request:{collaboration_id}"
+        request_payload = {
+            "id": collaboration_id,
+            "target_role": target_role,
+            "request": request,
+            "context": context or "",
+            "blocking": blocking,
+            "main_task_id": self.main_task_id,
+            "status": "pending",
+            "response": None,
+        }
+
+        # Try real collaboration MCP if configured and fallback mode is disabled
+        client = get_mcp_client("collaboration")
+        if client is not None:
+            try:
+                result = client.call_tool("request_collaboration", request_payload)
+                memory_service.set(
+                    self.business_id,
+                    memory_key,
+                    {"request": request_payload, "response": result},
+                    tags=["collaboration", "pending_delegation", target_role.lower().replace(" ", "_")],
+                )
+                return f"Collaboration request '{collaboration_id}' sent to {target_role}. Response: {result}"
+            except Exception as e:
+                logger.warning(f"Collaboration MCP call failed: {e}. Falling back to shared memory.")
+
+        # Local fallback: write to shared memory for the supervisor to dispatch
+        memory_service.set(
+            self.business_id,
+            memory_key,
+            request_payload,
+            tags=["collaboration", "pending_delegation", target_role.lower().replace(" ", "_")],
+        )
+        return (
+            f"Collaboration request '{collaboration_id}' queued for {target_role}. "
+            f"Status: PENDING. The coordinator will dispatch this to the right specialist."
+        )
 
 # --- Subtask Spawning Tool ---
 
@@ -206,6 +295,7 @@ def register_default_tools(business_id: str, role: str = "assistant", agent_id: 
         SearchWebTool(),
         SendEmailTool(),
         CreateCalendarEventTool(),
+        RequestCollaborationTool(business_id=business_id, main_task_id=task_id),
         SpawnSubtaskTool(business_id=business_id, main_task_id=task_id)
     ]
     

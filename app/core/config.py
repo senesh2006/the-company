@@ -32,6 +32,31 @@ class Settings(BaseSettings):
     # Redis
     REDIS_URL: Optional[str] = None
 
+    # MCP (Model Context Protocol) servers
+    MCP_FALLBACK_MODE: bool = True
+    STRIPE_MCP_URL: Optional[str] = None
+    STRIPE_MCP_API_KEY: Optional[str] = None
+    NOTION_MCP_URL: Optional[str] = None
+    NOTION_MCP_TOKEN: Optional[str] = None
+    SLACK_MCP_URL: Optional[str] = None
+    SLACK_MCP_BOT_TOKEN: Optional[str] = None
+    BRAVE_MCP_URL: Optional[str] = None
+    BRAVE_MCP_API_KEY: Optional[str] = None
+    GOOGLE_MCP_URL: Optional[str] = None
+    GOOGLE_MCP_CREDENTIALS: Optional[str] = None
+    SUPABASE_MCP_URL: Optional[str] = None
+    SUPABASE_MCP_KEY: Optional[str] = None
+    BROWSER_MCP_URL: Optional[str] = None
+    BROWSER_MCP_API_KEY: Optional[str] = None
+    EMAIL_MCP_URL: Optional[str] = None
+    EMAIL_MCP_API_KEY: Optional[str] = None
+    CALENDAR_MCP_URL: Optional[str] = None
+    CALENDAR_MCP_API_KEY: Optional[str] = None
+    CONTEXT7_MCP_URL: Optional[str] = None
+    CONTEXT7_MCP_API_KEY: Optional[str] = None
+    COLLABORATION_MCP_URL: Optional[str] = None
+    COLLABORATION_MCP_API_KEY: Optional[str] = None
+
     ENVIRONMENT: str = "local"
 
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=False, extra="ignore")

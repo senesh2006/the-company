@@ -51,12 +51,50 @@ To run the entire stack (API, Postgres, Redis) using Docker Compose:
    docker-compose down
    ```
 
+## MCP (Model Context Protocol) Integrations
+
+The backend tools can connect to real external MCP servers instead of returning mock data.
+
+### Configuration
+
+All MCP integrations are disabled by default (`MCP_FALLBACK_MODE=true`).  Set the environment variables for the services you want to use, then set `MCP_FALLBACK_MODE=false` to enable real calls.
+
+| Service | Environment Variable | Credential |
+|---------|---------------------|------------|
+| Supabase Ledger | `SUPABASE_MCP_URL` | `SUPABASE_MCP_KEY` |
+| Stripe | `STRIPE_MCP_URL` | `STRIPE_MCP_API_KEY` |
+| Google Workspace | `GOOGLE_MCP_URL` | `GOOGLE_MCP_CREDENTIALS` |
+| Notion | `NOTION_MCP_URL` | `NOTION_MCP_TOKEN` |
+| Brave Search | `BRAVE_MCP_URL` | `BRAVE_MCP_API_KEY` |
+| Slack/WhatsApp | `SLACK_MCP_URL` | `SLACK_MCP_BOT_TOKEN` |
+| Browser (Playwright) | `BROWSER_MCP_URL` | `BROWSER_MCP_API_KEY` |
+| Email | `EMAIL_MCP_URL` | `EMAIL_MCP_API_KEY` |
+| Calendar | `CALENDAR_MCP_URL` | `CALENDAR_MCP_API_KEY` |
+| Context7 | `CONTEXT7_MCP_URL` | `CONTEXT7_MCP_API_KEY` |
+| Collaboration | `COLLABORATION_MCP_URL` | `COLLABORATION_MCP_API_KEY` |
+
+### Health Check
+
+Check the configured MCP servers:
+
+```bash
+curl http://localhost:8000/api/v1/health/mcp
+```
+
+### Fallback Mode
+
+When `MCP_FALLBACK_MODE=true` (default), every tool returns the original mock response so the app works without any external credentials.
+
+### Inter-Agent Collaboration
+
+Workers can request help from another department using the `request_department_collaboration` tool.  When no collaboration MCP server is configured, the request is written to shared memory with a `pending_delegation` tag so the coordinator can dispatch it to the right specialist.
+
 ## Project Structure
 
 - `app/main.py`: Application entry point and router definitions.
 - `app/api/`: API routes and dependencies.
 - `app/core/`: Configuration, logging, and security.
 - `app/models/`: Database models (SQLAlchemy).
-- `app/services/`: Business logic.
-- `app/agents/`: AI multi-agent logic (to be added).
+- `app/services/`: Business logic and MCP client.
+- `app/agents/`: AI multi-agent logic.
 - `tests/`: Test suite.

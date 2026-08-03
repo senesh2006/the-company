@@ -1,10 +1,18 @@
 import json
+import logging
 from typing import List, Optional, Any, Dict
 from pydantic import BaseModel, Field
 from app.agents.tool_registry import BaseTool, registry
 from app.agents.tools import ReadSharedMemoryTool, WriteSharedMemoryTool, SpawnSubtaskTool
+from app.services.mcp_client import mcp_call_or_default
+
+logger = logging.getLogger(__name__)
 
 # --- Finance Specific MCP Tools ---
+
+def _finance_mcp_call(mcp_name: str, tool_name: str, arguments: Dict[str, Any], default_result: Any) -> Any:
+    """Call a real MCP server if configured, otherwise return the default mock result."""
+    return mcp_call_or_default(mcp_name, tool_name, arguments, default_result)
 
 class SupabaseInput(BaseModel):
     action: str = Field(description="'read_transactions', 'get_chart_of_accounts', 'read_trial_balance', 'post_journal_entry', 'transfer_funds'")
@@ -18,7 +26,7 @@ class SupabaseLedgerTool(BaseTool):
     
     def _run(self, action: str, query_or_data: Optional[str] = None) -> str:
         if action == "read_transactions":
-            return json.dumps([
+            default = json.dumps([
                 {"id": "tx_101", "date": "2026-07-15", "vendor": "AWS Cloud Services", "amount": 420.50, "account": "5000 - Cloud Hosting & Server Infrastructure", "status": "posted"},
                 {"id": "tx_102", "date": "2026-07-18", "vendor": "OpenAI API", "amount": 185.20, "account": "5100 - LLM Inference & API Costs", "status": "posted"},
                 {"id": "tx_103", "date": "2026-07-20", "vendor": "Stripe Processing", "amount": 45.00, "account": "5200 - Payment Processing Fees (Stripe)", "status": "posted"},
@@ -26,7 +34,7 @@ class SupabaseLedgerTool(BaseTool):
                 {"id": "tx_105", "date": "2026-07-30", "vendor": "SaaS Customer A", "amount": 3500.00, "account": "4000 - Software Subscription Revenue", "status": "posted"}
             ])
         elif action == "get_chart_of_accounts":
-            return json.dumps({
+            default = json.dumps({
                 "Assets (1000s)": ["1000 Cash", "1050 Operating Bank", "1100 Accounts Receivable", "1200 Prepaid Expenses"],
                 "Liabilities (2000s)": ["2000 Accounts Payable", "2100 Accrued Liabilities", "2200 Corporate Credit Card"],
                 "Equity (3000s)": ["3000 Common Stock", "3100 Retained Earnings"],
@@ -35,7 +43,7 @@ class SupabaseLedgerTool(BaseTool):
                 "OPEX (6000s)": ["6000 Software & SaaS", "6100 Marketing", "6200 Legal & Professional", "6400 Travel & Meals", "6500 Taxes"]
             })
         elif action == "read_trial_balance":
-            return json.dumps({
+            default = json.dumps({
                 "Cash (1050)": {"debit": 48250.00, "credit": 0.00},
                 "Accounts Receivable (1100)": {"debit": 12400.00, "credit": 0.00},
                 "Accounts Payable (2000)": {"debit": 0.00, "credit": 4350.00},
@@ -48,10 +56,18 @@ class SupabaseLedgerTool(BaseTool):
                 "Total": {"debit": 67850.00, "credit": 67850.00, "balanced": True}
             })
         elif action == "post_journal_entry":
-            return f"Journal Entry successfully recorded into Supabase ledger with cryptographic audit hash. Entry payload: {query_or_data}"
+            default = f"Journal Entry successfully recorded into Supabase ledger with cryptographic audit hash. Entry payload: {query_or_data}"
         elif action == "transfer_funds":
-            return f"Simulated transfer execution: {query_or_data}. (Requires human founder authorization)"
-        return f"Supabase ledger action '{action}' executed successfully."
+            default = f"Simulated transfer execution: {query_or_data}. (Requires human founder authorization)"
+        else:
+            return f"Supabase ledger action '{action}' executed successfully."
+
+        return _finance_mcp_call(
+            "supabase",
+            action,
+            {"query_or_data": query_or_data},
+            default,
+        )
 
 class StripeInput(BaseModel):
     action: str = Field(description="'read_charges', 'read_invoices', 'create_draft_invoice', 'issue_refund', 'transfer_funds'")
@@ -67,22 +83,34 @@ class StripeFinanceTool(BaseTool):
 
     def _run(self, action: str, customer_id: Optional[str] = None, amount: Optional[float] = None, metadata: Optional[str] = None) -> str:
         if action == "read_charges":
-            return json.dumps([
+            default = json.dumps([
                 {"charge_id": "ch_3M901", "customer": customer_id or "cus_AcmeCorp", "amount": 2500.00, "status": "succeeded", "fee": 72.80, "created": "2026-07-22"},
                 {"charge_id": "ch_3M902", "customer": "cus_BetaLLC", "amount": 1000.00, "status": "succeeded", "fee": 29.30, "created": "2026-07-24"}
             ])
         elif action == "read_invoices":
-            return json.dumps([
+            default = json.dumps([
                 {"invoice_id": "in_9921", "customer": customer_id or "cus_AcmeCorp", "total": 2500.00, "status": "paid", "due_date": "2026-07-31"},
                 {"invoice_id": "in_9922", "customer": "cus_GammaInc", "total": 1200.00, "status": "open", "due_date": "2026-08-15"}
             ])
         elif action == "create_draft_invoice":
-            return f"Created Draft Stripe Invoice for customer '{customer_id or 'cus_default'}' in the amount of ${amount or 0.00:.2f}. Status: DRAFT (Non-destructive)."
+            default = f"Created Draft Stripe Invoice for customer '{customer_id or 'cus_default'}' in the amount of ${amount or 0.00:.2f}. Status: DRAFT (Non-destructive)."
         elif action == "issue_refund":
-            return f"REFUND ACTION: Refund request for ${amount or 0.00:.2f} logged. (High-risk action - must receive founder sign-off)."
+            default = f"REFUND ACTION: Refund request for ${amount or 0.00:.2f} logged. (High-risk action - must receive founder sign-off)."
         elif action == "transfer_funds":
-            return f"PAYOUT ACTION: Transfer of ${amount or 0.00:.2f} logged. (High-risk action - must receive founder sign-off)."
-        return f"Stripe action '{action}' completed."
+            default = f"PAYOUT ACTION: Transfer of ${amount or 0.00:.2f} logged. (High-risk action - must receive founder sign-off)."
+        else:
+            return f"Stripe action '{action}' completed."
+
+        return _finance_mcp_call(
+            "stripe",
+            action,
+            {
+                "customer_id": customer_id,
+                "amount": amount,
+                "metadata": metadata,
+            },
+            default,
+        )
 
 class GoogleWorkspaceInput(BaseModel):
     app: str = Field(description="'sheets', 'gmail', or 'docs'")
@@ -99,13 +127,23 @@ class GoogleWorkspaceTool(BaseTool):
     def _run(self, app: str, action: str, target: str, content: Optional[str] = None) -> str:
         if app == "sheets":
             if action == "read":
-                return f"Google Sheets '{target}': Retrieved Monthly Budget Model (Target OPEX: $15,000/mo, Actuals: $12,470/mo, Variance: +$2,530 favorable)."
-            return f"Google Sheets '{target}': Successfully updated cells with new financial actuals."
+                default = f"Google Sheets '{target}': Retrieved Monthly Budget Model (Target OPEX: $15,000/mo, Actuals: $12,470/mo, Variance: +$2,530 favorable)."
+            else:
+                default = f"Google Sheets '{target}': Successfully updated cells with new financial actuals."
         elif app == "gmail":
             if action == "read":
-                return f"Gmail inbox search for '{target}': Extracted 3 vendor invoices (AWS: $420.50, Figma: $45.00, Notion: $28.00)."
-            return f"Gmail draft created for recipient '{target}'."
-        return f"Google {app} action '{action}' on '{target}' completed."
+                default = f"Gmail inbox search for '{target}': Extracted 3 vendor invoices (AWS: $420.50, Figma: $45.00, Notion: $28.00)."
+            else:
+                default = f"Gmail draft created for recipient '{target}'."
+        else:
+            return f"Google {app} action '{action}' on '{target}' completed."
+
+        return _finance_mcp_call(
+            "google",
+            f"{app}_{action}",
+            {"app": app, "action": action, "target": target, "content": content},
+            default,
+        )
 
 class FilesystemInput(BaseModel):
     action: str = Field(description="'read_file' or 'write_file'")
@@ -136,7 +174,7 @@ class NotionTool(BaseTool):
 
     def _run(self, action: str, doc_id: Optional[str] = None, content: Optional[str] = None) -> str:
         if action == "read_policy":
-            return (
+            default = (
                 "Company OS Financial Governance Policy:\n"
                 "1. Zero unattended external money movement without human signoff.\n"
                 "2. Standard corporate income tax reserve: 21%.\n"
@@ -144,8 +182,16 @@ class NotionTool(BaseTool):
                 "4. All software subscriptions > $50/mo require designated departmental owner."
             )
         elif action == "update_close_checklist":
-            return f"Month-End Closing Checklist on Notion '{doc_id or 'Closing Hub'}' marked 100% complete."
-        return f"Notion Financial Report '{doc_id or 'Month-End Close Memo'}' successfully published."
+            default = f"Month-End Closing Checklist on Notion '{doc_id or 'Closing Hub'}' marked 100% complete."
+        else:
+            default = f"Notion Financial Report '{doc_id or 'Month-End Close Memo'}' successfully published."
+
+        return _finance_mcp_call(
+            "notion",
+            action,
+            {"doc_id": doc_id, "content": content},
+            default,
+        )
 
 class PlaywrightInput(BaseModel):
     action: str = Field(description="'scrape_bank_portal' or 'download_statement'")
@@ -158,7 +204,13 @@ class PlaywrightTool(BaseTool):
     cost_estimate = 0.02
     
     def _run(self, action: str, url: Optional[str] = None) -> str:
-        return f"Playwright automation '{action}' on '{url or 'Primary Bank Portal'}': Downloaded verified bank statement statement_2026_07.csv (Ending Balance: $48,250.00)."
+        default = f"Playwright automation '{action}' on '{url or 'Primary Bank Portal'}': Downloaded verified bank statement statement_2026_07.csv (Ending Balance: $48,250.00)."
+        return _finance_mcp_call(
+            "browser",
+            action,
+            {"url": url},
+            default,
+        )
 
 class BraveSearchInput(BaseModel):
     query: str = Field(description="Search query for tax rates, GAAP accounting standards, or FX regulations")
@@ -170,7 +222,13 @@ class BraveSearchTool(BaseTool):
     cost_estimate = 0.015
 
     def _run(self, query: str) -> str:
-        return f"Brave Search result for '{query}': Corporate tax rate is 21%. Section 174 software development capitalization rules apply."
+        default = f"Brave Search result for '{query}': Corporate tax rate is 21%. Section 174 software development capitalization rules apply."
+        return _finance_mcp_call(
+            "brave",
+            "search",
+            {"query": query},
+            default,
+        )
 
 class FetchInput(BaseModel):
     url: str = Field(description="API URL (e.g. currency exchange rates or inflation index)")
@@ -182,7 +240,13 @@ class FetchTool(BaseTool):
     cost_estimate = 0.005
 
     def _run(self, url: str) -> str:
-        return f"Live FX API response from '{url}': 1 USD = 0.92 EUR, 1 USD = 0.79 GBP, 1 USD = 155.20 JPY."
+        default = f"Live FX API response from '{url}': 1 USD = 0.92 EUR, 1 USD = 0.79 GBP, 1 USD = 155.20 JPY."
+        return _finance_mcp_call(
+            "fetch",
+            "get",
+            {"url": url},
+            default,
+        )
 
 class CommInput(BaseModel):
     platform: str = Field(description="'slack' or 'whatsapp'")
@@ -196,7 +260,14 @@ class CommTool(BaseTool):
     cost_estimate = 0.01
 
     def _run(self, platform: str, channel_or_user: str, message: str) -> str:
-        return f"Notification successfully dispatched via {platform.upper()} to {channel_or_user}: '{message}'"
+        default = f"Notification successfully dispatched via {platform.upper()} to {channel_or_user}: '{message}'"
+        mcp_name = "slack" if platform.lower() == "slack" else "whatsapp"
+        return _finance_mcp_call(
+            mcp_name,
+            "send_message",
+            {"platform": platform, "channel_or_user": channel_or_user, "message": message},
+            default,
+        )
 
 def register_finance_tools(business_id: str, agent_id: Optional[str] = None, task_id: Optional[str] = None) -> List[BaseTool]:
     """

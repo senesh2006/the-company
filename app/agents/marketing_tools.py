@@ -1,10 +1,18 @@
 import json
-from typing import List, Optional, Any
+import logging
+from typing import Dict, List, Optional, Any
 from pydantic import BaseModel, Field
 from app.agents.tool_registry import BaseTool, registry
 from app.agents.tools import ReadSharedMemoryTool, WriteSharedMemoryTool, SpawnSubtaskTool
+from app.services.mcp_client import mcp_call_or_default
+
+logger = logging.getLogger(__name__)
 
 # --- Marketing Specific MCP Tools ---
+
+def _marketing_mcp_call(mcp_name: str, tool_name: str, arguments: Dict[str, Any], default_result: Any) -> Any:
+    """Call a real MCP server if configured, otherwise return the default mock result."""
+    return mcp_call_or_default(mcp_name, tool_name, arguments, default_result)
 
 class PlaywrightInput(BaseModel):
     action: str = Field(description="The action to perform (e.g. 'post_tweet', 'scrape_page')")
@@ -18,7 +26,13 @@ class PlaywrightTool(BaseTool):
     cost_estimate = 0.02
     
     def _run(self, action: str, url: str = None, content: str = None) -> str:
-        return f"Playwright executed '{action}' on {url or 'target'}. Content processed: {content[:20] if content else 'None'}..."
+        default = f"Playwright executed '{action}' on {url or 'target'}. Content processed: {content[:20] if content else 'None'}..."
+        return _marketing_mcp_call(
+            "browser",
+            action,
+            {"url": url, "content": content},
+            default,
+        )
 
 class BraveSearchInput(BaseModel):
     query: str = Field(description="Search query for trends or competitor research")
@@ -38,9 +52,16 @@ class BraveSearchTool(BaseTool):
             req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
             with urllib.request.urlopen(req, timeout=5) as resp:
                 data = resp.read().decode("utf-8", errors="ignore")
-                return f"Search results for '{query}': {data[:1000]}"
+                default = f"Search results for '{query}': {data[:1000]}"
         except Exception as e:
-            return f"Brave search executed for query '{query}': {str(e)}"
+            default = f"Brave search executed for query '{query}': {str(e)}"
+
+        return _marketing_mcp_call(
+            "brave",
+            "search",
+            {"query": query},
+            default,
+        )
 
 class NotionInput(BaseModel):
     action: str = Field(description="'read_calendar' or 'update_calendar'")
@@ -60,12 +81,21 @@ class NotionTool(BaseTool):
         if action == "read_calendar":
             calendar_data = mem.get(biz_id, "content_calendar")
             if calendar_data:
-                return json.dumps(calendar_data.get("value"))
-            return "Content Calendar: No scheduled posts currently in workspace."
+                default = json.dumps(calendar_data.get("value"))
+            else:
+                default = "Content Calendar: No scheduled posts currently in workspace."
         elif action == "update_calendar" and content:
             mem.set(biz_id, "content_calendar", content, tags=["calendar", "notion"])
-            return f"Content Calendar updated successfully in Notion workspace ({doc_id or 'main'})."
-        return f"Notion workspace action '{action}' on document '{doc_id or 'main'}' completed."
+            default = f"Content Calendar updated successfully in Notion workspace ({doc_id or 'main'})."
+        else:
+            default = f"Notion workspace action '{action}' on document '{doc_id or 'main'}' completed."
+
+        return _marketing_mcp_call(
+            "notion",
+            action,
+            {"doc_id": doc_id, "content": content},
+            default,
+        )
 
 class FilesystemInput(BaseModel):
     action: str = Field(description="'read_file' or 'write_file'")
@@ -110,7 +140,14 @@ class CommTool(BaseTool):
     cost_estimate = 0.01
 
     def _run(self, platform: str, channel_or_user: str, message: str) -> str:
-        return f"Communication sent on {platform} to {channel_or_user}: '{message}'"
+        default = f"Communication sent on {platform} to {channel_or_user}: '{message}'"
+        mcp_name = "slack" if platform.lower() == "slack" else "whatsapp"
+        return _marketing_mcp_call(
+            mcp_name,
+            "send_message",
+            {"platform": platform, "channel_or_user": channel_or_user, "message": message},
+            default,
+        )
 
 class GoogleWorkspaceInput(BaseModel):
     app: str = Field(description="'gmail' or 'docs'")
@@ -125,7 +162,13 @@ class GoogleWorkspaceTool(BaseTool):
     cost_estimate = 0.02
 
     def _run(self, app: str, action: str, target: str, content: str = None) -> str:
-        return f"Google {app} action '{action}' on {target} completed successfully."
+        default = f"Google {app} action '{action}' on {target} completed successfully."
+        return _marketing_mcp_call(
+            "google",
+            f"{app}_{action}",
+            {"app": app, "action": action, "target": target, "content": content},
+            default,
+        )
 
 class FetchInput(BaseModel):
     url: str = Field(description="URL to fetch")
@@ -142,9 +185,16 @@ class FetchTool(BaseTool):
             req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
             with urllib.request.urlopen(req, timeout=5) as resp:
                 data = resp.read().decode("utf-8", errors="ignore")
-                return data[:2000]
+                default = data[:2000]
         except Exception as e:
-            return f"Fetch API request for {url} returned: {str(e)}"
+            default = f"Fetch API request for {url} returned: {str(e)}"
+
+        return _marketing_mcp_call(
+            "fetch",
+            "get",
+            {"url": url},
+            default,
+        )
 
 class Context7Input(BaseModel):
     query: str = Field(description="Query for Context7 advanced semantic retrieval")
@@ -161,8 +211,16 @@ class Context7Tool(BaseTool):
         biz_id = getattr(self, "business_id", "default_business")
         results = mem.list_by_tags(biz_id, ["context7", "knowledge"])
         if results:
-            return json.dumps(results)
-        return f"Context7 knowledge query '{query}' returned no matching records for business {biz_id}."
+            default = json.dumps(results)
+        else:
+            default = f"Context7 knowledge query '{query}' returned no matching records for business {biz_id}."
+
+        return _marketing_mcp_call(
+            "context7",
+            "search",
+            {"query": query, "business_id": biz_id},
+            default,
+        )
 
 def register_marketing_tools(business_id: str, agent_id: str = None, task_id: str = None):
     """
