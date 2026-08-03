@@ -1,5 +1,6 @@
+import os
 from typing import Optional, Any
-from pydantic import PostgresDsn, RedisDsn, field_validator, ValidationInfo
+from pydantic import PostgresDsn, RedisDsn
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -13,6 +14,7 @@ class Settings(BaseSettings):
     SECRET_KEY: str = "your-super-secret-key-change-in-production"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 8  # 8 days
+    SUPABASE_JWT_SECRET: Optional[str] = None
 
     # Postgres (Optional if using Supabase client)
     POSTGRES_SERVER: Optional[str] = None
@@ -25,6 +27,7 @@ class Settings(BaseSettings):
     # Supabase Client
     SUPABASE_URL: Optional[str] = None
     SUPABASE_KEY: Optional[str] = None
+    SUPABASE_ANON_KEY: Optional[str] = None
 
     # Redis
     REDIS_URL: Optional[str] = None
@@ -33,10 +36,10 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=False, extra="ignore")
 
+
 settings = Settings()
 
-import os
-# Force overrides if Pydantic misses them due to env_file conflicts in Railway
+# Force overrides if Pydantic misses them due to env_file conflicts in Railway/deployment
 if not settings.SUPABASE_URL:
     settings.SUPABASE_URL = os.getenv("SUPABASE_URL")
 if not settings.SUPABASE_KEY:
@@ -46,5 +49,9 @@ if not settings.SUPABASE_KEY:
         os.getenv("SUPABASE_SERVICE_ROLE_KEY") or 
         os.getenv("SUPABASE_ANON_KEY")
     )
+if not settings.SUPABASE_ANON_KEY:
+    settings.SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY")
+if not settings.SUPABASE_JWT_SECRET:
+    settings.SUPABASE_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET")
 if not settings.FIREWORKS_API_KEY:
     settings.FIREWORKS_API_KEY = os.getenv("FIREWORKS_API_KEY")

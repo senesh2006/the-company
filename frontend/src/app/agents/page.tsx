@@ -1,365 +1,516 @@
 "use client";
 
 import { useState } from "react";
-import { useAgents, useMetrics, useUpdateAgentStatus } from "@/lib/queries";
-import { AgentStatus } from "@/lib/api";
+import { useAgents, useMetrics } from "@/lib/queries";
+import { useAppStore } from "@/lib/store";
+import { 
+  Plus, 
+  SlidersHorizontal, 
+  ArrowUpDown, 
+  LayoutGrid, 
+  List, 
+  Bot, 
+  Megaphone, 
+  Briefcase, 
+  Search, 
+  Settings, 
+  Radio, 
+  Cpu, 
+  CreditCard, 
+  CheckCircle2,
+  ChevronDown
+} from "lucide-react";
 
 export default function AgentsPage() {
-  const { data: agents, isLoading: isLoadingAgents, error: agentsError, refetch } = useAgents();
+  const { data: agents, isLoading } = useAgents();
   const { data: metrics } = useMetrics();
-  const updateStatus = useUpdateAgentStatus();
-  
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedRoleFilter, setSelectedRoleFilter] = useState("all");
-  const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
+  const { setSelectedAgentId } = useAppStore();
 
-  if (isLoadingAgents && !agents) {
-    return (
-      <div className="p-xl flex items-center justify-center min-h-[400px]">
-        <div className="flex flex-col items-center gap-md">
-          <span className="material-symbols-outlined animate-spin text-display-lg text-primary">sync</span>
-          <p className="font-body-md text-secondary">Loading AI workforce...</p>
-        </div>
-      </div>
-    );
-  }
+  const [filterDepartment, setFilterDepartment] = useState<string>("all");
+  const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [sortBy, setSortBy] = useState<"name" | "cost" | "progress">("name");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+  const [viewMode, setViewMode] = useState<"table" | "grid">("table");
+  const [showFilterDropdown, setShowFilterDropdown] = useState(false);
 
-  const handleStatusChange = (agentId: string, currentStatus: AgentStatus) => {
-    let newStatus: AgentStatus = "Paused";
-    if (currentStatus === "Paused") newStatus = "Running";
-    updateStatus.mutate({ id: agentId, status: newStatus });
-  };
+  // Map real database agents
+  const workers = (agents && agents.length > 0)
+    ? agents.map((a: any) => {
+        const r = (a.role || "").toLowerCase();
+        let dept = "Operations";
+        let sub = a.role || "Specialist";
+        let icon = Bot;
+        let bg = "bg-slate-100 border-slate-200 text-slate-700";
 
-  const handleKill = (agentId: string) => {
-    updateStatus.mutate({ id: agentId, status: "Failed" });
-  };
+        if (r.includes("market") || r.includes("growth")) {
+          dept = "Marketing";
+          sub = "Growth & Social";
+          icon = Megaphone;
+          bg = "bg-emerald-50 border-emerald-200 text-emerald-700";
+        } else if (r.includes("finance") || r.includes("account")) {
+          dept = "Finance";
+          sub = "Ledger & Audits";
+          icon = Briefcase;
+          bg = "bg-blue-50 border-blue-200 text-blue-700";
+        } else if (r.includes("research") || r.includes("data") || r.includes("analyst")) {
+          dept = "Research";
+          sub = "Market Insights";
+          icon = Search;
+          bg = "bg-purple-50 border-purple-200 text-purple-700";
+        }
 
-  const getRoleIcon = (role?: string) => {
-    const r = role?.toLowerCase() || "";
-    if (r.includes("marketing")) return "campaign";
-    if (r.includes("finance") || r.includes("accountant")) return "account_balance";
-    if (r.includes("coder") || r.includes("developer") || r.includes("engineer")) return "terminal";
-    if (r.includes("research")) return "psychology";
-    if (r.includes("writer") || r.includes("copy")) return "edit_note";
-    if (r.includes("supervisor") || r.includes("manager")) return "shield_person";
-    return "smart_toy";
-  };
+        return {
+          id: a.id,
+          name: a.name || "Autonomous Agent",
+          sublabel: sub,
+          department: dept,
+          status: a.status || "Idle",
+          currentTask: a.current_task_title || "Standby for directives",
+          progress: a.task_progress ?? 0,
+          costToday: a.cost_today_usd ?? 0.0,
+          avatarBg: bg,
+          icon: icon
+        };
+      })
+    : [];
 
-  const getRoleColor = (role?: string) => {
-    const r = role?.toLowerCase() || "";
-    if (r.includes("marketing")) return "text-purple-600 bg-purple-500/10 border-purple-500/20";
-    if (r.includes("finance")) return "text-emerald-600 bg-emerald-500/10 border-emerald-500/20";
-    if (r.includes("coder")) return "text-blue-600 bg-blue-500/10 border-blue-500/20";
-    if (r.includes("research")) return "text-amber-600 bg-amber-500/10 border-amber-500/20";
-    return "text-primary bg-primary/10 border-primary/20";
-  };
-
-  const filteredAgents = (agents || []).filter((agent: any) => {
-    const matchesSearch = 
-      (agent.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (agent.role || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (agent.id || "").toLowerCase().includes(searchQuery.toLowerCase());
-    
-    if (!matchesSearch) return false;
-
-    if (selectedRoleFilter === "all") return true;
-    return (agent.role || "").toLowerCase().includes(selectedRoleFilter.toLowerCase());
+  // Filter & Sort Logic
+  const filteredWorkers = workers.filter((w) => {
+    if (filterDepartment !== "all" && w.department !== filterDepartment) return false;
+    if (filterStatus !== "all" && w.status !== filterStatus) return false;
+    return true;
+  }).sort((a, b) => {
+    if (sortBy === "cost") {
+      return sortDirection === "asc" ? a.costToday - b.costToday : b.costToday - a.costToday;
+    }
+    if (sortBy === "progress") {
+      return sortDirection === "asc" ? a.progress - b.progress : b.progress - a.progress;
+    }
+    return sortDirection === "asc" ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name);
   });
 
-  const rolesList = Array.from(new Set((agents || []).map((a: any) => a.role || "General")));
+  const toggleSort = () => {
+    if (sortBy === "name") {
+      setSortBy("cost");
+      setSortDirection("desc");
+    } else if (sortBy === "cost") {
+      setSortBy("progress");
+      setSortDirection("desc");
+    } else {
+      setSortBy("name");
+      setSortDirection("asc");
+    }
+  };
 
   return (
-    <div className="p-md md:p-xl max-w-[1440px] mx-auto flex flex-col gap-xl">
-      {/* Header */}
-      <header className="glass-header p-lg rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-md border border-outline/10">
-        <div className="flex flex-col gap-xs">
-          <h1 className="font-display-lg text-display-lg text-on-surface">AI Workforce & Specialists</h1>
-          <p className="font-body-md text-secondary">Manage, inspect, and command your autonomous agents.</p>
-        </div>
-        <div className="flex items-center gap-sm flex-wrap">
-          <button 
-            onClick={() => refetch()}
-            className="p-2.5 bg-surface-container hover:bg-surface-container-high rounded-xl text-secondary hover:text-on-surface transition-colors"
-            title="Refresh list"
-          >
-            <span className="material-symbols-outlined text-[20px]">refresh</span>
-          </button>
-          <a 
-            href="/hire" 
-            className="px-lg py-sm bg-primary text-white font-semibold rounded-xl hover:bg-primary/90 transition-colors flex items-center gap-xs shadow-sm"
-          >
-            <span className="material-symbols-outlined text-[20px]">person_add</span>
-            Hire New Agent
-          </a>
-        </div>
-      </header>
-
-      {/* Metrics Row */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-md">
-        <div className="bento-card p-lg flex flex-col gap-xs">
-          <div className="flex items-center justify-between text-secondary">
-            <span className="font-label-caps text-label-caps">Active Workforce</span>
-            <span className="material-symbols-outlined text-green-500 text-[20px]">smart_toy</span>
-          </div>
-          <span className="font-display-lg text-display-lg text-green-600 font-bold">{metrics?.activeAgents || 0}</span>
-          <span className="text-xs text-secondary">Agents currently executing tasks</span>
+    <div className="flex flex-col gap-6 pb-12">
+      {/* 1. Header Section */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex flex-col gap-1">
+          <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">
+            Workers
+          </h1>
+          <p className="text-xs md:text-sm text-slate-500 font-medium">
+            Hire, monitor and control your AI workforce
+          </p>
         </div>
 
-        <div className="bento-card p-lg flex flex-col gap-xs">
-          <div className="flex items-center justify-between text-secondary">
-            <span className="font-label-caps text-label-caps">Total Deployed Agents</span>
-            <span className="material-symbols-outlined text-primary text-[20px]">groups</span>
-          </div>
-          <span className="font-display-lg text-display-lg text-primary font-bold">{agents?.length || metrics?.totalAgents || 0}</span>
-          <span className="text-xs text-secondary">Specialists on the payroll</span>
-        </div>
-
-        <div className="bento-card p-lg flex flex-col gap-xs">
-          <div className="flex items-center justify-between text-secondary">
-            <span className="font-label-caps text-label-caps">Completed Operations</span>
-            <span className="material-symbols-outlined text-emerald-500 text-[20px]">task_alt</span>
-          </div>
-          <span className="font-display-lg text-display-lg text-emerald-600 font-bold">{metrics?.completedTasks || 0}</span>
-          <span className="text-xs text-secondary">Missions successfully finished</span>
-        </div>
+        <a
+          href="/hire"
+          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white text-xs md:text-sm font-bold shadow-xs transition-all duration-200 hover:scale-[1.02] active:scale-95 self-start sm:self-auto"
+        >
+          <Plus className="w-4 h-4" />
+          <span>Hire Worker</span>
+        </a>
       </div>
 
-      {/* Search & Filter Toolbar */}
-      <div className="flex flex-col md:flex-row gap-sm items-stretch md:items-center justify-between">
-        <div className="flex-1 max-w-md relative">
-          <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-secondary text-[20px]">search</span>
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search agents by name, role, or ID..."
-            className="w-full pl-10 pr-4 py-2 bg-surface-container-lowest border border-outline-variant rounded-xl text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20"
-          />
-        </div>
-
-        <div className="flex items-center gap-sm flex-wrap">
-          <div className="flex gap-xs overflow-x-auto pb-1 hide-scrollbar">
+      {/* 2. Filter & Toolbar Bar */}
+      <div className="bg-white p-3 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between gap-3 relative">
+        <div className="flex items-center gap-2">
+          {/* Filter Button */}
+          <div className="relative">
             <button
-              onClick={() => setSelectedRoleFilter("all")}
-              className={`px-3 py-1.5 rounded-full text-xs font-semibold capitalize transition-colors ${
-                selectedRoleFilter === 'all' 
-                  ? 'bg-on-surface text-surface' 
-                  : 'bg-surface-container hover:bg-surface-container-high text-secondary'
+              onClick={() => setShowFilterDropdown(!showFilterDropdown)}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 border transition-all ${
+                filterDepartment !== "all" || filterStatus !== "all"
+                  ? "bg-emerald-50 text-emerald-800 border-emerald-300"
+                  : "bg-slate-100/90 text-slate-700 border-slate-200/70 hover:bg-slate-200"
               }`}
             >
-              All Roles ({agents?.length || 0})
+              <SlidersHorizontal className="w-3.5 h-3.5" />
+              <span>Filter</span>
+              {(filterDepartment !== "all" || filterStatus !== "all") && (
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
+              )}
             </button>
-            {rolesList.map((r: string) => (
-              <button
-                key={r}
-                onClick={() => setSelectedRoleFilter(r)}
-                className={`px-3 py-1.5 rounded-full text-xs font-semibold capitalize transition-colors whitespace-nowrap ${
-                  selectedRoleFilter === r 
-                    ? 'bg-on-surface text-surface' 
-                    : 'bg-surface-container hover:bg-surface-container-high text-secondary'
-                }`}
-              >
-                {r}
-              </button>
-            ))}
+
+            {/* Filter Dropdown */}
+            {showFilterDropdown && (
+              <div className="absolute left-0 mt-2 w-56 bg-white border border-slate-200 rounded-2xl p-3 shadow-xl z-30 space-y-3">
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Department</label>
+                  <select
+                    value={filterDepartment}
+                    onChange={(e) => setFilterDepartment(e.target.value)}
+                    className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500"
+                  >
+                    <option value="all">All Departments</option>
+                    <option value="Marketing">Marketing</option>
+                    <option value="Finance">Finance</option>
+                    <option value="Research">Research</option>
+                    <option value="Operations">Operations</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Status</label>
+                  <select
+                    value={filterStatus}
+                    onChange={(e) => setFilterStatus(e.target.value)}
+                    className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500"
+                  >
+                    <option value="all">All Statuses</option>
+                    <option value="Running">Running</option>
+                    <option value="Paused">Paused</option>
+                    <option value="Idle">Idle</option>
+                  </select>
+                </div>
+
+                <div className="pt-2 border-t border-slate-100 flex justify-between">
+                  <button
+                    onClick={() => {
+                      setFilterDepartment("all");
+                      setFilterStatus("all");
+                      setShowFilterDropdown(false);
+                    }}
+                    className="text-[11px] text-slate-500 hover:text-slate-800 font-semibold"
+                  >
+                    Reset
+                  </button>
+                  <button
+                    onClick={() => setShowFilterDropdown(false)}
+                    className="text-[11px] text-emerald-700 font-bold hover:text-emerald-800"
+                  >
+                    Apply
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
-          <div className="flex items-center bg-surface-container p-1 rounded-xl shrink-0">
-            <button
-              onClick={() => setViewMode("grid")}
-              className={`p-1.5 rounded-lg transition-colors ${viewMode === 'grid' ? 'bg-surface shadow-xs text-primary' : 'text-secondary hover:text-on-surface'}`}
-              title="Grid View"
-            >
-              <span className="material-symbols-outlined text-[18px]">grid_view</span>
-            </button>
-            <button
-              onClick={() => setViewMode("table")}
-              className={`p-1.5 rounded-lg transition-colors ${viewMode === 'table' ? 'bg-surface shadow-xs text-primary' : 'text-secondary hover:text-on-surface'}`}
-              title="Table View"
-            >
-              <span className="material-symbols-outlined text-[18px]">table_rows</span>
-            </button>
-          </div>
+          {/* Sort Button */}
+          <button
+            onClick={toggleSort}
+            className="px-3.5 py-1.5 rounded-xl bg-slate-100/90 text-slate-700 text-xs font-semibold flex items-center gap-1.5 border border-slate-200/70 hover:bg-slate-200 transition-all"
+          >
+            <ArrowUpDown className="w-3.5 h-3.5" />
+            <span>Sort ({sortBy})</span>
+          </button>
+        </div>
+
+        {/* View Toggle */}
+        <div className="flex items-center gap-1 bg-slate-100/80 p-1 rounded-xl border border-slate-200/60">
+          <button
+            onClick={() => setViewMode("table")}
+            className={`p-1.5 rounded-lg transition-all ${
+              viewMode === "table"
+                ? "bg-white text-slate-900 shadow-xs"
+                : "text-slate-400 hover:text-slate-700"
+            }`}
+            title="Table View"
+          >
+            <List className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => setViewMode("grid")}
+            className={`p-1.5 rounded-lg transition-all ${
+              viewMode === "grid"
+                ? "bg-white text-slate-900 shadow-xs"
+                : "text-slate-400 hover:text-slate-700"
+            }`}
+            title="Grid View"
+          >
+            <LayoutGrid className="w-4 h-4" />
+          </button>
         </div>
       </div>
 
-      {/* Agents Content */}
-      {(!agents || agents.length === 0) ? (
-        <div className="bento-card p-xxl flex flex-col items-center justify-center text-center gap-md">
-          <span className="material-symbols-outlined text-display-lg text-secondary opacity-40">groups</span>
-          <p className="font-headline-md text-headline-md text-on-surface">No workers found</p>
-          <p className="font-body-md text-secondary max-w-md">Hire your first AI worker to begin orchestrating autonomous workflows!</p>
-          <a href="/hire" className="px-lg py-sm bg-primary text-white font-semibold rounded-xl hover:bg-primary/90 transition-colors shadow-sm">
-            Hire First Specialist
+      {/* 3. Workers Content (Table / Grid or Empty State) */}
+      {filteredWorkers.length === 0 ? (
+        <div className="bg-white rounded-3xl p-12 flex flex-col items-center justify-center text-center gap-3 border border-dashed border-slate-200 shadow-xs">
+          <div className="w-12 h-12 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-700">
+            <Bot className="w-6 h-6" />
+          </div>
+          <h3 className="text-base font-bold text-slate-900">No Workers Recruited Yet</h3>
+          <p className="text-xs text-slate-500 max-w-sm">
+            Deploy specialized autonomous AI agents to handle marketing, finance, research, and technical operations.
+          </p>
+          <a
+            href="/hire"
+            className="mt-2 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-bold shadow-xs transition-all"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>Hire Your First Worker</span>
           </a>
         </div>
-      ) : filteredAgents.length === 0 ? (
-        <div className="bento-card p-xl flex flex-col items-center justify-center text-center gap-sm">
-          <span className="material-symbols-outlined text-4xl text-secondary opacity-50">search_off</span>
-          <p className="font-headline-sm text-on-surface">No matching agents found</p>
-          <p className="text-xs text-secondary">Try adjusting your search query or role filter.</p>
+      ) : viewMode === "table" ? (
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b border-slate-100 bg-slate-50/50 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                  <th className="py-3.5 px-6 font-semibold text-slate-500">Worker</th>
+                  <th className="py-3.5 px-6 font-semibold text-slate-500">Department</th>
+                  <th className="py-3.5 px-6 font-semibold text-slate-500">Status</th>
+                  <th className="py-3.5 px-6 font-semibold text-slate-500">Current Task</th>
+                  <th className="py-3.5 px-6 font-semibold text-slate-500">Progress</th>
+                  <th className="py-3.5 px-6 font-semibold text-slate-500 text-right">Cost Today</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {filteredWorkers.map((worker) => {
+                  const Icon = worker.icon;
+                  const isRunning = worker.status === "Running";
+                  const isPaused = worker.status === "Paused";
+
+                  return (
+                    <tr
+                      key={worker.id}
+                      onClick={() => setSelectedAgentId(worker.id)}
+                      className="hover:bg-slate-50/80 cursor-pointer transition-colors group"
+                    >
+                      {/* Worker Identity */}
+                      <td className="py-4 px-6">
+                        <div className="flex items-center gap-3.5">
+                          <div className={`w-10 h-10 rounded-xl ${worker.avatarBg} border flex items-center justify-center shrink-0 shadow-xs group-hover:scale-105 transition-transform`}>
+                            <Icon className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <div className="text-sm font-bold text-slate-900 group-hover:text-emerald-800 transition-colors">
+                              {worker.name}
+                            </div>
+                            <div className="text-xs text-slate-400 font-medium">
+                              {worker.sublabel}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Department */}
+                      <td className="py-4 px-6">
+                        <span className="text-xs text-slate-700 font-medium">
+                          {worker.department}
+                        </span>
+                      </td>
+
+                      {/* Status */}
+                      <td className="py-4 px-6">
+                        <span
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold border ${
+                            isRunning
+                              ? "bg-emerald-50 text-emerald-700 border-emerald-200/80"
+                              : isPaused
+                              ? "bg-amber-50 text-amber-700 border-amber-200/80"
+                              : "bg-slate-100 text-slate-600 border-slate-200/80"
+                          }`}
+                        >
+                          <span
+                            className={`w-1.5 h-1.5 rounded-full ${
+                              isRunning
+                                ? "bg-emerald-500"
+                                : isPaused
+                                ? "bg-amber-500"
+                                : "bg-slate-400"
+                            }`}
+                          />
+                          {worker.status}
+                        </span>
+                      </td>
+
+                      {/* Current Task */}
+                      <td className="py-4 px-6">
+                        <span className="text-xs text-slate-700 font-medium truncate block max-w-xs">
+                          {worker.currentTask}
+                        </span>
+                      </td>
+
+                      {/* Progress Bar & Number */}
+                      <td className="py-4 px-6">
+                        <div className="flex flex-col gap-1 w-24">
+                          <span className="text-[11px] font-bold text-slate-700 font-mono">
+                            {worker.progress > 0 ? `${worker.progress}%` : "0%"}
+                          </span>
+                          <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                            <div
+                              className={`h-full rounded-full transition-all duration-300 ${
+                                isRunning
+                                  ? "bg-emerald-800"
+                                  : isPaused
+                                  ? "bg-amber-500"
+                                  : "bg-slate-300"
+                              }`}
+                              style={{ width: `${worker.progress}%` }}
+                            />
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Cost Today */}
+                      <td className="py-4 px-6 text-right font-mono text-xs font-bold text-slate-900">
+                        ${worker.costToday.toFixed(2)}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
-      ) : viewMode === "grid" ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-md">
-          {filteredAgents.map((agent: any) => {
-            const roleIcon = getRoleIcon(agent.role);
-            const roleColor = getRoleColor(agent.role);
+      ) : (
+        /* Grid View */
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {filteredWorkers.map((worker) => {
+            const Icon = worker.icon;
+            const isRunning = worker.status === "Running";
+            const isPaused = worker.status === "Paused";
 
             return (
-              <div 
-                key={agent.id} 
-                className="bento-card p-lg flex flex-col justify-between gap-md hover:shadow-md transition-shadow border border-outline-variant"
+              <div
+                key={worker.id}
+                onClick={() => setSelectedAgentId(worker.id)}
+                className="bg-white p-5 rounded-2xl border border-slate-200/80 hover:border-emerald-500/50 shadow-xs hover:shadow-md transition-all cursor-pointer flex flex-col justify-between gap-4 group"
               >
                 <div>
-                  <div className="flex items-start justify-between gap-sm mb-sm">
-                    <div className="flex items-center gap-sm">
-                      <div className="w-12 h-12 rounded-xl bg-surface-container flex items-center justify-center text-primary shrink-0">
-                        <span className="material-symbols-outlined text-[24px]">{roleIcon}</span>
-                      </div>
-                      <div className="flex flex-col min-w-0">
-                        <h3 className="font-headline-sm text-headline-sm text-on-surface font-semibold truncate">{agent.name}</h3>
-                        <span className={`px-2 py-0.5 rounded-md text-[11px] font-semibold border w-fit mt-0.5 ${roleColor}`}>
-                          {agent.role}
-                        </span>
-                      </div>
+                  <div className="flex items-start justify-between gap-2">
+                    <div className={`w-10 h-10 rounded-xl ${worker.avatarBg} border flex items-center justify-center shrink-0`}>
+                      <Icon className="w-5 h-5" />
                     </div>
-
-                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold uppercase ${
-                      agent.status === 'Running' ? 'bg-green-500/10 text-green-600 border border-green-500/20' :
-                      agent.status === 'Idle' ? 'bg-yellow-500/10 text-yellow-600 border border-yellow-500/20' :
-                      agent.status === 'Paused' ? 'bg-orange-500/10 text-orange-600 border border-orange-500/20' :
-                      'bg-red-500/10 text-red-600 border border-red-500/20'
-                    }`}>
-                      <span className={`w-2 h-2 rounded-full ${
-                        agent.status === 'Running' ? 'bg-green-500 animate-pulse' :
-                        agent.status === 'Idle' ? 'bg-yellow-500' :
-                        agent.status === 'Paused' ? 'bg-orange-500' : 'bg-red-500'
-                      }`}></span>
-                      {agent.status}
+                    <span
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${
+                        isRunning
+                          ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                          : isPaused
+                          ? "bg-amber-50 text-amber-700 border-amber-200"
+                          : "bg-slate-100 text-slate-600 border-slate-200"
+                      }`}
+                    >
+                      <span className={`w-1.5 h-1.5 rounded-full ${isRunning ? "bg-emerald-500" : isPaused ? "bg-amber-500" : "bg-slate-400"}`} />
+                      {worker.status}
                     </span>
                   </div>
 
-                  <div className="bg-surface-container-low p-sm rounded-lg text-xs flex flex-col gap-1 text-secondary">
-                    <div className="flex items-center justify-between">
-                      <span>Worker ID:</span>
-                      <span className="font-code-sm font-semibold text-on-surface">{agent.id.slice(0, 12)}...</span>
-                    </div>
+                  <div className="mt-3">
+                    <h3 className="text-sm font-bold text-slate-900 group-hover:text-emerald-800 transition-colors">
+                      {worker.name}
+                    </h3>
+                    <p className="text-xs text-slate-400">{worker.sublabel} &bull; {worker.department}</p>
+                  </div>
+
+                  <div className="mt-3 p-2.5 rounded-xl bg-slate-50 border border-slate-100 text-xs text-slate-700">
+                    <p className="text-[10px] font-bold uppercase text-slate-400 mb-0.5">Current Task</p>
+                    <p className="truncate font-medium">{worker.currentTask}</p>
                   </div>
                 </div>
 
-                <div className="pt-sm border-t border-outline-variant flex items-center justify-between gap-sm">
-                  <a 
-                    href="/tasks"
-                    className="text-xs text-primary font-semibold hover:underline flex items-center gap-1"
-                  >
-                    <span className="material-symbols-outlined text-[16px]">visibility</span>
-                    View Tasks
-                  </a>
+                <div className="space-y-2 pt-2 border-t border-slate-100">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-slate-500">Progress</span>
+                    <span className="font-mono font-bold text-slate-800">{worker.progress}%</span>
+                  </div>
+                  <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full ${isRunning ? "bg-emerald-800" : isPaused ? "bg-amber-500" : "bg-slate-300"}`}
+                      style={{ width: `${worker.progress}%` }}
+                    />
+                  </div>
 
-                  <div className="flex items-center gap-xs">
-                    <button 
-                      onClick={() => handleStatusChange(agent.id, agent.status)}
-                      disabled={agent.status === 'Failed'}
-                      className="px-2.5 py-1 hover:bg-surface-container rounded-lg text-secondary hover:text-on-surface transition-colors disabled:opacity-50 text-xs font-semibold flex items-center gap-1"
-                      title={agent.status === 'Paused' ? 'Resume Agent' : 'Pause Agent'}
-                    >
-                      <span className="material-symbols-outlined text-[16px]">
-                        {agent.status === 'Paused' ? 'play_arrow' : 'pause'}
-                      </span>
-                      {agent.status === 'Paused' ? 'Resume' : 'Pause'}
-                    </button>
-                    <button 
-                      onClick={() => handleKill(agent.id)}
-                      disabled={agent.status === 'Failed'}
-                      className="p-1.5 hover:bg-red-500/10 rounded-lg text-secondary hover:text-red-600 transition-colors disabled:opacity-50"
-                      title="Terminate Worker"
-                    >
-                      <span className="material-symbols-outlined text-[18px]">delete</span>
-                    </button>
+                  <div className="flex justify-between items-center text-xs pt-1">
+                    <span className="text-slate-500">Cost Today</span>
+                    <span className="font-mono font-bold text-slate-900">${worker.costToday.toFixed(2)}</span>
                   </div>
                 </div>
               </div>
             );
           })}
         </div>
-      ) : (
-        <div className="bento-card overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="border-b border-outline-variant bg-surface-container/50">
-                  <th className="p-md font-label-caps text-label-caps text-secondary">Worker</th>
-                  <th className="p-md font-label-caps text-label-caps text-secondary">Role</th>
-                  <th className="p-md font-label-caps text-label-caps text-secondary">Status</th>
-                  <th className="p-md font-label-caps text-label-caps text-secondary">Agent ID</th>
-                  <th className="p-md font-label-caps text-label-caps text-secondary text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredAgents.map((agent: any) => (
-                  <tr key={agent.id} className="border-b border-outline-variant/50 hover:bg-surface-container/30 transition-colors">
-                    <td className="p-md font-body-md text-on-surface font-semibold flex items-center gap-sm">
-                      <span className="material-symbols-outlined text-primary text-[20px]">{getRoleIcon(agent.role)}</span>
-                      {agent.name}
-                    </td>
-                    <td className="p-md">
-                      <span className={`px-2 py-0.5 rounded-md text-xs font-semibold border ${getRoleColor(agent.role)}`}>
-                        {agent.role}
-                      </span>
-                    </td>
-                    <td className="p-md">
-                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold capitalize ${
-                        agent.status === 'Running' ? 'bg-green-500/10 text-green-600 border border-green-500/20' :
-                        agent.status === 'Idle' ? 'bg-yellow-500/10 text-yellow-600 border border-yellow-500/20' :
-                        agent.status === 'Paused' ? 'bg-orange-500/10 text-orange-600 border border-orange-500/20' :
-                        'bg-red-500/10 text-red-600 border border-red-500/20'
-                      }`}>
-                        <span className={`w-2 h-2 rounded-full ${
-                          agent.status === 'Running' ? 'bg-green-500 animate-pulse' :
-                          agent.status === 'Idle' ? 'bg-yellow-500' :
-                          agent.status === 'Paused' ? 'bg-orange-500' : 'bg-red-500'
-                        }`}></span>
-                        {agent.status}
-                      </span>
-                    </td>
-                    <td className="p-md font-code-sm text-xs text-secondary">
-                      {agent.id.slice(0, 8)}...
-                    </td>
-                    <td className="p-md flex items-center justify-end gap-sm">
-                      <a 
-                        href="/tasks"
-                        className="p-2 hover:bg-surface-container rounded-lg text-secondary hover:text-on-surface transition-colors"
-                        title="View Missions"
-                      >
-                        <span className="material-symbols-outlined text-[18px]">assignment</span>
-                      </a>
-                      <button 
-                        onClick={() => handleStatusChange(agent.id, agent.status)}
-                        disabled={agent.status === 'Failed'}
-                        className="p-2 hover:bg-surface-container rounded-lg text-secondary hover:text-on-surface transition-colors disabled:opacity-50"
-                        title={agent.status === 'Paused' ? 'Resume' : 'Pause'}
-                      >
-                        <span className="material-symbols-outlined text-[18px]">
-                          {agent.status === 'Paused' ? 'play_arrow' : 'pause'}
-                        </span>
-                      </button>
-                      <button 
-                        onClick={() => handleKill(agent.id)}
-                        disabled={agent.status === 'Failed'}
-                        className="p-2 hover:bg-red-500/10 rounded-lg text-secondary hover:text-red-600 transition-colors disabled:opacity-50"
-                        title="Terminate"
-                      >
-                        <span className="material-symbols-outlined text-[18px]">delete</span>
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+      )}
+
+      {/* 4. Bottom Metric Bento Cards (4 Cards Grid) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5 mt-2">
+        
+        {/* Card 1: Active Workers */}
+        <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs flex flex-col justify-between hover:shadow-md transition-all">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-slate-500">Active Workers</span>
+            <div className="text-emerald-600">
+              <Radio className="w-5 h-5" />
+            </div>
+          </div>
+          <div className="mt-3">
+            <span className="text-2xl md:text-3xl font-extrabold text-slate-900">
+              {agents?.length || 0}
+            </span>
+            <p className="text-[11px] font-semibold text-slate-400 mt-1 flex items-center gap-1">
+              <span>&#9650;</span> {agents?.length || 0} deployed
+            </p>
           </div>
         </div>
-      )}
+
+        {/* Card 2: Compute Used */}
+        <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs flex flex-col justify-between hover:shadow-md transition-all">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-slate-500">Compute Used</span>
+            <div className="text-slate-600">
+              <Cpu className="w-5 h-5" />
+            </div>
+          </div>
+          <div className="mt-3">
+            <span className="text-2xl md:text-3xl font-extrabold text-slate-900">
+              {(agents?.length || 0) > 0 ? "Normal" : "Idle"}
+            </span>
+            <p className="text-[11px] text-slate-400 font-medium mt-1">
+              Autonomous execution ready
+            </p>
+          </div>
+        </div>
+
+        {/* Card 3: Total Cost Today */}
+        <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs flex flex-col justify-between hover:shadow-md transition-all">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-slate-500">Total Cost Today</span>
+            <div className="text-slate-600">
+              <CreditCard className="w-5 h-5" />
+            </div>
+          </div>
+          <div className="mt-3">
+            <span className="text-2xl md:text-3xl font-extrabold text-slate-900">
+              ${(metrics?.totalCost || 0).toFixed(2)}
+            </span>
+            <p className="text-[11px] font-semibold text-emerald-700 mt-1 flex items-center gap-1">
+              <span>&#9650;</span> Real-time telemetry
+            </p>
+          </div>
+        </div>
+
+        {/* Card 4: Tasks Completed */}
+        <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs flex flex-col justify-between hover:shadow-md transition-all">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-slate-500">Tasks Completed</span>
+            <div className="text-slate-700">
+              <CheckCircle2 className="w-5 h-5" />
+            </div>
+          </div>
+          <div className="mt-3">
+            <span className="text-2xl md:text-3xl font-extrabold text-slate-900">
+              {metrics?.completedTasks || 0}
+            </span>
+            <p className="text-[11px] text-slate-500 font-medium mt-1">
+              {metrics?.errorRate !== undefined ? `${(100 - metrics.errorRate).toFixed(1)}%` : "100%"} success rate
+            </p>
+          </div>
+        </div>
+
+      </div>
     </div>
   );
 }
-

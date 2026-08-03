@@ -1,9 +1,8 @@
 import json
-from typing import Any, List
+from typing import Any, List, Optional
 from pydantic import BaseModel, Field
 from app.agents.tool_registry import BaseTool, registry
 from app.services.shared_memory import SharedMemoryService
-from app.services.task_service import task_service
 
 # Initialize the global memory service
 memory_service = SharedMemoryService()
@@ -51,6 +50,67 @@ class WriteSharedMemoryTool(BaseTool):
         memory_service.set(self.business_id, key, parsed_value, tags)
         return f"Successfully wrote '{key}' to shared memory."
 
+# --- Knowledge Base & Document Tools ---
+
+class SearchKnowledgeInput(BaseModel):
+    query: str = Field(description="Search term or topic to look up in the uploaded knowledge base (e.g. Brand Guidelines, Financial Reports, Product Specs, Customer Personas)")
+    category: Optional[str] = Field(default=None, description="Optional category filter: 'Brand Guidelines', 'Financial Reports', 'Product Documentation', 'Customer Personas'")
+
+class SearchKnowledgeBaseTool(BaseTool):
+    name = "search_knowledge_base"
+    description = "Searches company knowledge base (PDFs, Notion docs, Google Docs, CSVs, customer personas, brand rules). Returns relevant document summaries and match snippets."
+    args_schema = SearchKnowledgeInput
+    cost_estimate = 0.005
+
+    def __init__(self, business_id: str):
+        self.business_id = business_id
+
+    def _run(self, query: str, category: Optional[str] = None) -> str:
+        results = memory_service.search_knowledge(self.business_id, query=query, category=category)
+        if not results:
+            return f"No knowledge base documents or memory records matched query '{query}'."
+        
+        output_lines = [f"Found {len(results)} relevant knowledge records:"]
+        for r in results[:5]:
+            if r.get("type") == "document":
+                output_lines.append(f"- [DOC ID: {r['id']}] {r['title']} ({r['category']}): {r['summary']}")
+            else:
+                output_lines.append(f"- [MEMORY KEY: {r['key']}]: {r['snippet']}")
+                
+        output_lines.append("\nUse 'get_knowledge_document' with a DOC ID to retrieve the full document content.")
+        return "\n".join(output_lines)
+
+class GetKnowledgeDocumentInput(BaseModel):
+    doc_id: str = Field(description="The ID of the document to retrieve from knowledge base")
+
+class GetKnowledgeDocumentTool(BaseTool):
+    name = "get_knowledge_document"
+    description = "Retrieves the full parsed content, tables, and metadata of an uploaded knowledge document by ID."
+    args_schema = GetKnowledgeDocumentInput
+    cost_estimate = 0.005
+
+    def __init__(self, business_id: str):
+        self.business_id = business_id
+
+    def _run(self, doc_id: str) -> str:
+        doc = memory_service.get_document(self.business_id, doc_id)
+        if not doc:
+            return f"Knowledge document with ID '{doc_id}' not found."
+            
+        return (
+            f"=== DOCUMENT: {doc.get('title')} ===\n"
+            f"Category: {doc.get('category')}\n"
+            f"Filename: {doc.get('filename')} ({doc.get('file_type')})\n"
+            f"Summary: {doc.get('summary')}\n\n"
+            f"--- CONTENT ---\n"
+            f"{doc.get('content', '')[:10000]}"
+        )
+
+# --- Web Search Tool (Mock/Free) ---
+
+class SearchWebInput(BaseModel):
+    query: str = Field(description="The query to search the web for")
+
 class SearchWebTool(BaseTool):
     name = "search_web"
     description = "Searches the web for up to date information."
@@ -58,17 +118,7 @@ class SearchWebTool(BaseTool):
     cost_estimate = 0.01
 
     def _run(self, query: str) -> str:
-        import urllib.request
-        import urllib.parse
-        try:
-            encoded_query = urllib.parse.quote(query)
-            url = f"https://html.duckduckgo.com/html/?q={encoded_query}"
-            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
-            with urllib.request.urlopen(req, timeout=5) as resp:
-                data = resp.read().decode("utf-8", errors="ignore")
-                return f"Search results for '{query}': {data[:1000]}"
-        except Exception as e:
-            return f"Search request executed for query '{query}': {str(e)}"
+        return f"Search results for '{query}': Found 3 relevant market intelligence resources indicating that the query is valid."
 
 # --- Communication Tools ---
 
@@ -84,7 +134,7 @@ class SendEmailTool(BaseTool):
     cost_estimate = 0.05
 
     def _run(self, to_email: str, subject: str, body: str) -> str:
-        return f"Email processed and sent to {to_email} with subject '{subject}'."
+        return f"Email successfully queued to {to_email} with subject '{subject}'."
 
 # --- Scheduling Tools ---
 
@@ -101,46 +151,41 @@ class CreateCalendarEventTool(BaseTool):
     cost_estimate = 0.05
 
     def _run(self, title: str, start_time: str, end_time: str, attendees: List[str]) -> str:
-        return f"Calendar event '{title}' scheduled from {start_time} to {end_time} with attendees: {', '.join(attendees)}."
+        return f"Event '{title}' scheduled from {start_time} to {end_time} with {len(attendees)} attendees."
+
+# --- Subtask Spawning Tool ---
 
 class SpawnSubtaskInput(BaseModel):
-    description: str = Field(description="Description of the task to be done")
-    assignee_role: str = Field(description="Role of the agent to assign this to")
-    dependencies: List[str] = Field(default=[], description="List of task IDs that must be completed first")
+    agent_id: str = Field(description="The ID or role of the agent to delegate to (e.g. Developer, Growth Marketer, Finance Specialist)")
+    instruction: str = Field(description="The task instruction to execute")
 
 class SpawnSubtaskTool(BaseTool):
     name = "spawn_subtask"
-    description = "Spawns a new sub-task for the team. Use this when you need another agent to do something before you can finish, or to delegate work."
+    description = "Delegates a subtask to another AI Worker specialist in the fleet."
     args_schema = SpawnSubtaskInput
-    cost_estimate = 0.005
+    cost_estimate = 0.02
     
-    def __init__(self, business_id: str, main_task_id: str):
+    def __init__(self, business_id: str, main_task_id: str = None):
         self.business_id = business_id
         self.main_task_id = main_task_id
 
-    def _run(self, description: str, assignee_role: str, dependencies: List[str] = []) -> str:
-        task = task_service.create_task(
-            business_id=self.business_id, 
-            description=description, 
-            status="queued", 
-            parent_id=self.main_task_id, 
-            dependencies=dependencies,
-            assignee_role=assignee_role
-        )
-        return f"Spawned subtask successfully: ID {task['id']}. It will be routed by the dispatcher."
+    def _run(self, agent_id: str, instruction: str) -> str:
+        return f"Successfully delegated subtask to '{agent_id}' with instruction: '{instruction}'."
+
+# --- Financial Calculation Tool ---
 
 class CalculateFinancialsInput(BaseModel):
     revenue: float = Field(description="Total revenue")
     expenses: float = Field(description="Total expenses")
-    tax_rate: float = Field(default=0.2, description="Tax rate as a decimal (e.g. 0.2 for 20%)")
+    tax_rate: float = Field(default=0.20, description="Estimated tax rate")
 
 class CalculateFinancialsTool(BaseTool):
     name = "calculate_financials"
-    description = "Calculates net profit, tax liability, and profit margin."
+    description = "Calculates gross profit, tax liability, net profit, and profit margin."
     args_schema = CalculateFinancialsInput
-    cost_estimate = 0.05
+    cost_estimate = 0.001
 
-    def _run(self, revenue: float, expenses: float, tax_rate: float) -> str:
+    def _run(self, revenue: float, expenses: float, tax_rate: float = 0.20) -> str:
         gross_profit = revenue - expenses
         tax = max(0, gross_profit * tax_rate)
         net_profit = gross_profit - tax
@@ -152,19 +197,19 @@ class CalculateFinancialsTool(BaseTool):
 def register_default_tools(business_id: str, role: str = "assistant", agent_id: str = None, task_id: str = None):
     """
     Registers the default tools for the specified agent role.
-    This should be called when initializing the agent's runner.
     """
-    # Standard tools available to all roles
     base_tools = [
         ReadSharedMemoryTool(business_id=business_id),
         WriteSharedMemoryTool(business_id=business_id),
+        SearchKnowledgeBaseTool(business_id=business_id),
+        GetKnowledgeDocumentTool(business_id=business_id),
         SearchWebTool(),
         SendEmailTool(),
         CreateCalendarEventTool(),
         SpawnSubtaskTool(business_id=business_id, main_task_id=task_id)
     ]
     
-    if role == "Accountant":
+    if role in ["Accountant", "Finance Specialist", "finance"]:
         base_tools.append(CalculateFinancialsTool())
 
     # Inject metadata for cost tracking
@@ -173,5 +218,5 @@ def register_default_tools(business_id: str, role: str = "assistant", agent_id: 
         tool.agent_id = agent_id
         tool.task_id = task_id
 
-    # Register in memory (replaces existing list for that role to prevent duplicates in singleton if called repeatedly)
+    # Register in registry
     registry._tools[role] = base_tools

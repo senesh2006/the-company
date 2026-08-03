@@ -1,71 +1,102 @@
 "use client";
 
 import { useNeedsAttention } from "@/lib/queries";
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { AlertTriangle, Check, X, Edit, Hand } from "lucide-react";
+import { useAppStore } from "@/lib/store";
+import { AlertTriangle, Check, X, UserCheck, ShieldAlert, RotateCcw } from "lucide-react";
 
 export default function NeedsAttentionPage() {
   const { data: items, isLoading } = useNeedsAttention();
+  const { setSelectedAgentId } = useAppStore();
 
-  if (isLoading) return <div className="text-zinc-500">Loading items...</div>;
+  if (isLoading) {
+    return (
+      <div className="p-12 flex items-center justify-center min-h-[400px]">
+        <div className="flex flex-col items-center gap-4 text-center">
+          <div className="w-10 h-10 border-2 border-emerald-500/20 border-t-emerald-600 rounded-full animate-spin"></div>
+          <p className="text-xs font-mono text-slate-500">Scanning workforce alerts & blockers...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight text-gray-900 flex items-center">
-          <AlertTriangle className="h-8 w-8 text-red-500 mr-3" />
-          Needs Attention
-        </h1>
-        <p className="text-gray-500">Tasks blocked and awaiting human decision.</p>
+    <div className="flex flex-col gap-6 pb-12">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">
+              Needs Attention
+            </h1>
+            <span className="px-2.5 py-0.5 rounded-full bg-rose-50 text-rose-700 text-xs font-bold border border-rose-200">
+              {items?.length || 0} Blockers
+            </span>
+          </div>
+          <p className="text-xs md:text-sm text-slate-500 font-medium">
+            Autonomous AI workers currently blocked or requesting manual parameter authorization.
+          </p>
+        </div>
       </div>
 
       <div className="space-y-4">
         {items?.map((item) => (
-          <Card key={item.id} className="bg-white border-red-200 shadow-sm rounded-2xl overflow-hidden ring-1 ring-red-100">
-            <CardHeader className="pb-2 bg-red-50/50">
-              <div className="flex justify-between items-start">
-                <div>
-                  <CardTitle className="text-lg text-red-600 font-bold">Blocked: {item.agentName}</CardTitle>
-                  <p className="text-sm font-medium text-gray-500 mt-1">Agent ID: <a href={`/agents/${item.agentId}`} className="hover:underline">{item.agentId}</a></p>
+          <div key={item.id} className="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-xs hover:shadow-md transition-all flex flex-col gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="px-2 py-0.5 rounded-md bg-rose-50 text-rose-700 border border-rose-200 text-[10px] font-bold uppercase tracking-wider">
+                    Blocked Worker
+                  </span>
+                  <h3 className="text-sm font-bold text-slate-900">{item.agentName}</h3>
                 </div>
-                <div className="text-right">
-                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">Type</p>
-                  <p className="text-sm font-bold text-amber-600">{item.type}</p>
-                </div>
+                <button 
+                  onClick={() => setSelectedAgentId(item.agentId)}
+                  className="text-xs text-slate-400 hover:text-emerald-700 font-medium mt-1 flex items-center gap-1 transition-colors"
+                >
+                  <UserCheck className="w-3.5 h-3.5" />
+                  Worker ID: WRK-{item.agentId?.slice(0, 8)}
+                </button>
               </div>
-            </CardHeader>
-            <CardContent className="space-y-4 pt-4">
-              <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
-                <p className="text-sm font-bold text-gray-700 mb-1">Issue:</p>
-                <p className="text-sm font-medium text-gray-600">{item.title}</p>
+              <span className="px-3 py-1 bg-amber-50 text-amber-800 border border-amber-200 rounded-full text-xs font-bold uppercase w-fit">
+                {item.type}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Issue Overview</p>
+                <p className="text-xs font-semibold text-slate-900">{item.title}</p>
               </div>
-              <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
-                <p className="text-sm font-bold text-gray-700 mb-1">Details:</p>
-                <p className="text-sm font-medium text-gray-600">{item.description}</p>
+              <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Exception Details</p>
+                <p className="text-xs font-medium text-slate-700">{item.description}</p>
               </div>
-            </CardContent>
-            <CardFooter className="flex flex-wrap gap-2 border-t border-gray-100 bg-gray-50/50 pt-4">
-              <Button className="bg-green-100 text-green-700 hover:bg-green-200 border-none shadow-sm font-medium">
-                <Check className="h-4 w-4 mr-2" /> Approve Action
-              </Button>
-              <Button variant="outline" className="bg-white border-gray-200 hover:bg-gray-50 text-gray-700 shadow-sm">
-                <Edit className="h-4 w-4 mr-2" /> Modify Action
-              </Button>
-              <Button variant="outline" className="bg-white border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300 shadow-sm">
-                <X className="h-4 w-4 mr-2" /> Reject & Fail
-              </Button>
-              <Button variant="outline" className="bg-white border-blue-200 text-blue-600 hover:bg-blue-50 hover:border-blue-300 shadow-sm ml-auto">
-                <Hand className="h-4 w-4 mr-2" /> Take Over Manually
-              </Button>
-            </CardFooter>
-          </Card>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2.5 pt-2">
+              <button className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-xs">
+                <Check className="w-3.5 h-3.5" /> Approve Action
+              </button>
+              <button className="px-4 py-2 bg-white hover:bg-rose-50 text-rose-600 border border-rose-200 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-xs">
+                <X className="w-3.5 h-3.5" /> Reject & Abort
+              </button>
+              <button 
+                onClick={() => setSelectedAgentId(item.agentId)}
+                className="px-4 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-xl text-xs font-bold transition-all ml-auto shadow-xs"
+              >
+                Inspect Worker Directives
+              </button>
+            </div>
+          </div>
         ))}
+
         {(!items || items.length === 0) && (
-          <div className="flex flex-col items-center justify-center p-12 text-center rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50">
-            <Check className="h-12 w-12 text-green-400 mb-4" />
-            <p className="text-gray-900 text-lg font-bold">All clear!</p>
-            <p className="text-gray-500 font-medium mt-1">No agents require human intervention right now.</p>
+          <div className="bg-white rounded-3xl p-12 flex flex-col items-center justify-center text-center gap-3 border border-dashed border-slate-200 shadow-xs">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-700">
+              <Check className="w-6 h-6" />
+            </div>
+            <h3 className="text-base font-bold text-slate-900">Workforce Operational</h3>
+            <p className="text-xs text-slate-400 max-w-md">No AI workers require manual intervention or exception handling at this time.</p>
           </div>
         )}
       </div>

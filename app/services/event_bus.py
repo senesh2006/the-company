@@ -12,8 +12,8 @@ def listen_to_memory_events():
     """
     Background daemon that listens for Postgres LISTEN/NOTIFY events.
     """
-    if not settings.POSTGRES_SERVER:
-        logger.error("PostgreSQL configuration missing. Cannot start Event Bus.")
+    if not settings.POSTGRES_SERVER or not settings.POSTGRES_DB:
+        logger.info("PostgreSQL configuration not present. Event bus will operate in local in-memory mode.")
         return
         
     conn_string = f"postgresql://{settings.POSTGRES_USER}:{settings.POSTGRES_PASSWORD}@{settings.POSTGRES_SERVER}:{settings.POSTGRES_PORT}/{settings.POSTGRES_DB}"

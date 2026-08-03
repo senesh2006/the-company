@@ -11,19 +11,36 @@ router = APIRouter()
 metrics_service = MetricsService()
 cost_service = CostService()
 
+@router.get("")
 @router.get("/")
 def get_global_metrics():
     """Returns aggregated global metrics for the dashboard."""
     try:
-        response = metrics_service.client.table("agents").select("status").execute()
-        agents = response.data or []
-        total_agents = len(agents) if agents else 0
-        active_agents = len([a for a in agents if a.get("status") == "Running"]) if agents else 0
+        agents = []
+        try:
+            response = metrics_service.client.table("agents").select("status").execute()
+            if response.data and isinstance(response.data, list) and all(isinstance(a, dict) for a in response.data):
+                agents = response.data
+        except Exception:
+            pass
+            
+        if not agents:
+            from app.services.task_service import _IN_MEMORY_AGENTS
+            agents = list(_IN_MEMORY_AGENTS.values())
+            
+        total_agents = len(agents)
+        active_agents = len([a for a in agents if isinstance(a, dict) and a.get("status") == "Running"])
         
-        task_response = metrics_service.client.table("tasks").select("status").execute()
-        tasks = task_response.data or []
-        total_tasks = len(tasks) if tasks else 0
-        completed_tasks = len([t for t in tasks if t.get("status") == "completed"]) if tasks else 0
+        tasks = []
+        try:
+            task_response = metrics_service.client.table("tasks").select("status").execute()
+            if task_response.data and isinstance(task_response.data, list) and all(isinstance(t, dict) for t in task_response.data):
+                tasks = task_response.data
+        except Exception:
+            pass
+            
+        total_tasks = len(tasks)
+        completed_tasks = len([t for t in tasks if isinstance(t, dict) and t.get("status") == "completed"])
         
         return {
             "totalAgents": total_agents,

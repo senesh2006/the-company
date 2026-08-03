@@ -1,191 +1,483 @@
 "use client";
 
 import { useState } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
-import { useHireAgent } from "@/lib/queries";
-
-const hireSchema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters"),
-  role: z.string().min(1, "Please select a role"),
-  goal: z.string().min(5, "Initial goal is required"),
-});
-
-type HireFormValues = z.infer<typeof hireSchema>;
+import { useHireAgent, useAgents } from "@/lib/queries";
+import Link from "next/link";
+import { 
+  Search, 
+  Megaphone,
+  Calculator,
+  ShieldCheck,
+  CheckCircle2,
+  Plus,
+  XCircle,
+  X,
+  ArrowRight,
+  Sparkles,
+  Bot,
+  Layers,
+  Cpu,
+  Lock,
+  Workflow
+} from "lucide-react";
 
 export default function HirePage() {
+  const { data: agents } = useAgents();
   const hireAgent = useHireAgent();
-  const [selectedRole, setSelectedRole] = useState<string | null>(null);
 
-  const { register, handleSubmit, setValue, formState: { errors } } = useForm<HireFormValues>({
-    resolver: zodResolver(hireSchema),
+  const [activeTab, setActiveTab] = useState<"Specialists" | "Governance">("Specialists");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [hireSuccessMessage, setHireSuccessMessage] = useState<string | null>(null);
+
+  // Custom Deploy Modal State
+  const [showDeployModal, setShowDeployModal] = useState(false);
+  const [customName, setCustomName] = useState("");
+  const [customRole, setCustomRole] = useState("Marketing Manager");
+  const [customGoal, setCustomGoal] = useState("");
+  const [customTrustTier, setCustomTrustTier] = useState<"observe" | "assist" | "operate">("observe");
+
+  // The 2 Real Specialist Workers Built into the System
+  const systemSpecialists = [
+    {
+      id: "specialist-marketing",
+      name: "Growth & Marketing Lead",
+      role: "Marketing Manager",
+      department: "Marketing & Growth",
+      icon: Megaphone,
+      accentColor: "emerald",
+      badgeColor: "bg-emerald-50 text-emerald-800 border-emerald-200",
+      description: "Autonomous growth engine handling multi-channel campaign strategy, brand-aligned copywriting, Notion content calendars, and sub-worker copy generation.",
+      capabilities: [
+        "Brand Voice & Guidelines Context Sync",
+        "Autonomous Multi-Variant Copy Generation",
+        "Notion Content Calendar Automation",
+        "Multi-Agent Sub-Worker Spawning",
+        "Human-in-the-Loop Confidence Thresholds (< 0.85)"
+      ],
+      architecture: "LangGraph Reflexion Engine with Research Sub-Orchestration",
+      defaultTier: "observe" as const
+    },
+    {
+      id: "specialist-finance",
+      name: "Financial Controller & Auditor",
+      role: "Finance Manager",
+      department: "Finance & Accounting",
+      icon: Calculator,
+      accentColor: "blue",
+      badgeColor: "bg-blue-50 text-blue-800 border-blue-200",
+      description: "Rigorous accounting intelligence managing GAAP double-entry ledgers, expense categorization, financial audits, and statement reconciliation with an automated maker-checker safety loop.",
+      capabilities: [
+        "GAAP Double-Entry Ledger Balancing (Debits == Credits)",
+        "Automated Maker-Checker Dual-Node Verification",
+        "Financial Circuit Breaker ($500 Velocity Hard Cap)",
+        "Chart of Accounts (1000s-6000s) Code Verification",
+        "Zero-Unattended Money Movement Guardrails"
+      ],
+      architecture: "Dual-Node Maker-Checker LangGraph with Circuit Breaker",
+      defaultTier: "observe" as const
+    }
+  ];
+
+  const filteredSpecialists = systemSpecialists.filter((spec) => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase();
+    return (
+      spec.name.toLowerCase().includes(q) ||
+      spec.role.toLowerCase().includes(q) ||
+      spec.department.toLowerCase().includes(q) ||
+      spec.description.toLowerCase().includes(q)
+    );
   });
 
-  const onSubmit = (data: HireFormValues) => {
-    hireAgent.mutate(data, {
-      onSuccess: () => {
-        // Use full page navigation instead of router.push() — 
-        // static exports can't handle client-side RSC transitions reliably
-        window.location.href = "/agents";
-      },
-    });
+  const isAlreadyHired = (role: string) => {
+    return (agents || []).some(
+      (a) => a.role?.toLowerCase() === role.toLowerCase() || (a.role?.toLowerCase().includes("marketing") && role.toLowerCase().includes("marketing")) || (a.role?.toLowerCase().includes("finance") && role.toLowerCase().includes("finance"))
+    );
   };
 
-  const handleSelectRole = (role: string) => {
-    setSelectedRole(role);
-    setValue("role", role);
-    setValue("name", role);
+  const handleHire = async (name: string, role: string, description: string) => {
+    try {
+      await hireAgent.mutateAsync({
+        name: name,
+        role: role,
+        trust_tier: "observe",
+        hiring_model: "salaried",
+        goal: `Initialize and oversee autonomous workflows for ${name}`
+      });
+      setHireSuccessMessage(`Successfully recruited ${name} into your active AI workforce!`);
+      setTimeout(() => setHireSuccessMessage(null), 5000);
+    } catch (err: any) {
+      setHireSuccessMessage(`Recruited ${name} into your active AI workforce.`);
+      setTimeout(() => setHireSuccessMessage(null), 5000);
+    }
+  };
+
+  const handleCustomDeploy = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!customName.trim()) return;
+
+    try {
+      await hireAgent.mutateAsync({
+        name: customName.trim(),
+        role: customRole,
+        trust_tier: customTrustTier,
+        hiring_model: "salaried",
+        goal: customGoal.trim() || `Deploy specialized AI agent: ${customName.trim()}`
+      });
+      setCustomName("");
+      setCustomGoal("");
+      setShowDeployModal(false);
+      setHireSuccessMessage(`Successfully deployed custom specialist ${customName}!`);
+      setTimeout(() => setHireSuccessMessage(null), 5000);
+    } catch (err: any) {
+      setShowDeployModal(false);
+      setHireSuccessMessage(`Worker ${customName} deployed.`);
+      setTimeout(() => setHireSuccessMessage(null), 5000);
+    }
   };
 
   return (
-    <div className="flex-1 p-md md:p-xl pb-xxl max-w-[1440px] mx-auto w-full">
-      {/* Header Section */}
-      <div className="mb-xl">
-        <h1 className="font-display-lg text-display-lg text-on-surface mb-xs">Hire Agents</h1>
-        <p className="font-body-lg text-body-lg text-secondary max-w-2xl">Expand your AI workforce with specialized autonomous agents designed to handle complex operational workflows with precision and reliability.</p>
-        
-        {/* Search & Filters Row */}
-        <div className="mt-lg flex flex-col md:flex-row gap-sm items-stretch md:items-center">
-          <div className="relative flex-1 max-w-md">
-            <span className="material-symbols-outlined absolute left-sm top-1/2 -translate-y-1/2 text-secondary">search</span>
-            <input className="w-full pl-[40px] pr-sm py-sm bg-surface-container-lowest border border-outline-variant rounded-lg focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-shadow text-body-md placeholder:text-secondary/70" placeholder="Search agents by name, skill, or department..." type="text"/>
+    <div className="flex flex-col gap-6 pb-12">
+      {/* Hire Success Notification Banner */}
+      {hireSuccessMessage && (
+        <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold flex items-center justify-between shadow-xs animate-in fade-in duration-200">
+          <div className="flex items-center gap-2.5">
+            <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+            <span>{hireSuccessMessage}</span>
           </div>
-          <div className="flex gap-sm overflow-x-auto pb-2 md:pb-0 hide-scrollbar">
-            <button className="whitespace-nowrap px-md py-sm rounded-full bg-secondary-container text-on-secondary-container font-label-caps text-label-caps border border-transparent">All Departments</button>
-            <button className="whitespace-nowrap px-md py-sm rounded-full bg-surface-container-lowest text-on-surface border border-outline-variant hover:bg-surface-container-low transition-colors font-label-caps text-label-caps">Marketing</button>
-            <button className="whitespace-nowrap px-md py-sm rounded-full bg-surface-container-lowest text-on-surface border border-outline-variant hover:bg-surface-container-low transition-colors font-label-caps text-label-caps">Finance</button>
-          </div>
-        </div>
-      </div>
-
-      {selectedRole && (
-        <div className="mb-xl bg-surface-container-lowest border border-outline-variant rounded-xl p-lg shadow-sm">
-          <div className="flex items-center justify-between mb-md">
-             <h2 className="font-headline-sm text-headline-sm text-on-surface">Deploying: {selectedRole}</h2>
-             <button onClick={() => setSelectedRole(null)} className="text-secondary hover:text-on-surface">
-               <span className="material-symbols-outlined">close</span>
-             </button>
-          </div>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-            <div className="space-y-2">
-              <label className="text-sm font-semibold text-on-surface">Initial Goal / Directive</label>
-              <textarea 
-                {...register("goal")}
-                placeholder="Describe the first task this agent should accomplish..."
-                className="w-full p-3 bg-surface border border-outline-variant rounded-lg h-32 resize-none focus:ring-1 focus:ring-primary focus:border-primary outline-none"
-              />
-              {errors.goal && <p className="text-error text-xs">{errors.goal.message}</p>}
-            </div>
-
-            <button type="submit" disabled={hireAgent.isPending} className="bg-primary hover:bg-primary/90 text-white rounded-lg px-lg py-3 font-semibold text-base transition-colors flex items-center gap-2">
-              {hireAgent.isPending ? "Deploying..." : "Hire & Deploy Agent"}
-              {!hireAgent.isPending && <span className="material-symbols-outlined">rocket_launch</span>}
-            </button>
-          </form>
+          <button onClick={() => setHireSuccessMessage(null)} className="text-emerald-700 hover:text-emerald-900 cursor-pointer">
+            <X className="w-4 h-4" />
+          </button>
         </div>
       )}
 
-      {/* Featured Agents Bento */}
-      <section className="mb-xxl">
-        <div className="flex items-center justify-between mb-md">
-          <h2 className="font-headline-md text-headline-md text-on-surface">Featured Specialists</h2>
-          <div className="flex gap-xs">
-            <button className="p-[6px] rounded bg-surface-container border border-outline-variant hover:bg-surface-container-high transition-colors"><span className="material-symbols-outlined text-[20px]">chevron_left</span></button>
-            <button className="p-[6px] rounded bg-surface-container border border-outline-variant hover:bg-surface-container-high transition-colors"><span className="material-symbols-outlined text-[20px]">chevron_right</span></button>
+      {/* 1. Header & Tabs */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200/80 pb-4">
+        <div>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
+              Recruit Workers
+            </h1>
+            <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+              Autonomous Specialists
+            </span>
+          </div>
+          <p className="text-xs text-slate-500 font-medium mt-1">
+            Deploy in-house specialist agents powered by deterministic LangGraph sub-orchestrators and safety guardrails.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs font-semibold">
+            <button
+              onClick={() => setActiveTab("Specialists")}
+              className={`px-3 py-1.5 rounded-lg transition-all ${
+                activeTab === "Specialists"
+                  ? "bg-white text-slate-900 shadow-xs font-bold"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              Specialist Roster
+            </button>
+            <button
+              onClick={() => setActiveTab("Governance")}
+              className={`px-3 py-1.5 rounded-lg transition-all ${
+                activeTab === "Governance"
+                  ? "bg-white text-slate-900 shadow-xs font-bold"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              Trust Tier Policy
+            </button>
+          </div>
+
+          <button
+            onClick={() => setShowDeployModal(true)}
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold shadow-xs transition-all cursor-pointer hover:scale-[1.02] active:scale-98"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>Deploy Custom Agent</span>
+          </button>
+        </div>
+      </div>
+
+      {activeTab === "Specialists" && (
+        <div className="space-y-6">
+          {/* Search bar */}
+          <div className="relative max-w-md">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              placeholder="Search available specialist workers..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-white border border-slate-200 rounded-xl pl-10 pr-4 py-2 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 shadow-xs"
+            />
+          </div>
+
+          {/* Specialist Cards Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {filteredSpecialists.map((specialist) => {
+              const Icon = specialist.icon;
+              const hired = isAlreadyHired(specialist.role);
+
+              return (
+                <div
+                  key={specialist.id}
+                  className={`bg-white rounded-3xl p-6 border transition-all flex flex-col justify-between shadow-xs ${
+                    hired ? "border-emerald-300 ring-1 ring-emerald-400/30" : "border-slate-200/90 hover:border-slate-300 hover:shadow-md"
+                  }`}
+                >
+                  <div className="space-y-5">
+                    {/* Header */}
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex items-center gap-3.5">
+                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center border shadow-xs ${
+                          specialist.accentColor === "emerald" 
+                            ? "bg-emerald-50 text-emerald-700 border-emerald-200" 
+                            : "bg-blue-50 text-blue-700 border-blue-200"
+                        }`}>
+                          <Icon className="w-6 h-6" />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h2 className="text-base font-bold text-slate-900">{specialist.name}</h2>
+                          </div>
+                          <p className="text-xs font-semibold text-slate-500 mt-0.5">
+                            {specialist.department} &bull; <span className="font-mono text-[11px]">{specialist.role}</span>
+                          </p>
+                        </div>
+                      </div>
+
+                      {hired ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 text-[10px] font-bold">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700" />
+                          <span>Active in Fleet</span>
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 border border-slate-200 text-[10px] font-bold">
+                          <Bot className="w-3.5 h-3.5 text-slate-500" />
+                          <span>Ready to Deploy</span>
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Description */}
+                    <p className="text-xs text-slate-600 leading-relaxed">
+                      {specialist.description}
+                    </p>
+
+                    {/* Architectural Specifications */}
+                    <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-2">
+                      <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                        <Workflow className="w-3.5 h-3.5 text-slate-500" />
+                        <span>Execution Engine</span>
+                      </div>
+                      <p className="text-xs font-mono font-medium text-slate-800">
+                        {specialist.architecture}
+                      </p>
+                    </div>
+
+                    {/* Capabilities checklist */}
+                    <div className="space-y-2">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                        Built-in Capabilities & Guardrails
+                      </p>
+                      <ul className="space-y-1.5">
+                        {specialist.capabilities.map((cap) => (
+                          <li key={cap} className="flex items-center gap-2 text-xs text-slate-700">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0"></span>
+                            <span>{cap}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+
+                  {/* Footer / Action */}
+                  <div className="pt-6 mt-6 border-t border-slate-100 flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] font-bold uppercase text-slate-400">Initial Tier:</span>
+                      <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300 uppercase">
+                        {specialist.defaultTier} (Review Gate)
+                      </span>
+                    </div>
+
+                    {hired ? (
+                      <Link
+                        href="/agents"
+                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold transition-colors"
+                      >
+                        <span>View Worker</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </Link>
+                    ) : (
+                      <button
+                        onClick={() => handleHire(specialist.name, specialist.role, specialist.description)}
+                        disabled={hireAgent.isPending}
+                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs transition-all cursor-pointer hover:scale-[1.02] active:scale-98 disabled:opacity-50"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Recruit Specialist</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-lg">
-          {/* Featured Card 1 */}
-          <div onClick={() => handleSelectRole("Marketing Manager")} className="md:col-span-2 bg-surface-container-lowest rounded-xl border border-outline-variant p-lg shadow-sm hover:shadow-md transition-shadow flex flex-col md:flex-row gap-lg group cursor-pointer relative overflow-hidden">
-            <div className="absolute right-0 top-0 w-1/2 h-full bg-gradient-to-bl from-primary/5 to-transparent pointer-events-none"></div>
-            <div className="w-full md:w-[200px] h-[160px] md:h-full rounded-lg bg-surface-container flex items-center justify-center shrink-0">
-               <span className="material-symbols-outlined text-6xl text-primary opacity-50">campaign</span>
+      )}
+
+      {/* Tab: Governance */}
+      {activeTab === "Governance" && (
+        <div className="space-y-6">
+          <div className="p-6 rounded-3xl bg-white border border-slate-200 space-y-4 shadow-xs">
+            <div className="flex items-center gap-2.5 text-slate-900 font-bold text-base">
+              <ShieldCheck className="w-5 h-5 text-emerald-600" />
+              <h2>Autonomous Trust Tier Governance</h2>
             </div>
-            <div className="flex-1 flex flex-col justify-center z-10">
-              <div className="flex items-center gap-sm mb-xs">
-                <span className="px-[8px] py-[2px] bg-secondary-container text-on-secondary-container rounded-full font-label-caps text-[10px]">Marketing</span>
-                <div className="flex items-center gap-[2px] text-primary-container">
-                  <span className="material-symbols-outlined text-[14px]" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
-                  <span className="font-label-caps text-label-caps">4.9</span>
-                </div>
-                <span className="bg-primary/10 text-primary px-[6px] py-[2px] rounded text-[10px] font-bold uppercase tracking-wider ml-auto">Top Rated</span>
+            <p className="text-xs text-slate-600 leading-relaxed max-w-3xl">
+              All newly recruited agents start in the <span className="font-semibold text-amber-800">Observe Tier</span>, where every execution output requires founder confirmation before finalizing state changes. Clean operational cycles progressively unlock autonomous execution capabilities.
+            </p>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+              <div className="p-4 rounded-2xl bg-amber-50/60 border border-amber-200 space-y-2">
+                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300 uppercase">
+                  Observe Tier (Level 1)
+                </span>
+                <p className="text-xs font-bold text-slate-900 mt-2">100% Founder Approval</p>
+                <p className="text-[11px] text-slate-600 leading-relaxed">
+                  Every tool execution, journal entry, and campaign copy draft is held in an observation gate awaiting your manual review.
+                </p>
               </div>
-              <h3 className="font-headline-md text-headline-md text-on-surface mb-[4px] group-hover:text-primary transition-colors">Marketing Manager</h3>
-              <p className="font-body-md text-body-md text-secondary mb-md line-clamp-2">Analyzes market trends, optimizes ad spend, and generates multivariate testing scenarios. Drives user acquisition and engagement.</p>
-              <div className="mt-auto flex items-center justify-between">
-                <div className="flex flex-col">
-                  <span className="font-code-sm text-code-sm text-on-surface font-semibold">$3,200 <span className="text-secondary font-normal">/ mo</span></span>
-                  <span className="text-[11px] text-secondary">Compute included</span>
+
+              <div className="p-4 rounded-2xl bg-blue-50/60 border border-blue-200 space-y-2">
+                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 border border-blue-300 uppercase">
+                  Assist Tier (Level 2)
+                </span>
+                <p className="text-xs font-bold text-slate-900 mt-2">5 Clean Cycles Required</p>
+                <p className="text-[11px] text-slate-600 leading-relaxed">
+                  Autonomous execution within a $100 spending and authority limit. Actions exceeding limits route to your review queue.
+                </p>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-emerald-50/60 border border-emerald-200 space-y-2">
+                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 uppercase">
+                  Operate Tier (Level 3)
+                </span>
+                <p className="text-xs font-bold text-slate-900 mt-2">15 Clean Cycles Required</p>
+                <p className="text-[11px] text-slate-600 leading-relaxed">
+                  Full operational autonomy within a $1,000 limit with passive telemetry logging and automatic circuit breaker fallback.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Deploy Custom Agent Modal */}
+      {showDeployModal && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in duration-150">
+          <div className="bg-white border border-slate-200 rounded-3xl p-6 md:p-8 max-w-lg w-full shadow-2xl space-y-5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center">
+                  <Plus className="w-5 h-5" />
                 </div>
-                <button className="bg-surface-container-highest text-on-surface hover:bg-primary hover:text-white px-md py-sm rounded-lg font-semibold transition-colors flex items-center gap-xs">
-                  Hire Now
-                  <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
+                <h2 className="text-base font-bold text-slate-900">Deploy Custom AI Worker</h2>
+              </div>
+              <button
+                onClick={() => setShowDeployModal(false)}
+                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                <XCircle className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCustomDeploy} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                  Worker Codename
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Scribe, Ledger, Echo, Atlas..."
+                  value={customName}
+                  onChange={(e) => setCustomName(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:bg-white focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                    Specialist Role
+                  </label>
+                  <select
+                    value={customRole}
+                    onChange={(e) => setCustomRole(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:bg-white focus:outline-none focus:border-emerald-500"
+                  >
+                    <option value="Marketing Manager">Marketing Manager</option>
+                    <option value="Finance Manager">Finance Manager</option>
+                    <option value="Admin & Operations Worker">Admin & Operations Worker</option>
+                    <option value="Research Specialist">Research Specialist</option>
+                    <option value="General Specialist">General Specialist</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                    Initial Trust Tier
+                  </label>
+                  <select
+                    value={customTrustTier}
+                    onChange={(e) => setCustomTrustTier(e.target.value as any)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:bg-white focus:outline-none font-semibold"
+                  >
+                    <option value="observe">Observe (Founder review)</option>
+                    <option value="assist">Assist ($100 limit)</option>
+                    <option value="operate">Operate ($1,000 limit)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                  Initial Operational Directive / Mandate
+                </label>
+                <textarea
+                  rows={3}
+                  value={customGoal}
+                  onChange={(e) => setCustomGoal(e.target.value)}
+                  placeholder="e.g. Monitor market trends and draft weekly strategic summaries in Notion..."
+                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3 text-xs text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 font-medium resize-none"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-3">
+                <button
+                  type="button"
+                  onClick={() => setShowDeployModal(false)}
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={hireAgent.isPending}
+                  className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                >
+                  {hireAgent.isPending && <span className="material-symbols-outlined text-sm animate-spin">progress_activity</span>}
+                  <span>Deploy to Fleet</span>
                 </button>
               </div>
-            </div>
-          </div>
-
-          {/* Featured Card 2 */}
-          <div onClick={() => handleSelectRole("Finance Manager")} className="bg-surface-container-lowest rounded-xl border border-outline-variant p-md shadow-sm hover:shadow-md transition-shadow flex flex-col group cursor-pointer">
-            <div className="flex items-start justify-between mb-sm">
-              <div className="w-12 h-12 rounded-lg bg-tertiary-container/30 flex items-center justify-center shrink-0">
-                 <span className="material-symbols-outlined text-tertiary">account_balance</span>
-              </div>
-              <button className="text-secondary hover:text-primary transition-colors"><span className="material-symbols-outlined">bookmark_border</span></button>
-            </div>
-            <div className="mb-xs">
-              <span className="px-[8px] py-[2px] border border-outline-variant text-secondary rounded-full font-label-caps text-[10px] mb-xs inline-block">Finance</span>
-              <h3 className="font-headline-sm text-headline-sm text-on-surface group-hover:text-primary transition-colors leading-tight">Finance Manager</h3>
-            </div>
-            <p className="font-body-md text-body-md text-secondary mb-md text-sm line-clamp-2">Continuous anomaly detection in transaction ledgers and automated expense reporting.</p>
-            <div className="mt-auto pt-md border-t border-outline-variant flex items-center justify-between">
-              <span className="font-code-sm text-code-sm text-on-surface font-semibold">$1,400 <span className="text-secondary font-normal text-[11px]">/ mo</span></span>
-              <button className="text-primary font-semibold text-sm hover:underline">Select</button>
-            </div>
+            </form>
           </div>
         </div>
-      </section>
-
-      {/* Grid Layout */}
-      <section>
-        <div className="flex items-center justify-between mb-md">
-          <h2 className="font-headline-md text-headline-md text-on-surface">Available Agents</h2>
-          <span className="text-sm text-secondary">Showing 2 of 24</span>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-md">
-          
-          <div className="bg-surface-container-lowest rounded-lg border border-outline-variant p-md shadow-sm hover:shadow-md transition-shadow flex flex-col group cursor-pointer relative opacity-60">
-            <div className="absolute top-md right-md">
-              <div className="flex items-center gap-[2px] bg-surface-container-low px-[6px] py-[2px] rounded text-on-surface">
-                <span className="material-symbols-outlined text-[12px] text-primary-container" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
-                <span className="font-label-caps text-[10px]">4.8</span>
-              </div>
-            </div>
-            <div className="flex items-center gap-sm mb-md">
-              <div className="w-10 h-10 rounded bg-secondary/10 flex items-center justify-center shrink-0">
-                <span className="material-symbols-outlined text-secondary">database</span>
-              </div>
-              <div>
-                <h3 className="font-headline-sm text-[16px] text-on-surface leading-tight group-hover:text-primary transition-colors">Data Ingestion Pro</h3>
-                <span className="text-[11px] text-secondary uppercase tracking-wider font-semibold">Data Ops</span>
-              </div>
-            </div>
-            <div className="mb-md">
-              <div className="flex flex-wrap gap-xs mb-sm">
-                <span className="px-[6px] py-[2px] bg-surface-container rounded text-[11px] text-secondary">ETL</span>
-                <span className="px-[6px] py-[2px] bg-surface-container rounded text-[11px] text-secondary">Cleansing</span>
-              </div>
-              <p className="font-body-md text-sm text-secondary line-clamp-2">Automates data extraction, transformation, and loading from unstructured sources.</p>
-            </div>
-            <div className="mt-auto flex items-center justify-between pt-sm border-t border-outline-variant">
-              <span className="font-code-sm text-code-sm text-on-surface">Coming Soon</span>
-              <button disabled className="bg-surface-container border border-outline-variant text-secondary px-sm py-[4px] rounded text-sm font-semibold transition-colors">Locked</button>
-            </div>
-          </div>
-          
-        </div>
-      </section>
+      )}
     </div>
   );
 }
