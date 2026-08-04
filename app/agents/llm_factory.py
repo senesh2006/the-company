@@ -104,7 +104,7 @@ def get_llm(model_id: Optional[str] = None, role: Optional[str] = None, temperat
         api_key = settings.OPENAI_API_KEY
         base_url = None
 
-    logger.info(f"Initializing LLM: provider={provider}, model={model_name}")
+    logger.info(f"Initializing LLM: requested={model_id!r}, role={role!r}, resolved_provider={provider}, resolved_model={model_name}")
 
     return ChatOpenAI(
         model=model_name,
