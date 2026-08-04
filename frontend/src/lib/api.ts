@@ -9,7 +9,7 @@ export type ModelId =
   | 'gpt-4o'
   | 'gpt-4o-mini'
   | 'llama-3.1-70b'
-  | 'llama-3.1-8b'
+  | 'llama-v3-8b'
   | 'qwen2.5-72b'
   | 'deepseek-r1'
   | 'mistral-small-24b';
@@ -28,13 +28,13 @@ export const FALLBACK_MODELS: ModelOption[] = [
   { id: 'gpt-4o', name: 'GPT-4o', provider: 'OpenAI', tier: 'standard' },
   { id: 'gpt-4o-mini', name: 'GPT-4o Mini', provider: 'OpenAI', tier: 'fast' },
   { id: 'llama-3.1-70b', name: 'Llama 3.1 70B', provider: 'Fireworks', tier: 'standard' },
-  { id: 'llama-3.1-8b', name: 'Llama 3.1 8B', provider: 'Fireworks', tier: 'fast' },
+  { id: 'llama-v3-8b', name: 'Llama 3 8B', provider: 'Fireworks', tier: 'fast' },
   { id: 'qwen2.5-72b', name: 'Qwen 2.5 72B', provider: 'Fireworks', tier: 'standard' },
   { id: 'deepseek-r1', name: 'DeepSeek R1', provider: 'Fireworks', tier: 'power' },
   { id: 'mistral-small-24b', name: 'Mistral Small 24B', provider: 'Fireworks', tier: 'fast' },
 ];
 
-export const DEFAULT_MODEL: ModelId = 'llama-3.1-8b';
+export const DEFAULT_MODEL: ModelId = 'llama-v3-8b';
 
 export type KnowledgeCategory = 
   | 'Brand Guidelines' 

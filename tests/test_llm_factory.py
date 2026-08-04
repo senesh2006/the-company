@@ -30,7 +30,7 @@ def test_resolve_model_openai_fallback_when_fireworks_unavailable():
     """If Fireworks is not configured but OpenAI is, fall back to OpenAI."""
     with patch("app.agents.llm_factory.settings.FIREWORKS_API_KEY", None):
         with patch("app.agents.llm_factory.settings.OPENAI_API_KEY", "sk-key"):
-            model_name, provider = resolve_model("llama-3.1-8b", role="default")
+            model_name, provider = resolve_model("llama-v3-8b", role="default")
             assert provider == "openai"
             assert model_name == MODEL_REGISTRY["gpt-4o-mini"][0]
 
@@ -40,7 +40,7 @@ def test_resolve_model_custom_fireworks_override():
     custom_model = "accounts/fireworks/models/custom-override"
     with patch("app.agents.llm_factory.settings.FIREWORKS_API_KEY", "fw-key"):
         with patch("app.agents.llm_factory.settings.FIREWORKS_CUSTOM_MODEL", custom_model):
-            model_name, _ = resolve_model("llama-3.1-8b", role="default")
+            model_name, _ = resolve_model("llama-v3-8b", role="default")
             assert model_name == custom_model
 
 
@@ -50,14 +50,14 @@ def test_list_available_models_respects_configured_keys():
         with patch("app.agents.llm_factory.settings.OPENAI_API_KEY", None):
             models = list_available_models()
             assert all(m["provider"] == "Fireworks" for m in models)
-            assert any(m["id"] == "llama-3.1-8b" for m in models)
+            assert any(m["id"] == "llama-v3-8b" for m in models)
 
 
 def test_get_llm_returns_chat_openai_instance():
     """get_llm should return a usable ChatOpenAI-like instance."""
     with patch("app.agents.llm_factory.settings.FIREWORKS_API_KEY", "fw-key"):
         with patch("app.agents.llm_factory.settings.OPENAI_API_KEY", None):
-            llm = get_llm(model_id="llama-3.1-8b", role="default", temperature=0.0)
+            llm = get_llm(model_id="llama-v3-8b", role="default", temperature=0.0)
             assert llm.model_name is not None or llm.model is not None
 
 
@@ -71,9 +71,18 @@ def test_resolve_model_broken_id_remaps_to_default():
             assert "kimi" not in model_name.lower()
 
 
+def test_resolve_model_retired_llama31_8b_remaps_to_default():
+    """The retired llama-3.1-8b alias should be remapped to the default working model."""
+    with patch("app.agents.llm_factory.settings.FIREWORKS_API_KEY", "fw-key"):
+        with patch("app.agents.llm_factory.settings.OPENAI_API_KEY", None):
+            model_name, provider = resolve_model("llama-3.1-8b", role="default")
+            assert provider == "fireworks"
+            assert "llama-v3-8b-instruct" in model_name
+
+
 def test_list_available_models_hides_broken_models():
     """Broken model IDs should not appear in the frontend model list."""
     with patch("app.agents.llm_factory.settings.FIREWORKS_API_KEY", "fw-key"):
         with patch("app.agents.llm_factory.settings.OPENAI_API_KEY", None):
             models = list_available_models()
-            assert all(m["id"] != "kimi-k3" for m in models)
+            assert all(m["id"] not in {"kimi-k3", "llama-3.1-8b"} for m in models)

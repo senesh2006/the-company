@@ -12,18 +12,18 @@ MODEL_REGISTRY = {
     "gpt-4o": ("gpt-4o", "openai"),
     "gpt-4o-mini": ("gpt-4o-mini", "openai"),
     "llama-3.1-70b": ("accounts/fireworks/models/llama-v3p1-70b-instruct", "fireworks"),
-    "llama-3.1-8b": ("accounts/fireworks/models/llama-v3p1-8b-instruct", "fireworks"),
+    "llama-v3-8b": ("accounts/fireworks/models/llama-v3-8b-instruct", "fireworks"),
     "qwen2.5-72b": ("accounts/fireworks/models/qwen2p5-72b-instruct", "fireworks"),
     "deepseek-r1": ("accounts/fireworks/models/deepseek-r1", "fireworks"),
     "mistral-small-24b": ("accounts/fireworks/models/mistral-small-24b-instruct-2502", "fireworks"),
 }
 
 # Default model used when the user does not specify one for a new agent.
-DEFAULT_AGENT_MODEL_ID = "llama-3.1-8b"
+DEFAULT_AGENT_MODEL_ID = "llama-v3-8b"
 
 # Model IDs that are known to be broken or unavailable on the provider.
 # They are silently remapped to the default so old agents don't crash the system.
-BROKEN_MODEL_IDS = {"kimi-k3"}
+BROKEN_MODEL_IDS = {"kimi-k3", "llama-3.1-8b"}
 
 # Model display metadata for the frontend and agent defaults.
 MODEL_DISPLAY = {
@@ -31,7 +31,7 @@ MODEL_DISPLAY = {
     "gpt-4o": {"name": "GPT-4o", "provider": "OpenAI", "tier": "standard"},
     "gpt-4o-mini": {"name": "GPT-4o Mini", "provider": "OpenAI", "tier": "fast"},
     "llama-3.1-70b": {"name": "Llama 3.1 70B", "provider": "Fireworks", "tier": "standard"},
-    "llama-3.1-8b": {"name": "Llama 3.1 8B", "provider": "Fireworks", "tier": "fast"},
+    "llama-v3-8b": {"name": "Llama 3 8B", "provider": "Fireworks", "tier": "fast"},
     "qwen2.5-72b": {"name": "Qwen 2.5 72B", "provider": "Fireworks", "tier": "standard"},
     "deepseek-r1": {"name": "DeepSeek R1", "provider": "Fireworks", "tier": "power"},
     "mistral-small-24b": {"name": "Mistral Small 24B", "provider": "Fireworks", "tier": "fast"},
@@ -40,15 +40,15 @@ MODEL_DISPLAY = {
 # Recommended defaults by role (worker specialization).
 # Default to the cheapest Fireworks model when only Fireworks is available.
 DEFAULT_MODEL_BY_ROLE = {
-    "Finance Manager": "llama-3.1-8b",
-    "Marketing Manager": "llama-3.1-8b",
-    "Admin & Operations Worker": "llama-3.1-8b",
+    "Finance Manager": "llama-v3-8b",
+    "Marketing Manager": "llama-v3-8b",
+    "Admin & Operations Worker": "llama-v3-8b",
     "Research Specialist": "llama-3.1-70b",
-    "EngineeringWorker": "llama-3.1-8b",
-    "Coder": "llama-3.1-8b",
+    "EngineeringWorker": "llama-v3-8b",
+    "Coder": "llama-v3-8b",
     "Engineering Manager": "llama-3.1-70b",
-    "Software Engineer": "llama-3.1-8b",
-    "default": "llama-3.1-8b",
+    "Software Engineer": "llama-v3-8b",
+    "default": "llama-v3-8b",
 }
 
 
