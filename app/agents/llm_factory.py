@@ -86,7 +86,7 @@ def resolve_model(model_id: Optional[str], role: Optional[str] = None) -> tuple[
         model_name = MODEL_REGISTRY["gpt-4o-mini"][0] if has_openai else MODEL_REGISTRY["gpt-4o"][0]
     elif provider == "openai" and not has_openai:
         provider = "fireworks"
-        model_name = MODEL_REGISTRY["llama-3.1-8b"][0]
+        model_name = MODEL_REGISTRY["llama-v3-8b"][0]
 
     return model_name, provider
 
