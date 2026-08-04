@@ -18,6 +18,9 @@ MODEL_REGISTRY = {
     "mistral-small-24b": ("accounts/fireworks/models/mistral-small-24b-instruct-2502", "fireworks"),
 }
 
+# Default model used when the user does not specify one for a new agent.
+DEFAULT_AGENT_MODEL_ID = "llama-3.1-8b"
+
 # Model display metadata for the frontend and agent defaults.
 MODEL_DISPLAY = {
     "kimi-k3": {"name": "Kimi K3", "provider": "Fireworks", "tier": "power"},

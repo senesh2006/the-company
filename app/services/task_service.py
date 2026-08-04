@@ -14,6 +14,7 @@ except ImportError:
 
 from app.core.config import settings
 from app.services.governance_service import GovernanceService
+from app.agents.llm_factory import DEFAULT_AGENT_MODEL_ID
 
 logger = logging.getLogger(__name__)
 
@@ -138,7 +139,7 @@ class TaskService:
                 "clean_cycles_count": 0,
                 "authority_limit_usd": 0.0 if trust_tier == "observe" else (100.0 if trust_tier == "assist" else 1000.0),
                 "system_prompt": system_prompt,
-                "model": model or "kimi-k3",
+                "model": model or DEFAULT_AGENT_MODEL_ID,
                 "capabilities": capabilities or []
             }
             _IN_MEMORY_AGENT_EXTRA[agent_id] = extra_meta
@@ -170,7 +171,7 @@ class TaskService:
                     "clean_cycles_count": 0,
                     "authority_limit_usd": 0.0 if trust_tier == "observe" else 100.0,
                     "system_prompt": system_prompt,
-                    "model": model or "kimi-k3",
+                    "model": model or DEFAULT_AGENT_MODEL_ID,
                     "capabilities": capabilities or []
                 }
                 _IN_MEMORY_AGENT_EXTRA[agent_id] = extra_meta
