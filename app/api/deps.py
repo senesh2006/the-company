@@ -49,19 +49,37 @@ class User(BaseModel):
 
 def _get_or_create_business_for_user(user_id: str, email: Optional[str]) -> str:
     """
-    Look up the business owned by this user, or create one on first login.
-    Falls back to a default id when Supabase is not configured.
+    Resolve a business_id for this user.
+    - Prefer an existing business row where owner_id == user_id.
+    - Otherwise use the user_id itself as the business_id. This is robust even when
+      the owner_id migration has not been applied.
+    - Try to create/upsert the business row so the businesses table stays consistent.
     """
     try:
         client = get_supabase_client()
-        resp = client.table("businesses").select("id").eq("owner_id", user_id).limit(1).execute()
-        if resp.data:
-            return str(resp.data[0]["id"])
+        # 1. If the owner_id migration is present, use the existing business.
+        try:
+            resp = client.table("businesses").select("id").eq("owner_id", user_id).limit(1).execute()
+            if resp.data:
+                return str(resp.data[0]["id"])
+        except Exception as e:
+            logger.debug(f"owner_id lookup failed (migration may be missing): {e}")
 
+        # 2. Use the user's auth id as the stable business_id. This guarantees each
+        #    account is isolated even when the businesses table lacks an owner_id column.
+        business_id = user_id
         name = email.split("@")[0] if email else "My Business"
-        new_resp = client.table("businesses").insert({"name": name, "owner_id": user_id}).execute()
-        if new_resp.data:
-            return str(new_resp.data[0]["id"])
+        try:
+            client.table("businesses").insert({"id": business_id, "name": name, "owner_id": user_id}).execute()
+        except Exception as e:
+            logger.debug(f"Could not insert business row with owner_id (may already exist or owner_id missing): {e}")
+            # Try without owner_id in case the migration has not been applied.
+            try:
+                client.table("businesses").insert({"id": business_id, "name": name}).execute()
+            except Exception as e2:
+                logger.debug(f"Could not insert business row without owner_id (may already exist): {e2}")
+
+        return business_id
     except Exception as e:
         logger.warning(f"Failed to resolve business for user {user_id}: {e}")
 

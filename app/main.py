@@ -51,6 +51,12 @@ def setup_test_environment(user = Depends(get_current_user)):
 
         client = create_client(sb_url, sb_key)
 
+        # Ensure the business row exists so agent/task foreign keys are valid.
+        try:
+            client.table("businesses").insert({"id": biz_id, "name": "My Business"}).execute()
+        except Exception:
+            pass  # Row likely already exists
+
         # Ensure default agents exist for this user's business
         agents_resp = client.table("agents").select("id, name, role").eq("business_id", biz_id).execute()
         existing_roles = [a["role"] for a in agents_resp.data] if agents_resp.data else []
