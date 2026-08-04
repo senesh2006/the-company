@@ -127,12 +127,16 @@ function formatMarkdown(content: string): string {
 
 function isPipeTableLine(line: string): boolean {
   const trimmed = line.trim();
-  return trimmed.startsWith("|") && trimmed.endsWith("|");
+  // Detect any line with 2+ pipe delimiters that yields at least 2 non-empty cells.
+  const pipeCount = (trimmed.match(/\|/g) || []).length;
+  if (pipeCount < 2) return false;
+  const cells = splitPipeCells(trimmed);
+  return cells.filter((c) => c.trim() !== "").length >= 2;
 }
 
 function isSeparatorLine(line: string): boolean {
   const cells = splitPipeCells(line);
-  return cells.length > 0 && cells.every((c) => /^[-:\s]+$/.test(c.trim()));
+  return cells.length > 0 && cells.every((c) => /^[-:\s|]+$/.test(c.trim()));
 }
 
 function splitPipeCells(row: string): string[] {
@@ -157,7 +161,7 @@ function convertPipeTableBlocks(content: string): string {
     const line = lines[i];
 
     if (isPipeTableLine(line)) {
-      // Gather the whole table block.
+      // Gather the whole table block (consecutive table-like lines).
       const blockLines: string[] = [line];
       let j = i + 1;
       while (j < lines.length && isPipeTableLine(lines[j])) {
@@ -165,7 +169,8 @@ function convertPipeTableBlocks(content: string): string {
         j++;
       }
 
-      if (blockLines.length >= 2) {
+      // Convert even single-row pipe tables so clean rows like "A | B | C" render nicely.
+      if (blockLines.length >= 1) {
         const tableHtml = convertPipeTableBlock(blockLines);
         result.push(tableHtml);
         i = j;
@@ -193,8 +198,14 @@ function convertPipeTableBlock(lines: string[]): string {
     headers = rows[0].map((c) => c.trim());
     body = rows.slice(2).filter((r) => !isEmptyRow(r));
   } else {
+    // For a single-row block without a header separator, use generic column headers.
     headers = rows[0].map((c) => c.trim());
     body = rows.slice(1).filter((r) => !isEmptyRow(r));
+    if (body.length === 0) {
+      // Single data row: turn the row itself into the body and use generic headers.
+      headers = Array.from({ length: maxCols }, (_, idx) => `Col ${idx + 1}`);
+      body = [rows[0].map((c) => c.trim())];
+    }
   }
 
   while (headers.length < maxCols) headers.push("");
@@ -229,8 +240,8 @@ function convertAsciiTable(block: string): string {
 }
 
 function buildTableHtml(headers: string[], body: string[][]): string {
-  const cellClass = "px-2 py-1.5 text-[11px] text-slate-700 border-b border-slate-100 align-top whitespace-normal break-words min-w-0";
-  const headerClass = "px-2 py-1.5 text-left text-[10px] font-bold text-slate-600 border-b border-slate-200 align-top whitespace-normal break-words min-w-0";
+  const cellClass = "px-2 py-1.5 text-[11px] text-slate-700 border-b border-slate-100 align-top whitespace-normal break-all min-w-0";
+  const headerClass = "px-2 py-1.5 text-left text-[10px] font-bold text-slate-600 border-b border-slate-200 align-top whitespace-normal break-all min-w-0";
 
   const headerHtml = `<thead class="bg-slate-50"><tr>${headers
     .map((h) => `<th class="${headerClass}">${h}</th>`)
@@ -247,7 +258,7 @@ function buildTableHtml(headers: string[], body: string[][]): string {
 
   return `
     <div class="overflow-x-auto rounded-xl border border-slate-200 my-3">
-      <table class="w-full text-left border-collapse table-fixed">
+      <table class="w-full text-left border-collapse table-auto">
         ${headerHtml}
         ${bodyHtml}
       </table>
