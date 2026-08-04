@@ -19,11 +19,11 @@ MODEL_REGISTRY = {
 }
 
 # Default model used when the user does not specify one for a new agent.
-DEFAULT_AGENT_MODEL_ID = "llama-v3-8b"
+DEFAULT_AGENT_MODEL_ID = "kimi-k3"
 
 # Model IDs that are known to be broken or unavailable on the provider.
 # They are silently remapped to the default so old agents don't crash the system.
-BROKEN_MODEL_IDS = {"kimi-k3", "llama-3.1-8b"}
+BROKEN_MODEL_IDS = {"llama-3.1-8b"}
 
 # Model display metadata for the frontend and agent defaults.
 MODEL_DISPLAY = {
@@ -38,17 +38,18 @@ MODEL_DISPLAY = {
 }
 
 # Recommended defaults by role (worker specialization).
-# Default to the cheapest Fireworks model when only Fireworks is available.
+# Kimi K3 is the system-wide default; override per role only when a cheaper or
+# more specialized model is genuinely needed.
 DEFAULT_MODEL_BY_ROLE = {
-    "Finance Manager": "llama-v3-8b",
-    "Marketing Manager": "llama-v3-8b",
-    "Admin & Operations Worker": "llama-v3-8b",
-    "Research Specialist": "llama-3.1-70b",
-    "EngineeringWorker": "llama-v3-8b",
-    "Coder": "llama-v3-8b",
-    "Engineering Manager": "llama-3.1-70b",
-    "Software Engineer": "llama-v3-8b",
-    "default": "llama-v3-8b",
+    "Finance Manager": "kimi-k3",
+    "Marketing Manager": "kimi-k3",
+    "Admin & Operations Worker": "kimi-k3",
+    "Research Specialist": "kimi-k3",
+    "EngineeringWorker": "kimi-k3",
+    "Coder": "kimi-k3",
+    "Engineering Manager": "kimi-k3",
+    "Software Engineer": "kimi-k3",
+    "default": "kimi-k3",
 }
 
 

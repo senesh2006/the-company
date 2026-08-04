@@ -9,13 +9,13 @@ from app.agents.llm_factory import (
 )
 
 
-def test_resolve_model_defaults_to_cheap_fireworks_model():
-    """When no model is requested and Fireworks is configured, default to the cheapest model."""
+def test_resolve_model_defaults_to_kimi_k3():
+    """When no model is requested and Fireworks is configured, default to Kimi K3."""
     with patch("app.agents.llm_factory.settings.FIREWORKS_API_KEY", "fw-key"):
         with patch("app.agents.llm_factory.settings.OPENAI_API_KEY", None):
             model_name, provider = resolve_model(None, role="default")
             assert provider == "fireworks"
-            assert "llama" in model_name.lower()
+            assert "kimi-k3" in model_name
 
 
 def test_resolve_model_unknown_id_falls_back_to_role_default():
@@ -50,7 +50,7 @@ def test_list_available_models_respects_configured_keys():
         with patch("app.agents.llm_factory.settings.OPENAI_API_KEY", None):
             models = list_available_models()
             assert all(m["provider"] == "Fireworks" for m in models)
-            assert any(m["id"] == "llama-v3-8b" for m in models)
+            assert any(m["id"] == "kimi-k3" for m in models)
 
 
 def test_get_llm_returns_chat_openai_instance():
@@ -61,14 +61,13 @@ def test_get_llm_returns_chat_openai_instance():
             assert llm.model_name is not None or llm.model is not None
 
 
-def test_resolve_model_broken_id_remaps_to_default():
-    """Broken model IDs should be remapped to the default working model."""
+def test_resolve_model_kimi_k3_resolves_directly():
+    """Kimi K3 should resolve directly as the default working model."""
     with patch("app.agents.llm_factory.settings.FIREWORKS_API_KEY", "fw-key"):
         with patch("app.agents.llm_factory.settings.OPENAI_API_KEY", None):
             model_name, provider = resolve_model("kimi-k3", role="default")
             assert provider == "fireworks"
-            assert "llama" in model_name.lower()
-            assert "kimi" not in model_name.lower()
+            assert "kimi-k3" in model_name
 
 
 def test_resolve_model_retired_llama31_8b_remaps_to_default():
@@ -77,7 +76,7 @@ def test_resolve_model_retired_llama31_8b_remaps_to_default():
         with patch("app.agents.llm_factory.settings.OPENAI_API_KEY", None):
             model_name, provider = resolve_model("llama-3.1-8b", role="default")
             assert provider == "fireworks"
-            assert "llama-v3-8b-instruct" in model_name
+            assert "kimi-k3" in model_name
 
 
 def test_list_available_models_hides_broken_models():
@@ -85,4 +84,5 @@ def test_list_available_models_hides_broken_models():
     with patch("app.agents.llm_factory.settings.FIREWORKS_API_KEY", "fw-key"):
         with patch("app.agents.llm_factory.settings.OPENAI_API_KEY", None):
             models = list_available_models()
-            assert all(m["id"] not in {"kimi-k3", "llama-3.1-8b"} for m in models)
+            assert all(m["id"] != "llama-3.1-8b" for m in models)
+            assert any(m["id"] == "kimi-k3" for m in models)

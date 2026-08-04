@@ -34,7 +34,7 @@ export const FALLBACK_MODELS: ModelOption[] = [
   { id: 'mistral-small-24b', name: 'Mistral Small 24B', provider: 'Fireworks', tier: 'fast' },
 ];
 
-export const DEFAULT_MODEL: ModelId = 'llama-v3-8b';
+export const DEFAULT_MODEL: ModelId = 'kimi-k3';
 
 export type KnowledgeCategory = 
   | 'Brand Guidelines' 
