@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api, AgentStatus, HireWorkerPayload, TrustTier, HiringModel } from './api';
+import { api, AgentStatus, HireWorkerPayload, TrustTier, HiringModel, ModelOption } from './api';
 
 export const useAgents = () => {
     return useQuery({
@@ -10,6 +10,15 @@ export const useAgents = () => {
         refetchInterval: 5000,
         retry: 1,
         staleTime: 3000,
+    });
+};
+
+export const useAvailableModels = () => {
+    return useQuery<ModelOption[]>({
+        queryKey: ['available-models'],
+        queryFn: api.getAvailableModels,
+        retry: 1,
+        staleTime: 60000,
     });
 };
 

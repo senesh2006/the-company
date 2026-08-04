@@ -4,24 +4,37 @@ export type AgentStatus = 'Idle' | 'Thinking' | 'Working' | 'Running' | 'Paused'
 export type AgentRole = 'Manager' | 'Worker' | 'Specialist';
 export type TrustTier = 'observe' | 'assist' | 'operate';
 export type HiringModel = 'salaried' | 'freelance' | 'contract';
-export type ModelId = 'kimi-k3' | 'gpt-4o' | 'gpt-4o-mini' | 'llama-3.1-70b' | 'llama-3.1-8b';
+export type ModelId =
+  | 'kimi-k3'
+  | 'gpt-4o'
+  | 'gpt-4o-mini'
+  | 'llama-3.1-70b'
+  | 'llama-3.1-8b'
+  | 'qwen2.5-72b'
+  | 'deepseek-r1'
+  | 'mistral-small-24b';
 
 export interface ModelOption {
   id: ModelId;
   name: string;
   provider: string;
   tier: 'fast' | 'standard' | 'power';
+  model_name?: string;
 }
 
-export const AVAILABLE_MODELS: ModelOption[] = [
+// Hardcoded fallback is only used when the backend /models endpoint is unreachable.
+export const FALLBACK_MODELS: ModelOption[] = [
   { id: 'kimi-k3', name: 'Kimi K3', provider: 'Fireworks', tier: 'power' },
   { id: 'gpt-4o', name: 'GPT-4o', provider: 'OpenAI', tier: 'standard' },
   { id: 'gpt-4o-mini', name: 'GPT-4o Mini', provider: 'OpenAI', tier: 'fast' },
   { id: 'llama-3.1-70b', name: 'Llama 3.1 70B', provider: 'Fireworks', tier: 'standard' },
   { id: 'llama-3.1-8b', name: 'Llama 3.1 8B', provider: 'Fireworks', tier: 'fast' },
+  { id: 'qwen2.5-72b', name: 'Qwen 2.5 72B', provider: 'Fireworks', tier: 'standard' },
+  { id: 'deepseek-r1', name: 'DeepSeek R1', provider: 'Fireworks', tier: 'power' },
+  { id: 'mistral-small-24b', name: 'Mistral Small 24B', provider: 'Fireworks', tier: 'fast' },
 ];
 
-export const DEFAULT_MODEL: ModelId = 'gpt-4o-mini';
+export const DEFAULT_MODEL: ModelId = 'llama-3.1-8b';
 
 export type KnowledgeCategory = 
   | 'Brand Guidelines' 
@@ -216,6 +229,20 @@ const authFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<
 };
 
 export const api = {
+  // --- LLM Models ---
+  getAvailableModels: async (): Promise<ModelOption[]> => {
+    const baseUrl = getBaseUrl();
+    try {
+      const res = await authFetch(`${baseUrl}/api/v1/agents/models`);
+      if (!res.ok) throw new Error(`Failed to fetch models (${res.status})`);
+      const data = await res.json();
+      return data.models || FALLBACK_MODELS;
+    } catch (e) {
+      console.warn('Using fallback model list:', e);
+      return FALLBACK_MODELS;
+    }
+  },
+
   // --- Agents & AI Workers ---
   getAgents: async (): Promise<Agent[]> => {
     const baseUrl = getBaseUrl();

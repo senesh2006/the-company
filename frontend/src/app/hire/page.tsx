@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { useHireAgent, useAgents } from "@/lib/queries";
-import { api, AVAILABLE_MODELS, DEFAULT_MODEL, ModelId } from "@/lib/api";
+import { useState, useEffect } from "react";
+import { useHireAgent, useAgents, useAvailableModels } from "@/lib/queries";
+import { api, FALLBACK_MODELS, DEFAULT_MODEL, ModelId } from "@/lib/api";
 import Link from "next/link";
 import { 
   Search, 
@@ -25,7 +25,11 @@ import {
 
 export default function HirePage() {
   const { data: agents } = useAgents();
+  const { data: apiModels } = useAvailableModels();
   const hireAgent = useHireAgent();
+
+  const availableModels = apiModels || FALLBACK_MODELS;
+  const defaultModel = (availableModels.find((m) => m.id === DEFAULT_MODEL)?.id || availableModels[0]?.id || DEFAULT_MODEL) as ModelId;
 
   const [activeTab, setActiveTab] = useState<"Specialists" | "Governance">("Specialists");
   const [searchQuery, setSearchQuery] = useState("");
@@ -37,13 +41,17 @@ export default function HirePage() {
   const [customRole, setCustomRole] = useState("Marketing Manager");
   const [customGoal, setCustomGoal] = useState("");
   const [customTrustTier, setCustomTrustTier] = useState<"observe" | "assist" | "operate">("observe");
-  const [customModel, setCustomModel] = useState<ModelId>(DEFAULT_MODEL);
+  const [customModel, setCustomModel] = useState<ModelId>(defaultModel);
 
   // Selected model per specialist card
   const [specialistModels, setSpecialistModels] = useState<Record<string, ModelId>>({
-    specialist_marketing: DEFAULT_MODEL,
+    specialist_marketing: defaultModel,
     specialist_finance: "gpt-4o",
   });
+
+  useEffect(() => {
+    setCustomModel((prev) => (availableModels.some((m) => m.id === prev) ? prev : defaultModel));
+  }, [availableModels, defaultModel]);
 
   // The 2 Real Specialist Workers Built into the System
   const systemSpecialists = [
@@ -106,7 +114,7 @@ export default function HirePage() {
     );
   };
 
-  const handleHire = async (name: string, role: string, description: string, model: ModelId = DEFAULT_MODEL) => {
+  const handleHire = async (name: string, role: string, description: string, model: ModelId = defaultModel) => {
     try {
       await hireAgent.mutateAsync({
         name: name,
@@ -139,7 +147,7 @@ export default function HirePage() {
       });
       setCustomName("");
       setCustomGoal("");
-      setCustomModel(DEFAULT_MODEL);
+      setCustomModel(defaultModel);
       setShowDeployModal(false);
       setHireSuccessMessage(`Successfully deployed custom specialist ${customName}!`);
       setTimeout(() => setHireSuccessMessage(null), 5000);
@@ -326,9 +334,9 @@ export default function HirePage() {
                         }
                         className="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-[10px] text-slate-700 font-semibold focus:outline-none focus:border-emerald-500 disabled:opacity-60"
                       >
-                        {AVAILABLE_MODELS.map((m) => (
+                        {availableModels.map((m) => (
                           <option key={m.id} value={m.id}>
-                            {m.name} ({m.provider})
+                            {m.name} ({m.provider}){m.tier ? ` — ${m.tier}` : ""}
                           </option>
                         ))}
                       </select>
@@ -502,9 +510,9 @@ export default function HirePage() {
                     onChange={(e) => setCustomModel(e.target.value as ModelId)}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:bg-white focus:outline-none focus:border-emerald-500 font-semibold"
                   >
-                    {AVAILABLE_MODELS.map((m) => (
+                    {availableModels.map((m) => (
                       <option key={m.id} value={m.id}>
-                        {m.name} ({m.provider}) — {m.tier}
+                        {m.name} ({m.provider}){m.tier ? ` — ${m.tier}` : ""}
                       </option>
                     ))}
                   </select>
