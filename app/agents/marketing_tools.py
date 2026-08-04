@@ -39,23 +39,18 @@ class BraveSearchInput(BaseModel):
 
 class BraveSearchTool(BaseTool):
     name = "brave_search"
-    description = "Searches the web for trend and competitor research using Brave Search."
+    description = "Searches the web for trend and competitor research using free web search."
     args_schema = BraveSearchInput
     cost_estimate = 0.015
 
     def _run(self, query: str) -> str:
-        import urllib.request
-        import urllib.parse
-        try:
-            encoded_query = urllib.parse.quote(query)
-            url = f"https://html.duckduckgo.com/html/?q={encoded_query}"
-            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
-            with urllib.request.urlopen(req, timeout=5) as resp:
-                data = resp.read().decode("utf-8", errors="ignore")
-                default = f"Search results for '{query}': {data[:1000]}"
-        except Exception as e:
-            default = f"Brave search executed for query '{query}': {str(e)}"
+        from app.services.web_search import search_web
+        result = search_web(query)
+        if result and "failed" not in result.lower():
+            return result
 
+        # If DuckDuckGo fails, fall back to the MCP/mock path.
+        default = f"Brave search executed for query '{query}': no results."
         return _marketing_mcp_call(
             "brave",
             "search",

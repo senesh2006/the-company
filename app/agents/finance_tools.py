@@ -326,6 +326,13 @@ class BraveSearchTool(BaseTool):
     cost_estimate = 0.015
 
     def _run(self, query: str) -> str:
+        # Try the free DuckDuckGo HTML search first (no API key required).
+        from app.services.web_search import search_web
+        free_result = search_web(query)
+        if free_result and "failed" not in free_result.lower():
+            return free_result
+
+        # Fall back to the original static response if DuckDuckGo fails.
         default = f"Brave Search result for '{query}': Corporate tax rate is 21%. Section 174 software development capitalization rules apply."
         return _finance_mcp_call(
             "brave",

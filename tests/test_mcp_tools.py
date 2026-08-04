@@ -72,8 +72,15 @@ class TestFinanceToolsFallback:
         assert "$48,250.00" in result
 
     def test_brave_search(self):
-        tool = BraveSearchTool()
-        result = tool.run(query="corporate tax rate")
+        with patch("app.services.web_search.search_web", return_value="Search results for 'corporate tax rate':\n1. US corporate tax rate is 21%."):
+            tool = BraveSearchTool()
+            result = tool.run(query="corporate tax rate")
+        assert "21%" in result
+
+    def test_brave_search_falls_back_when_free_search_fails(self):
+        with patch("app.services.web_search.search_web", return_value="Free web search for 'corporate tax rate' failed: network error"):
+            tool = BraveSearchTool()
+            result = tool.run(query="corporate tax rate")
         assert "21%" in result
 
     def test_fetch_api(self):
@@ -89,8 +96,9 @@ class TestFinanceToolsFallback:
 
 class TestMarketingToolsFallback:
     def test_marketing_brave_search(self):
-        tool = MarketingBraveSearchTool()
-        result = tool.run(query="AI trends")
+        with patch("app.services.web_search.search_web", return_value="Search results for 'AI trends':\n1. AI adoption is growing."):
+            tool = MarketingBraveSearchTool()
+            result = tool.run(query="AI trends")
         assert "Search results" in result
 
     def test_marketing_playwright(self):

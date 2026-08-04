@@ -65,7 +65,7 @@ All MCP integrations are disabled by default (`MCP_FALLBACK_MODE=true`).  Set th
 | Stripe | `STRIPE_API_KEY` | Official Stripe SDK (`STRIPE_MCP_URL` still works as fallback) |
 | Google Workspace | `GOOGLE_MCP_URL` | `GOOGLE_MCP_CREDENTIALS` |
 | Notion | `NOTION_MCP_URL` | `NOTION_MCP_TOKEN` |
-| Brave Search | `BRAVE_MCP_URL` | `BRAVE_MCP_API_KEY` |
+| Brave Search | *(none required)* | Uses free DuckDuckGo HTML search by default. `BRAVE_MCP_URL` / `BRAVE_MCP_API_KEY` optional fallback. |
 | Slack/WhatsApp | `SLACK_MCP_URL` | `SLACK_MCP_BOT_TOKEN` |
 | Browser (Playwright) | `BROWSER_MCP_URL` | `BROWSER_MCP_API_KEY` |
 | Email | `EMAIL_MCP_URL` | `EMAIL_MCP_API_KEY` |
