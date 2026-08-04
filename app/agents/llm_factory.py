@@ -21,6 +21,10 @@ MODEL_REGISTRY = {
 # Default model used when the user does not specify one for a new agent.
 DEFAULT_AGENT_MODEL_ID = "llama-3.1-8b"
 
+# Model IDs that are known to be broken or unavailable on the provider.
+# They are silently remapped to the default so old agents don't crash the system.
+BROKEN_MODEL_IDS = {"kimi-k3"}
+
 # Model display metadata for the frontend and agent defaults.
 MODEL_DISPLAY = {
     "kimi-k3": {"name": "Kimi K3", "provider": "Fireworks", "tier": "power"},
@@ -57,11 +61,15 @@ def _fireworks_model_name(model_id: str) -> str:
 
 
 def resolve_model(model_id: Optional[str], role: Optional[str] = None) -> tuple[str, str]:
-    """Resolve a requested model id to a known model, falling back to role defaults."""
+    """Resolve a requested model id to a known model, falling back to role defaults.
+
+    Broken/deprecated model IDs (e.g. old Fireworks IDs that return 404) are
+    remapped to the default so existing agents don't crash after a model is retired.
+    """
     has_fireworks = bool(settings.FIREWORKS_API_KEY)
     has_openai = bool(settings.OPENAI_API_KEY)
 
-    if not model_id or model_id not in MODEL_REGISTRY:
+    if not model_id or model_id not in MODEL_REGISTRY or model_id in BROKEN_MODEL_IDS:
         model_id = DEFAULT_MODEL_BY_ROLE.get(role or "default", DEFAULT_MODEL_BY_ROLE["default"])
 
     model_name, provider = MODEL_REGISTRY[model_id]
@@ -113,6 +121,8 @@ def list_available_models() -> list[dict]:
 
     models = []
     for model_id, meta in MODEL_DISPLAY.items():
+        if model_id in BROKEN_MODEL_IDS:
+            continue
         model_name, provider = MODEL_REGISTRY[model_id]
         # Hide models whose provider is not configured.
         if provider == "fireworks" and not has_fireworks:

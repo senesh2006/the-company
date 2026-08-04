@@ -59,3 +59,21 @@ def test_get_llm_returns_chat_openai_instance():
         with patch("app.agents.llm_factory.settings.OPENAI_API_KEY", None):
             llm = get_llm(model_id="llama-3.1-8b", role="default", temperature=0.0)
             assert llm.model_name is not None or llm.model is not None
+
+
+def test_resolve_model_broken_id_remaps_to_default():
+    """Broken model IDs should be remapped to the default working model."""
+    with patch("app.agents.llm_factory.settings.FIREWORKS_API_KEY", "fw-key"):
+        with patch("app.agents.llm_factory.settings.OPENAI_API_KEY", None):
+            model_name, provider = resolve_model("kimi-k3", role="default")
+            assert provider == "fireworks"
+            assert "llama" in model_name.lower()
+            assert "kimi" not in model_name.lower()
+
+
+def test_list_available_models_hides_broken_models():
+    """Broken model IDs should not appear in the frontend model list."""
+    with patch("app.agents.llm_factory.settings.FIREWORKS_API_KEY", "fw-key"):
+        with patch("app.agents.llm_factory.settings.OPENAI_API_KEY", None):
+            models = list_available_models()
+            assert all(m["id"] != "kimi-k3" for m in models)

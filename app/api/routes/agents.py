@@ -155,6 +155,16 @@ def get_agents(user = Depends(get_current_user)):
         logger.error(f"Failed to fetch agents: {e}")
         return []
 
+@router.get("/models")
+def get_available_models(user = Depends(get_current_user)):
+    """Returns the LLM models available based on the configured API keys."""
+    try:
+        return {"models": list_available_models()}
+    except Exception as e:
+        logger.error(f"Error listing models: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/{agent_id}")
 def get_agent_details(agent_id: str, user = Depends(get_current_user)):
     """Fetches details for a specific AI Worker."""
@@ -259,11 +269,4 @@ def inject_instruction_by_agent(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/models")
-def get_available_models(user = Depends(get_current_user)):
-    """Returns the LLM models available based on the configured API keys."""
-    try:
-        return {"models": list_available_models()}
-    except Exception as e:
-        logger.error(f"Error listing models: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+
