@@ -51,7 +51,7 @@ class TeamRunner:
             "business_id": self.business_id,
             "task_id": self.task_id,
             "messages": [HumanMessage(content=initial_instruction)],
-            "active_agents": {a["id"]: AgentStatus(id=a["id"], role=a["role"], name=a["name"]) for a in agents},
+            "active_agents": {a["id"]: AgentStatus(id=a["id"], role=a["role"], name=a["name"], model=a.get("model")) for a in agents},
             "task_graph": {},
             "shared_context": {},
             "pending_approvals": [],

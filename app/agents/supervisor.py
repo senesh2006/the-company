@@ -53,9 +53,24 @@ If all tasks are completed, output action="finish".
     return prompt | llm.with_structured_output(SupervisorDecision)
 
 def global_supervisor_node(state: OrchestratorState):
-    roles = list({agent.role for agent in state.get("active_agents", {}).values()})
+    agents = state.get("active_agents", {})
+    roles = list({agent.role for agent in agents.values()})
     business_id = state.get("business_id", "default-business-id")
-    supervisor = get_supervisor_agent(roles, business_id)
+
+    # Pick the model to use for the supervisor: prefer the model of the running agent,
+    # then any agent that has a model configured, otherwise let get_supervisor_agent fall back.
+    model_id = None
+    for agent in agents.values():
+        if agent.current_task_id and agent.model:
+            model_id = agent.model
+            break
+    if not model_id:
+        for agent in agents.values():
+            if agent.model:
+                model_id = agent.model
+                break
+
+    supervisor = get_supervisor_agent(roles, business_id, model_id=model_id)
     
     current_tasks = state.get("task_graph", {})
     last_message = state["messages"][-1].content if state.get("messages") else ""

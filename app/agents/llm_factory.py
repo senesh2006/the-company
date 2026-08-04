@@ -1,6 +1,9 @@
+import logging
 from typing import Optional
 from langchain_openai import ChatOpenAI
 from app.core.config import settings
+
+logger = logging.getLogger(__name__)
 
 
 # Model registry: public display id -> (provider_model_id, provider)
@@ -10,6 +13,9 @@ MODEL_REGISTRY = {
     "gpt-4o-mini": ("gpt-4o-mini", "openai"),
     "llama-3.1-70b": ("accounts/fireworks/models/llama-v3p1-70b-instruct", "fireworks"),
     "llama-3.1-8b": ("accounts/fireworks/models/llama-v3p1-8b-instruct", "fireworks"),
+    "qwen2.5-72b": ("accounts/fireworks/models/qwen2p5-72b-instruct", "fireworks"),
+    "deepseek-r1": ("accounts/fireworks/models/deepseek-r1", "fireworks"),
+    "mistral-small-24b": ("accounts/fireworks/models/mistral-small-24b-instruct-2502", "fireworks"),
 }
 
 # Model display metadata for the frontend and agent defaults.
@@ -19,40 +25,56 @@ MODEL_DISPLAY = {
     "gpt-4o-mini": {"name": "GPT-4o Mini", "provider": "OpenAI", "tier": "fast"},
     "llama-3.1-70b": {"name": "Llama 3.1 70B", "provider": "Fireworks", "tier": "standard"},
     "llama-3.1-8b": {"name": "Llama 3.1 8B", "provider": "Fireworks", "tier": "fast"},
+    "qwen2.5-72b": {"name": "Qwen 2.5 72B", "provider": "Fireworks", "tier": "standard"},
+    "deepseek-r1": {"name": "DeepSeek R1", "provider": "Fireworks", "tier": "power"},
+    "mistral-small-24b": {"name": "Mistral Small 24B", "provider": "Fireworks", "tier": "fast"},
 }
 
 # Recommended defaults by role (worker specialization).
+# Default to the cheapest Fireworks model when only Fireworks is available.
 DEFAULT_MODEL_BY_ROLE = {
-    "Finance Manager": "gpt-4o",
-    "Marketing Manager": "gpt-4o-mini",
-    "Admin & Operations Worker": "gpt-4o-mini",
-    "Research Specialist": "gpt-4o-mini",
-    "EngineeringWorker": "gpt-4o-mini",
-    "Coder": "gpt-4o-mini",
-    "Engineering Manager": "gpt-4o-mini",
-    "Software Engineer": "gpt-4o-mini",
-    "default": "gpt-4o-mini",
+    "Finance Manager": "llama-3.1-8b",
+    "Marketing Manager": "llama-3.1-8b",
+    "Admin & Operations Worker": "llama-3.1-8b",
+    "Research Specialist": "llama-3.1-70b",
+    "EngineeringWorker": "llama-3.1-8b",
+    "Coder": "llama-3.1-8b",
+    "Engineering Manager": "llama-3.1-70b",
+    "Software Engineer": "llama-3.1-8b",
+    "default": "llama-3.1-8b",
 }
+
+
+def _fireworks_model_name(model_id: str) -> str:
+    """Return the Fireworks provider model ID, supporting a custom override env var."""
+    custom = getattr(settings, "FIREWORKS_CUSTOM_MODEL", None)
+    if custom:
+        return custom
+    return MODEL_REGISTRY[model_id][0]
 
 
 def resolve_model(model_id: Optional[str], role: Optional[str] = None) -> tuple[str, str]:
     """Resolve a requested model id to a known model, falling back to role defaults."""
+    has_fireworks = bool(settings.FIREWORKS_API_KEY)
+    has_openai = bool(settings.OPENAI_API_KEY)
+
     if not model_id or model_id not in MODEL_REGISTRY:
         model_id = DEFAULT_MODEL_BY_ROLE.get(role or "default", DEFAULT_MODEL_BY_ROLE["default"])
 
     model_name, provider = MODEL_REGISTRY[model_id]
 
+    # If Fireworks is configured, prefer its cheap model ID for any Fireworks model.
+    if provider == "fireworks":
+        model_name = _fireworks_model_name(model_id)
+
     # If the requested model provider is not available, pick a sensible fallback
     # from the configured provider.
-    has_fireworks = bool(settings.FIREWORKS_API_KEY)
-    has_openai = bool(settings.OPENAI_API_KEY)
-
     if provider == "fireworks" and not has_fireworks:
         provider = "openai"
         model_name = MODEL_REGISTRY["gpt-4o-mini"][0] if has_openai else MODEL_REGISTRY["gpt-4o"][0]
     elif provider == "openai" and not has_openai:
         provider = "fireworks"
-        model_name = MODEL_REGISTRY["llama-3.1-70b"][0] if has_fireworks else MODEL_REGISTRY["kimi-k3"][0]
+        model_name = MODEL_REGISTRY["llama-3.1-8b"][0]
 
     return model_name, provider
 
@@ -71,6 +93,8 @@ def get_llm(model_id: Optional[str] = None, role: Optional[str] = None, temperat
         api_key = settings.OPENAI_API_KEY
         base_url = None
 
+    logger.info(f"Initializing LLM: provider={provider}, model={model_name}")
+
     return ChatOpenAI(
         model=model_name,
         api_key=api_key,
@@ -81,12 +105,22 @@ def get_llm(model_id: Optional[str] = None, role: Optional[str] = None, temperat
 
 def list_available_models() -> list[dict]:
     """Return all models with metadata, suitable for frontend dropdowns."""
-    return [
-        {
+    has_fireworks = bool(settings.FIREWORKS_API_KEY)
+    has_openai = bool(settings.OPENAI_API_KEY)
+
+    models = []
+    for model_id, meta in MODEL_DISPLAY.items():
+        model_name, provider = MODEL_REGISTRY[model_id]
+        # Hide models whose provider is not configured.
+        if provider == "fireworks" and not has_fireworks:
+            continue
+        if provider == "openai" and not has_openai:
+            continue
+        models.append({
             "id": model_id,
             "name": meta["name"],
             "provider": meta["provider"],
             "tier": meta["tier"],
-        }
-        for model_id, meta in MODEL_DISPLAY.items()
-    ]
+            "model_name": model_name,
+        })
+    return models

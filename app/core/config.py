@@ -60,6 +60,9 @@ class Settings(BaseSettings):
     # Direct API integrations
     STRIPE_API_KEY: Optional[str] = None
 
+    # LLM overrides
+    FIREWORKS_CUSTOM_MODEL: Optional[str] = None
+
     ENVIRONMENT: str = "local"
 
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=False, extra="ignore")

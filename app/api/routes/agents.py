@@ -4,6 +4,7 @@ from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 
 from app.agents.runner import TeamRunner
+from app.agents.llm_factory import list_available_models
 from app.core.logging import logger
 from app.services.task_service import TaskService
 from app.api.deps import get_current_user
@@ -255,4 +256,14 @@ def inject_instruction_by_agent(
         raise
     except Exception as e:
         logger.error(f"Error injecting instruction: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/models")
+def get_available_models(user = Depends(get_current_user)):
+    """Returns the LLM models available based on the configured API keys."""
+    try:
+        return {"models": list_available_models()}
+    except Exception as e:
+        logger.error(f"Error listing models: {e}")
         raise HTTPException(status_code=500, detail=str(e))

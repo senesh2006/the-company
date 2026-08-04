@@ -21,6 +21,7 @@ class AgentStatus(BaseModel):
     name: str
     status: str = "idle" # idle, running, failed, paused
     current_task_id: Optional[str] = None
+    model: Optional[str] = None
 
 class ApprovalRequest(BaseModel):
     id: str
