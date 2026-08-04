@@ -8,21 +8,19 @@ task_service = TaskService()
 @router.get("")
 @router.get("/")
 def get_default_hierarchy(user = Depends(get_current_user)):
-    """Fetches the agent hierarchy tree for the default business or all agents."""
+    """Fetches the agent hierarchy tree for the authenticated user's business."""
     try:
-        try:
-            response = task_service.client.table("agents").select("*").execute()
-            agents = response.data or []
-        except Exception:
-            agents = []
-            
+        biz_id = user.business_id or "default-business-id"
+        response = task_service.client.table("agents").select("*").eq("business_id", biz_id).execute()
+        agents = response.data or []
+
         if not agents:
             return {"agent": None, "children": []}
-            
+
         # Supervisor is root, others are children
         supervisor = next((a for a in agents if a.get("role") == "Supervisor"), agents[0])
         children = [a for a in agents if a.get("id") != supervisor.get("id")]
-        
+
         return {
             "agent": supervisor,
             "children": [{"agent": child, "children": []} for child in children]

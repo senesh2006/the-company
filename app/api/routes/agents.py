@@ -36,19 +36,10 @@ class PromoteDemotePayload(BaseModel):
 @router.post("/hire")
 def hire_agent_default(payload: HireAgentPayload, background_tasks: BackgroundTasks, user = Depends(get_current_user)):
     """
-    Hires a new worker for the default business team (used by frontend dashboard).
+    Hires a new worker for the authenticated user's business team (used by frontend dashboard).
     """
     try:
-        try:
-            response = task_service.client.table("businesses").select("*").limit(1).execute()
-            if response.data:
-                biz_id = response.data[0]["id"]
-            else:
-                new_biz = task_service.client.table("businesses").insert({"name": "Default Business"}).execute()
-                biz_id = new_biz.data[0]["id"] if new_biz.data else "default-business-id"
-        except Exception:
-            biz_id = "default-business-id"
-        
+        biz_id = user.business_id or "default-business-id"
         return hire_agent(biz_id, payload, background_tasks, user)
     except HTTPException:
         raise
@@ -141,15 +132,9 @@ def demote_agent(agent_id: str, payload: PromoteDemotePayload = PromoteDemotePay
 @router.get("")
 @router.get("/")
 def get_agents(user = Depends(get_current_user)):
-    """Fetches all AI Workers with Trust Tier and governance metrics."""
+    """Fetches all AI Workers with Trust Tier and governance metrics for the authenticated user's business."""
     try:
-        biz_id = "default-business-id"
-        try:
-            biz_resp = task_service.client.table("businesses").select("id").limit(1).execute()
-            if biz_resp.data:
-                biz_id = biz_resp.data[0]["id"]
-        except Exception:
-            pass
+        biz_id = user.business_id or "default-business-id"
         return task_service.list_agents(biz_id)
     except Exception as e:
         logger.error(f"Failed to fetch agents: {e}")

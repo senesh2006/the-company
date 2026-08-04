@@ -5,7 +5,17 @@ from pydantic import BaseModel
 import jwt
 from fastapi import Depends, HTTPException, Security
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from supabase import create_client, Client
+from typing import Any
+
+try:
+    from supabase._sync.client import create_client, Client
+except ImportError:
+    try:
+        from supabase import create_client, Client
+    except Exception:
+        create_client = None
+        Client = Any
+
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -32,8 +42,30 @@ class User(BaseModel):
     id: str
     email: Optional[str] = None
     role: Optional[str] = "founder"
+    business_id: Optional[str] = None
     user_metadata: Optional[Dict[str, Any]] = None
     app_metadata: Optional[Dict[str, Any]] = None
+
+
+def _get_or_create_business_for_user(user_id: str, email: Optional[str]) -> str:
+    """
+    Look up the business owned by this user, or create one on first login.
+    Falls back to a default id when Supabase is not configured.
+    """
+    try:
+        client = get_supabase_client()
+        resp = client.table("businesses").select("id").eq("owner_id", user_id).limit(1).execute()
+        if resp.data:
+            return str(resp.data[0]["id"])
+
+        name = email.split("@")[0] if email else "My Business"
+        new_resp = client.table("businesses").insert({"name": name, "owner_id": user_id}).execute()
+        if new_resp.data:
+            return str(new_resp.data[0]["id"])
+    except Exception as e:
+        logger.warning(f"Failed to resolve business for user {user_id}: {e}")
+
+    return "default-business-id"
 
 
 def get_current_user(
@@ -42,6 +74,7 @@ def get_current_user(
     """
     Authenticates requests using Supabase JWT tokens.
     Validates token either through the Supabase client or by decoding the JWT.
+    Attaches the user's own business_id so data is isolated per account.
     """
     token = credentials.credentials if credentials else None
 
@@ -52,10 +85,12 @@ def get_current_user(
             user_response = client.auth.get_user(token)
             if user_response and user_response.user:
                 sb_user = user_response.user
+                business_id = _get_or_create_business_for_user(str(sb_user.id), sb_user.email)
                 return User(
                     id=str(sb_user.id),
                     email=sb_user.email,
                     role=sb_user.role or "founder",
+                    business_id=business_id,
                     user_metadata=sb_user.user_metadata or {},
                     app_metadata=sb_user.app_metadata or {}
                 )
@@ -68,18 +103,20 @@ def get_current_user(
             try:
                 # Decode JWT without audience restriction (Supabase uses 'authenticated')
                 payload = jwt.decode(
-                    token, 
-                    jwt_secret, 
-                    algorithms=["HS256"], 
+                    token,
+                    jwt_secret,
+                    algorithms=["HS256"],
                     options={"verify_aud": False}
                 )
                 user_id = payload.get("sub") or payload.get("id") or "00000000-0000-0000-0000-000000000000"
                 email = payload.get("email") or "founder@companyos.ai"
                 role = payload.get("role") or "founder"
+                business_id = _get_or_create_business_for_user(user_id, email)
                 return User(
                     id=user_id,
                     email=email,
                     role=role,
+                    business_id=business_id,
                     user_metadata=payload.get("user_metadata", {}),
                     app_metadata=payload.get("app_metadata", {})
                 )
@@ -90,10 +127,12 @@ def get_current_user(
                 raise HTTPException(status_code=401, detail="Invalid authentication token")
 
     # 3. Development / Local Fallback when no token is supplied
+    dev_user_id = "00000000-0000-0000-0000-000000000000"
     return User(
-        id="00000000-0000-0000-0000-000000000000",
+        id=dev_user_id,
         email="founder@companyos.ai",
         role="founder",
+        business_id=_get_or_create_business_for_user(dev_user_id, "founder@companyos.ai"),
         user_metadata={"full_name": "Executive Founder"},
         app_metadata={"provider": "dev_session"}
     )

@@ -45,25 +45,16 @@ def setup_test_environment(user = Depends(get_current_user)):
         sb_url = settings.SUPABASE_URL or os.getenv("SUPABASE_URL")
         sb_key = settings.SUPABASE_KEY or os.getenv("SUPABASE_KEY") or os.getenv("SUPABASE_SECRET_KEY")
 
+        biz_id = user.business_id or "default-business-id"
         if not sb_url or not sb_key:
-            return {"business_id": "default-business-id", "warning": "Supabase not configured"}
+            return {"business_id": biz_id, "warning": "Supabase not configured"}
 
         client = create_client(sb_url, sb_key)
-        
-        # Since auth is disabled, just grab the first available business in the database
-        response = client.table("businesses").select("*").limit(1).execute()
-        
-        if response.data:
-            biz_id = response.data[0]["id"]
-        else:
-            # If no business exists at all, try creating one without an owner_id if possible
-            new_biz = client.table("businesses").insert({"name": "Default Business"}).execute()
-            biz_id = new_biz.data[0]["id"]
-            
-        # Ensure default agents exist for this business
+
+        # Ensure default agents exist for this user's business
         agents_resp = client.table("agents").select("id, name, role").eq("business_id", biz_id).execute()
         existing_roles = [a["role"] for a in agents_resp.data] if agents_resp.data else []
-        
+
         default_agents_to_insert = []
         if "Researcher" not in existing_roles:
             default_agents_to_insert.append({"business_id": biz_id, "name": "Alice (Researcher)", "role": "Researcher", "status": "Idle"})
@@ -71,14 +62,14 @@ def setup_test_environment(user = Depends(get_current_user)):
             default_agents_to_insert.append({"business_id": biz_id, "name": "Bob (Coder)", "role": "Coder", "status": "Idle"})
         if "Accountant" not in existing_roles:
             default_agents_to_insert.append({"business_id": biz_id, "name": "Charlie (Accountant)", "role": "Accountant", "status": "Idle"})
-            
+
         if default_agents_to_insert:
             client.table("agents").insert(default_agents_to_insert).execute()
-            
+
         return {"business_id": biz_id}
     except Exception as e:
         logger.error(f"Setup error: {str(e)}")
-        return {"business_id": "default-business-id", "error": str(e)}
+        return {"business_id": user.business_id or "default-business-id", "error": str(e)}
 
 @app.get("/api/v1/config")
 def get_public_config():

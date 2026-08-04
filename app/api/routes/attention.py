@@ -9,14 +9,19 @@ task_service = TaskService()
 @router.get("")
 @router.get("/")
 def get_needs_attention(user = Depends(get_current_user)):
-    """Fetches items that require human attention (PRD v6.0 review gate & flagged items)."""
+    """Fetches items that require human attention for the authenticated user's business."""
     try:
         items: List[Dict[str, Any]] = []
-        biz_id = "default-business-id"
-        
+        biz_id = user.business_id or "default-business-id"
+
         # 1. Fetch tasks from DB requiring review or blocked
         try:
-            tasks_resp = task_service.client.table("tasks").select("*").in_("status", ["needs_approval", "blocked", "failed", "queued"]).order("created_at", desc=True).limit(20).execute()
+            tasks_resp = task_service.client.table("tasks")\
+                .select("*")\
+                .eq("business_id", biz_id)\
+                .in_("status", ["needs_approval", "blocked", "failed", "queued"])\
+                .order("created_at", desc=True)\
+                .limit(20).execute()
             if tasks_resp.data:
                 for t in tasks_resp.data:
                     # If status is needs_approval or blocked or has retry count > 0

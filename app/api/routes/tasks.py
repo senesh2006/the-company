@@ -34,9 +34,9 @@ class ReviewPayload(BaseModel):
 
 @router.get("/feed")
 def get_company_feed(limit: int = 50, user = Depends(get_current_user)):
-    """Retrieves the chronological audit log for the Company Feed."""
+    """Retrieves the chronological audit log for the authenticated user's Company Feed."""
     try:
-        biz_id = "default-business-id"
+        biz_id = user.business_id or "default-business-id"
         return task_service.list_audit_feed(biz_id, limit=limit)
     except Exception as e:
         logger.error(f"Failed to fetch company feed: {e}")
@@ -49,14 +49,10 @@ def get_business_feed(business_id: str, limit: int = 50, user = Depends(get_curr
 
 @router.post("/mandate")
 def create_mandate_default(payload: MandatePayload, background_tasks: BackgroundTasks, user = Depends(get_current_user)):
-    """Dispatches a structured Mandate Contract (PRD v6.0 §6.2) for the business."""
+    """Dispatches a structured Mandate Contract (PRD v6.0 §6.2) for the authenticated user's business."""
     try:
-        try:
-            response = task_service.client.table("businesses").select("*").limit(1).execute()
-            biz_id = response.data[0]["id"] if response.data else "default-business-id"
-        except Exception:
-            biz_id = "default-business-id"
-            
+        biz_id = user.business_id or "default-business-id"
+
         task = task_service.create_task(
             business_id=biz_id,
             description=payload.mandate,
@@ -199,13 +195,9 @@ def requeue_task(business_id: str, task_id: str, user = Depends(get_current_user
 @router.post("")
 @router.post("/")
 def create_default_task(payload: QueueTaskPayload, background_tasks: BackgroundTasks, user = Depends(get_current_user)):
-    """Creates/queues a task for the default business."""
+    """Creates/queues a task for the authenticated user's business."""
     try:
-        try:
-            response = task_service.client.table("businesses").select("*").limit(1).execute()
-            biz_id = response.data[0]["id"] if response.data else "default-business-id"
-        except Exception:
-            biz_id = "default-business-id"
+        biz_id = user.business_id or "default-business-id"
         return queue_task(biz_id, payload, background_tasks, user)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -213,9 +205,10 @@ def create_default_task(payload: QueueTaskPayload, background_tasks: BackgroundT
 @router.get("")
 @router.get("/")
 def list_all_tasks(user = Depends(get_current_user)):
-    """Lists all tasks across all businesses."""
+    """Lists all tasks for the authenticated user's business."""
     try:
-        response = task_service.client.table("tasks").select("*").order("created_at", desc=True).execute()
+        biz_id = user.business_id or "default-business-id"
+        response = task_service.client.table("tasks").select("*").eq("business_id", biz_id).order("created_at", desc=True).execute()
         return response.data or []
     except Exception as e:
         logger.error(f"Failed to fetch tasks: {e}")
