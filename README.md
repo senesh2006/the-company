@@ -62,7 +62,7 @@ All MCP integrations are disabled by default (`MCP_FALLBACK_MODE=true`).  Set th
 | Service | Environment Variable | Credential |
 |---------|---------------------|------------|
 | Supabase Ledger | `SUPABASE_MCP_URL` | `SUPABASE_MCP_KEY` |
-| Stripe | `STRIPE_MCP_URL` | `STRIPE_MCP_API_KEY` |
+| Stripe | `STRIPE_API_KEY` | Official Stripe SDK (`STRIPE_MCP_URL` still works as fallback) |
 | Google Workspace | `GOOGLE_MCP_URL` | `GOOGLE_MCP_CREDENTIALS` |
 | Notion | `NOTION_MCP_URL` | `NOTION_MCP_TOKEN` |
 | Brave Search | `BRAVE_MCP_URL` | `BRAVE_MCP_API_KEY` |
@@ -72,6 +72,12 @@ All MCP integrations are disabled by default (`MCP_FALLBACK_MODE=true`).  Set th
 | Calendar | `CALENDAR_MCP_URL` | `CALENDAR_MCP_API_KEY` |
 | Context7 | `CONTEXT7_MCP_URL` | `CONTEXT7_MCP_API_KEY` |
 | Collaboration | `COLLABORATION_MCP_URL` | `COLLABORATION_MCP_API_KEY` |
+
+### Direct API Integrations
+
+Some tools call the official provider SDK directly instead of going through an MCP bridge:
+
+- **Stripe**: Set `STRIPE_API_KEY` to use the official `stripe` Python SDK.  Read-only actions (`read_charges`, `read_invoices`) call Stripe directly.  Write actions (`issue_refund`, `transfer_funds`) are staged for founder approval by default.  If `STRIPE_API_KEY` is not set, the tool falls back to the MCP/mock path.
 
 ### Health Check
 

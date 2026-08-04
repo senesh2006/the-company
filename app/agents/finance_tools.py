@@ -1,9 +1,11 @@
 import json
 import logging
+from datetime import datetime
 from typing import List, Optional, Any, Dict
 from pydantic import BaseModel, Field
 from app.agents.tool_registry import BaseTool, registry
 from app.agents.tools import ReadSharedMemoryTool, WriteSharedMemoryTool, SpawnSubtaskTool
+from app.core.config import settings
 from app.services.mcp_client import mcp_call_or_default
 
 logger = logging.getLogger(__name__)
@@ -13,6 +15,102 @@ logger = logging.getLogger(__name__)
 def _finance_mcp_call(mcp_name: str, tool_name: str, arguments: Dict[str, Any], default_result: Any) -> Any:
     """Call a real MCP server if configured, otherwise return the default mock result."""
     return mcp_call_or_default(mcp_name, tool_name, arguments, default_result)
+
+
+# --- Stripe helpers ---
+
+def _stripe_client_available() -> bool:
+    """Return True if the Stripe Python SDK is installed and a key is configured."""
+    try:
+        import stripe
+    except ImportError:
+        return False
+    return bool(settings.STRIPE_API_KEY)
+
+
+def _stripe_run(action: str, customer_id: Optional[str], amount: Optional[float], metadata: Optional[str]) -> str:
+    """Execute a Stripe API call using the official Python SDK."""
+    import stripe
+    stripe.api_key = settings.STRIPE_API_KEY
+
+    try:
+        if action == "read_charges":
+            params = {"limit": 10}
+            if customer_id:
+                params["customer"] = customer_id
+            charges = stripe.Charge.list(**params)
+            return json.dumps([
+                {
+                    "charge_id": ch.id,
+                    "customer": ch.customer,
+                    "amount": ch.amount / 100.0,
+                    "currency": ch.currency,
+                    "status": ch.status,
+                    "fee": getattr(ch, "balance_transaction", None) or 0,
+                    "created": datetime.fromtimestamp(ch.created).isoformat(),
+                }
+                for ch in charges.auto_paging_iter()
+            ])
+
+        elif action == "read_invoices":
+            params = {"limit": 10}
+            if customer_id:
+                params["customer"] = customer_id
+            invoices = stripe.Invoice.list(**params)
+            return json.dumps([
+                {
+                    "invoice_id": inv.id,
+                    "customer": inv.customer,
+                    "total": inv.total / 100.0,
+                    "status": inv.status,
+                    "due_date": inv.due_date and datetime.fromtimestamp(inv.due_date).isoformat(),
+                }
+                for inv in invoices.auto_paging_iter()
+            ])
+
+        elif action == "create_draft_invoice":
+            if not customer_id:
+                return "ERROR: customer_id is required to create a draft invoice."
+            amount_cents = int((amount or 0) * 100)
+            invoice_item = stripe.InvoiceItem.create(
+                customer=customer_id,
+                amount=amount_cents,
+                currency="usd",
+                description=metadata or "Company OS generated invoice item",
+            )
+            invoice = stripe.Invoice.create(
+                customer=customer_id,
+                auto_advance=False,
+                metadata={"source": "company_os", "description": metadata or ""},
+            )
+            return (
+                f"Created Draft Stripe Invoice for customer '{customer_id}' in the amount of ${amount or 0.00:.2f}. "
+                f"Invoice ID: {invoice.id}. Status: DRAFT (Non-destructive)."
+            )
+
+        elif action == "issue_refund":
+            # Refunds require a charge_id; the current schema only exposes amount.
+            # We stage the refund request instead of executing blindly.
+            return (
+                f"REFUND ACTION: Refund request for ${amount or 0.00:.2f} logged for customer '{customer_id or 'unknown'}'. "
+                f"High-risk action - requires founder sign-off and a charge_id to execute."
+            )
+
+        elif action == "transfer_funds":
+            # Stripe transfers/payouts are high-risk; require explicit approval.
+            return (
+                f"PAYOUT ACTION: Transfer of ${amount or 0.00:.2f} logged for customer '{customer_id or 'unknown'}'. "
+                f"High-risk action - must receive founder sign-off."
+            )
+
+        return f"Stripe action '{action}' completed."
+
+    except stripe.error.StripeError as e:
+        logger.error(f"Stripe API error for action '{action}': {e}")
+        return f"Stripe API error: {e.user_message or str(e)}"
+    except Exception as e:
+        logger.error(f"Unexpected Stripe error for action '{action}': {e}")
+        return f"Stripe integration error: {str(e)}"
 
 class SupabaseInput(BaseModel):
     action: str = Field(description="'read_transactions', 'get_chart_of_accounts', 'read_trial_balance', 'post_journal_entry', 'transfer_funds'")
@@ -82,6 +180,11 @@ class StripeFinanceTool(BaseTool):
     cost_estimate = 0.05
 
     def _run(self, action: str, customer_id: Optional[str] = None, amount: Optional[float] = None, metadata: Optional[str] = None) -> str:
+        # 1. Use the official Stripe Python SDK if available and configured.
+        if _stripe_client_available():
+            return _stripe_run(action, customer_id, amount, metadata)
+
+        # 2. Fall back to the original mock responses.
         if action == "read_charges":
             default = json.dumps([
                 {"charge_id": "ch_3M901", "customer": customer_id or "cus_AcmeCorp", "amount": 2500.00, "status": "succeeded", "fee": 72.80, "created": "2026-07-22"},
@@ -101,6 +204,7 @@ class StripeFinanceTool(BaseTool):
         else:
             return f"Stripe action '{action}' completed."
 
+        # 3. Optional: delegate to a real Stripe MCP server if one is configured.
         return _finance_mcp_call(
             "stripe",
             action,

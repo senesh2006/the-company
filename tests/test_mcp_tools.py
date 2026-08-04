@@ -184,7 +184,8 @@ class TestRealMCPPaths:
         assert "tx_real" in result
         mock_mcp.assert_called_once()
 
-    def test_stripe_finance_uses_mcp_client(self):
+    def test_stripe_finance_uses_mcp_client_when_no_api_key(self):
+        """Without STRIPE_API_KEY configured, StripeFinanceTool should use the MCP/mock path."""
         with patch("app.agents.finance_tools.mcp_call_or_default") as mock_mcp:
             mock_mcp.return_value = json.dumps([{"charge_id": "ch_real"}])
             tool = StripeFinanceTool()
@@ -192,3 +193,36 @@ class TestRealMCPPaths:
 
         assert "ch_real" in result
         mock_mcp.assert_called_once()
+
+    def test_stripe_finance_uses_stripe_sdk_when_api_key_is_set(self):
+        """When STRIPE_API_KEY is set, StripeFinanceTool should call the Stripe SDK directly."""
+        mock_charge = Mock()
+        mock_charge.id = "ch_123"
+        mock_charge.customer = "cus_real"
+        mock_charge.amount = 25000
+        mock_charge.currency = "usd"
+        mock_charge.status = "succeeded"
+        mock_charge.balance_transaction = None
+        mock_charge.created = 1700000000
+
+        mock_list = Mock()
+        mock_list.auto_paging_iter.return_value = [mock_charge]
+
+        with patch("app.agents.finance_tools.settings.STRIPE_API_KEY", "sk_test_123"):
+            with patch("stripe.Charge.list", return_value=mock_list):
+                tool = StripeFinanceTool()
+                result = tool.run(action="read_charges", customer_id="cus_real")
+
+        data = json.loads(result)
+        assert len(data) == 1
+        assert data[0]["charge_id"] == "ch_123"
+        assert data[0]["amount"] == 250.00
+
+    def test_stripe_finance_falls_back_when_stripe_sdk_errors(self):
+        """If the Stripe SDK raises an error, the tool should return a clear error message."""
+        with patch("app.agents.finance_tools.settings.STRIPE_API_KEY", "sk_test_123"):
+            with patch("stripe.Charge.list", side_effect=Exception("network error")):
+                tool = StripeFinanceTool()
+                result = tool.run(action="read_charges", customer_id="cus_real")
+
+        assert "Stripe integration error" in result

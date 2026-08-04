@@ -57,6 +57,9 @@ class Settings(BaseSettings):
     COLLABORATION_MCP_URL: Optional[str] = None
     COLLABORATION_MCP_API_KEY: Optional[str] = None
 
+    # Direct API integrations
+    STRIPE_API_KEY: Optional[str] = None
+
     ENVIRONMENT: str = "local"
 
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=False, extra="ignore")
