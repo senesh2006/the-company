@@ -8,14 +8,14 @@ logger = logging.getLogger(__name__)
 
 # Model registry: public display id -> (provider_model_id, provider)
 MODEL_REGISTRY = {
-    "kimi-k3": ("accounts/fireworks/models/kimi-k3", "fireworks"),
+    "kimi-k3": ("llama-3.3-70b-versatile", "groq"),
     "gpt-4o": ("gpt-4o", "openai"),
     "gpt-4o-mini": ("gpt-4o-mini", "openai"),
-    "llama-3.1-70b": ("accounts/fireworks/models/llama-v3p1-70b-instruct", "fireworks"),
-    "llama-v3-8b": ("accounts/fireworks/models/llama-v3-8b-instruct", "fireworks"),
-    "qwen2.5-72b": ("accounts/fireworks/models/qwen2p5-72b-instruct", "fireworks"),
-    "deepseek-r1": ("accounts/fireworks/models/deepseek-r1", "fireworks"),
-    "mistral-small-24b": ("accounts/fireworks/models/mistral-small-24b-instruct-2502", "fireworks"),
+    "llama-3.1-70b": ("llama-3.3-70b-versatile", "groq"),
+    "llama-v3-8b": ("llama-3.1-8b-instant", "groq"),
+    "qwen2.5-72b": ("qwen-qwq-32b", "groq"),
+    "deepseek-r1": ("deepseek-r1-distill-llama-70b", "groq"),
+    "mistral-small-24b": ("mixtral-8x7b-32768", "groq"),
 }
 
 # Default model used when the user does not specify one for a new agent.
@@ -27,19 +27,17 @@ BROKEN_MODEL_IDS = {"llama-3.1-8b"}
 
 # Model display metadata for the frontend and agent defaults.
 MODEL_DISPLAY = {
-    "kimi-k3": {"name": "Kimi K3", "provider": "Fireworks", "tier": "power"},
+    "kimi-k3": {"name": "Llama 3.3 70B", "provider": "Groq", "tier": "power"},
     "gpt-4o": {"name": "GPT-4o", "provider": "OpenAI", "tier": "standard"},
     "gpt-4o-mini": {"name": "GPT-4o Mini", "provider": "OpenAI", "tier": "fast"},
-    "llama-3.1-70b": {"name": "Llama 3.1 70B", "provider": "Fireworks", "tier": "standard"},
-    "llama-v3-8b": {"name": "Llama 3 8B", "provider": "Fireworks", "tier": "fast"},
-    "qwen2.5-72b": {"name": "Qwen 2.5 72B", "provider": "Fireworks", "tier": "standard"},
-    "deepseek-r1": {"name": "DeepSeek R1", "provider": "Fireworks", "tier": "power"},
-    "mistral-small-24b": {"name": "Mistral Small 24B", "provider": "Fireworks", "tier": "fast"},
+    "llama-3.1-70b": {"name": "Llama 3.3 70B", "provider": "Groq", "tier": "standard"},
+    "llama-v3-8b": {"name": "Llama 3.1 8B", "provider": "Groq", "tier": "fast"},
+    "qwen2.5-72b": {"name": "Qwen QwQ 32B", "provider": "Groq", "tier": "standard"},
+    "deepseek-r1": {"name": "DeepSeek R1 Distill 70B", "provider": "Groq", "tier": "power"},
+    "mistral-small-24b": {"name": "Mixtral 8x7B", "provider": "Groq", "tier": "fast"},
 }
 
 # Recommended defaults by role (worker specialization).
-# Kimi K3 is the system-wide default; override per role only when a cheaper or
-# more specialized model is genuinely needed.
 DEFAULT_MODEL_BY_ROLE = {
     "Finance Manager": "kimi-k3",
     "Marketing Manager": "kimi-k3",
@@ -53,9 +51,9 @@ DEFAULT_MODEL_BY_ROLE = {
 }
 
 
-def _fireworks_model_name(model_id: str) -> str:
-    """Return the Fireworks provider model ID, supporting a custom override env var."""
-    custom = getattr(settings, "FIREWORKS_CUSTOM_MODEL", None)
+def _groq_model_name(model_id: str) -> str:
+    """Return the Groq provider model ID, supporting a custom override env var."""
+    custom = getattr(settings, "GROQ_CUSTOM_MODEL", None)
     if custom:
         return custom
     return MODEL_REGISTRY[model_id][0]
@@ -64,10 +62,10 @@ def _fireworks_model_name(model_id: str) -> str:
 def resolve_model(model_id: Optional[str], role: Optional[str] = None) -> tuple[str, str]:
     """Resolve a requested model id to a known model, falling back to role defaults.
 
-    Broken/deprecated model IDs (e.g. old Fireworks IDs that return 404) are
-    remapped to the default so existing agents don't crash after a model is retired.
+    Broken/deprecated model IDs are remapped to the default so existing agents
+    don't crash after a model is retired.
     """
-    has_fireworks = bool(settings.FIREWORKS_API_KEY)
+    has_groq = bool(settings.GROQ_API_KEY)
     has_openai = bool(settings.OPENAI_API_KEY)
 
     if not model_id or model_id not in MODEL_REGISTRY or model_id in BROKEN_MODEL_IDS:
@@ -75,17 +73,14 @@ def resolve_model(model_id: Optional[str], role: Optional[str] = None) -> tuple[
 
     model_name, provider = MODEL_REGISTRY[model_id]
 
-    # If Fireworks is configured, prefer its cheap model ID for any Fireworks model.
-    if provider == "fireworks":
-        model_name = _fireworks_model_name(model_id)
+    if provider == "groq":
+        model_name = _groq_model_name(model_id)
 
-    # If the requested model provider is not available, pick a sensible fallback
-    # from the configured provider.
-    if provider == "fireworks" and not has_fireworks:
+    if provider == "groq" and not has_groq:
         provider = "openai"
         model_name = MODEL_REGISTRY["gpt-4o-mini"][0] if has_openai else MODEL_REGISTRY["gpt-4o"][0]
     elif provider == "openai" and not has_openai:
-        provider = "fireworks"
+        provider = "groq"
         model_name = MODEL_REGISTRY["llama-v3-8b"][0]
 
     return model_name, provider
@@ -98,9 +93,9 @@ def get_llm(model_id: Optional[str] = None, role: Optional[str] = None, temperat
     """
     model_name, provider = resolve_model(model_id, role)
 
-    if provider == "fireworks":
-        api_key = settings.FIREWORKS_API_KEY
-        base_url = "https://api.fireworks.ai/inference/v1"
+    if provider == "groq":
+        api_key = settings.GROQ_API_KEY
+        base_url = "https://api.groq.com/openai/v1"
     else:
         api_key = settings.OPENAI_API_KEY
         base_url = None
@@ -117,7 +112,7 @@ def get_llm(model_id: Optional[str] = None, role: Optional[str] = None, temperat
 
 def list_available_models() -> list[dict]:
     """Return all models with metadata, suitable for frontend dropdowns."""
-    has_fireworks = bool(settings.FIREWORKS_API_KEY)
+    has_groq = bool(settings.GROQ_API_KEY)
     has_openai = bool(settings.OPENAI_API_KEY)
 
     models = []
@@ -125,8 +120,7 @@ def list_available_models() -> list[dict]:
         if model_id in BROKEN_MODEL_IDS:
             continue
         model_name, provider = MODEL_REGISTRY[model_id]
-        # Hide models whose provider is not configured.
-        if provider == "fireworks" and not has_fireworks:
+        if provider == "groq" and not has_groq:
             continue
         if provider == "openai" and not has_openai:
             continue

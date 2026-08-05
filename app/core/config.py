@@ -8,7 +8,7 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "The Company"
     API_V1_STR: str = "/api/v1"
     OPENAI_API_KEY: Optional[str] = None
-    FIREWORKS_API_KEY: Optional[str] = None
+    GROQ_API_KEY: Optional[str] = None
 
     # Security
     SECRET_KEY: str = "your-super-secret-key-change-in-production"
@@ -61,7 +61,7 @@ class Settings(BaseSettings):
     STRIPE_API_KEY: Optional[str] = None
 
     # LLM overrides
-    FIREWORKS_CUSTOM_MODEL: Optional[str] = None
+    GROQ_CUSTOM_MODEL: Optional[str] = None
 
     ENVIRONMENT: str = "local"
 
@@ -84,5 +84,5 @@ if not settings.SUPABASE_ANON_KEY:
     settings.SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY")
 if not settings.SUPABASE_JWT_SECRET:
     settings.SUPABASE_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET")
-if not settings.FIREWORKS_API_KEY:
-    settings.FIREWORKS_API_KEY = os.getenv("FIREWORKS_API_KEY")
+if not settings.GROQ_API_KEY:
+    settings.GROQ_API_KEY = os.getenv("GROQ_API_KEY")

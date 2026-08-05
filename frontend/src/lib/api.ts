@@ -24,14 +24,14 @@ export interface ModelOption {
 
 // Hardcoded fallback is only used when the backend /models endpoint is unreachable.
 export const FALLBACK_MODELS: ModelOption[] = [
-  { id: 'kimi-k3', name: 'Kimi K3', provider: 'Fireworks', tier: 'power' },
+  { id: 'kimi-k3', name: 'Llama 3.3 70B', provider: 'Groq', tier: 'power' },
   { id: 'gpt-4o', name: 'GPT-4o', provider: 'OpenAI', tier: 'standard' },
   { id: 'gpt-4o-mini', name: 'GPT-4o Mini', provider: 'OpenAI', tier: 'fast' },
-  { id: 'llama-3.1-70b', name: 'Llama 3.1 70B', provider: 'Fireworks', tier: 'standard' },
-  { id: 'llama-v3-8b', name: 'Llama 3 8B', provider: 'Fireworks', tier: 'fast' },
-  { id: 'qwen2.5-72b', name: 'Qwen 2.5 72B', provider: 'Fireworks', tier: 'standard' },
-  { id: 'deepseek-r1', name: 'DeepSeek R1', provider: 'Fireworks', tier: 'power' },
-  { id: 'mistral-small-24b', name: 'Mistral Small 24B', provider: 'Fireworks', tier: 'fast' },
+  { id: 'llama-3.1-70b', name: 'Llama 3.3 70B', provider: 'Groq', tier: 'standard' },
+  { id: 'llama-v3-8b', name: 'Llama 3.1 8B', provider: 'Groq', tier: 'fast' },
+  { id: 'qwen2.5-72b', name: 'Qwen QwQ 32B', provider: 'Groq', tier: 'standard' },
+  { id: 'deepseek-r1', name: 'DeepSeek R1 Distill 70B', provider: 'Groq', tier: 'power' },
+  { id: 'mistral-small-24b', name: 'Mixtral 8x7B', provider: 'Groq', tier: 'fast' },
 ];
 
 export const DEFAULT_MODEL: ModelId = 'kimi-k3';
