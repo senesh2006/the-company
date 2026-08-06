@@ -142,7 +142,11 @@ def make_specialist_worker_node(agent_data: dict):
     worker_agent = create_react_agent(
         llm, 
         tools, 
-        state_modifier=f"You are {name}, acting as an in-house {role} at Trust Tier '{trust_tier.upper()}'. Execute your mandate rigorously and record decisions in shared memory."
+        state_modifier=(
+            f"You are {name}, acting as an in-house {role} at Trust Tier '{trust_tier.upper()}'. "
+            f"Always think step-by-step and structure your internal reasoning inside <thought>...</thought> "
+            f"(explain your plan, tool strategy, and policy considerations) before outputting your deliverables."
+        )
     )
     
     def node_func(state: OrchestratorState):
@@ -165,13 +169,30 @@ def make_specialist_worker_node(agent_data: dict):
                     "task_description": task.description, 
                     "context": str(state.get("shared_context", {}))
                 })
-                final_output = execute_sub_orchestration(b_id, task, plan)
+                sub_res = execute_sub_orchestration(b_id, task, plan)
+                final_output = (
+                    f"<thought>\n"
+                    f"Mandate Complexity Analysis: High (Level-3 sub-orchestration spawned)\n"
+                    f"{decision.thoughts}\n"
+                    f"</thought>\n\n"
+                    f"{sub_res}"
+                )
             else:
                 res = worker_agent.invoke(
                     {"messages": state.get("messages", []) + [HumanMessage(content=task.description)]},
                     config={"recursion_limit": 100}
                 )
-                final_output = res["messages"][-1].content
+                raw_output = res["messages"][-1].content
+                if "<thought>" not in raw_output and "<think>" not in raw_output and "### Thought" not in raw_output:
+                    final_output = (
+                        f"<thought>\n"
+                        f"Mandate Analysis & Strategy:\n"
+                        f"{decision.thoughts}\n"
+                        f"</thought>\n\n"
+                        f"{raw_output}"
+                    )
+                else:
+                    final_output = raw_output
                 
             task_service.update_task_result(task.id, final_output)
             

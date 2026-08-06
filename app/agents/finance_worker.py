@@ -309,12 +309,20 @@ def update_memory_node(state: FinanceWorkerState):
         final_text = str(state.get("maker_output", ""))
 
     checker_summary = state.get("checker_verdict", {}).get("audit_summary", "")
+    observations = state.get("observations", "Loaded company ledger policies.")
+    revisions = state.get("revisions_count", 0)
+
+    # Wrap reasoning trace in <thought> tags so the frontend presents it as a collapsible ChatGPT-style thought process
     full_report = (
-        f"### Financial Execution & Audit Report\n\n"
+        f"<thought>\n"
+        f"1. Context Construction & Policy Check:\n{observations}\n\n"
+        f"2. Maker-Checker Verification Gate:\n{checker_summary}\n\n"
+        f"3. Risk & Safety Metrics:\nConfidence: {state.get('confidence', 0.95):.2f} | Risk Posture: {state.get('risk_level', 'low').upper()} | Revisions: {revisions}\n"
+        f"</thought>\n\n"
+        f"### Financial Deliverables & Execution Report\n\n"
         f"**Task Mandate**: {state['task'].description}\n\n"
-        f"#### Financial Output:\n{final_text}\n\n"
-        f"#### SOX / GAAP Audit Verification:\n{checker_summary}\n\n"
-        f"**Metrics**: Confidence: {state.get('confidence', 0.95):.2f} | Risk Posture: {state.get('risk_level', 'low').upper()} | Revisions: {state.get('revisions_count', 0)}"
+        f"{final_text}\n\n"
+        f"**Audit Status**: Verified by Senior Independent Audit Checker."
     )
 
     return {

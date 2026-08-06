@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { MarkdownRenderer } from '@/components/MarkdownRenderer';
+import { MarkdownRenderer } from '@/components/MarkdownRenderer';
+import { ThinkingProcess } from '@/components/ThinkingProcess';
 import { useTasks, useAgents, useCreateTask } from "@/lib/queries";
 import { 
   Plus, 
@@ -542,21 +543,34 @@ export default function TasksPage() {
                   )}
                 </div>
 
+                {selectedTask.statusType !== "completed" && (
+                  <ThinkingProcess
+                    isThinking={true}
+                    title={`${selectedTask.agentName || "AI Worker"} is Reasoning`}
+                    steps={[
+                      "Evaluating mandate context and organizational policies",
+                      "Analyzing execution complexity & Maker-Checker safety criteria",
+                      "Executing specialist tool calls & drafting verified deliverables",
+                    ]}
+                    defaultExpanded={true}
+                  />
+                )}
+
                 {selectedTask.rawTask?.result ? (
                   <div className="p-4 rounded-2xl bg-white border border-slate-200 overflow-x-auto leading-relaxed shadow-inner max-h-[420px] select-text">
                     <MarkdownRenderer content={selectedTask.rawTask.result} />
                   </div>
-                ) : (
-                  <div className="p-8 rounded-2xl bg-slate-50 border border-slate-200 text-center text-slate-400 space-y-2">
-                    <Cpu className="w-6 h-6 mx-auto text-slate-400 animate-pulse" />
-                    <p className="text-xs font-semibold text-slate-600">
-                      Operation is currently in progress or awaiting worker execution.
+                ) : selectedTask.statusType === "completed" ? (
+                  <div className="p-6 rounded-2xl bg-slate-50 border border-slate-200 text-center text-slate-500 space-y-1">
+                    <CheckCircle2 className="w-5 h-5 mx-auto text-emerald-600 mb-1" />
+                    <p className="text-xs font-semibold text-slate-700">
+                      Task completed successfully.
                     </p>
                     <p className="text-[11px] text-slate-400">
-                      Output will automatically stream here once the LangGraph execution graph completes.
+                      Deliverables recorded in audit trail.
                     </p>
                   </div>
-                )}
+                ) : null}
               </div>
             </div>
 

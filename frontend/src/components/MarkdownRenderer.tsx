@@ -1,25 +1,43 @@
 "use client";
 
 import { useMemo } from "react";
+import { ThinkingProcess, extractThoughts } from "@/components/ThinkingProcess";
 
 interface MarkdownRendererProps {
   content: string;
   className?: string;
+  showThoughts?: boolean;
 }
 
 /**
- * Lightweight markdown formatter for agent output.
- * Converts markdown tables, ASCII tables, bold, italic, code blocks, and lists
- * into clean HTML so the output does not render as raw ASCII art.
+ * Lightweight markdown formatter for agent output with built-in ChatGPT-style ThinkingProcess display.
+ * Converts thoughts, markdown tables, ASCII tables, bold, italic, code blocks, and lists
+ * into clean HTML.
  */
-export function MarkdownRenderer({ content, className = "" }: MarkdownRendererProps) {
-  const html = useMemo(() => formatMarkdown(content), [content]);
+export function MarkdownRenderer({ content, className = "", showThoughts = true }: MarkdownRendererProps) {
+  const { thoughts, cleanContent } = useMemo(() => {
+    if (!showThoughts) return { thoughts: null, cleanContent: content };
+    return extractThoughts(content);
+  }, [content, showThoughts]);
+
+  const html = useMemo(() => formatMarkdown(cleanContent || content), [cleanContent, content]);
 
   return (
-    <div
-      className={`prose prose-sm max-w-none prose-slate ${className}`}
-      dangerouslySetInnerHTML={{ __html: html }}
-    />
+    <div className="space-y-3">
+      {thoughts && (
+        <ThinkingProcess
+          thoughtContent={thoughts}
+          title="Reasoning Process"
+          defaultExpanded={false}
+        />
+      )}
+      {html ? (
+        <div
+          className={`prose prose-sm max-w-none prose-slate ${className}`}
+          dangerouslySetInnerHTML={{ __html: html }}
+        />
+      ) : null}
+    </div>
   );
 }
 
