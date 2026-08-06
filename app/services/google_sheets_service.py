@@ -4,7 +4,7 @@ import os
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 from app.core.config import settings
-from app.services.memory_service import SharedMemoryService
+from app.services.shared_memory import SharedMemoryService
 
 logger = logging.getLogger(__name__)
 
