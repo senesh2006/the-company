@@ -11,6 +11,9 @@ class Settings(BaseSettings):
     GROQ_API_KEY: Optional[str] = None
     NVIDIA_API_KEY: Optional[str] = None
     NVIDIA_BASE_URL: str = "https://integrate.api.nvidia.com/v1"
+    GEMINI_API_KEY: Optional[str] = None
+    GOOGLE_API_KEY: Optional[str] = None
+    GEMINI_BASE_URL: str = "https://generativelanguage.googleapis.com/v1beta/openai/"
 
     # Security
     SECRET_KEY: str = "your-super-secret-key-change-in-production"
@@ -93,3 +96,8 @@ if not settings.NVIDIA_API_KEY:
     settings.NVIDIA_API_KEY = os.getenv("NVIDIA_API_KEY")
 if not settings.OPENAI_API_KEY:
     settings.OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+if not settings.GEMINI_API_KEY:
+    settings.GEMINI_API_KEY = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+if not settings.GOOGLE_API_KEY:
+    settings.GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
+

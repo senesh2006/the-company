@@ -12,6 +12,7 @@ import {
   ClipboardList, 
   Database, 
   BarChart3, 
+  FileSpreadsheet,
   UserPlus, 
   ShieldCheck, 
   Network,
@@ -52,6 +53,7 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
     { name: 'Dashboard', href: '/', icon: LayoutDashboard },
     { name: 'AI Workers', href: '/agents', icon: Bot, badge: activeWorkerCount > 0 ? `${activeWorkerCount}` : undefined },
     { name: 'Tasks & Operations', href: '/tasks', icon: ClipboardList },
+    { name: 'Finance & Ledger', href: '/finance', icon: FileSpreadsheet },
     { name: 'Shared Memory', href: '/memory', icon: Database },
     { name: 'Cost & Analytics', href: '/analytics', icon: BarChart3 },
   ];

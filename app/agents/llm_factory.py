@@ -96,11 +96,12 @@ def _nvidia_model_name(model_id: str) -> str:
 def resolve_model(model_id: Optional[str], role: Optional[str] = None) -> tuple[str, str]:
     """Resolve a requested model id to a known model and provider, falling back based on configured keys.
 
-    Supported providers in order of preference for open-weights models:
-    NVIDIA NIM (if NVIDIA_API_KEY is set) -> Groq (if GROQ_API_KEY is set) -> OpenAI (fallback).
+    Supported providers in order of preference:
+    NVIDIA NIM -> Groq -> Gemini/Google -> OpenAI (fallback).
     """
     has_nvidia = _is_valid_key(settings.NVIDIA_API_KEY)
     has_groq = _is_valid_key(settings.GROQ_API_KEY)
+    has_gemini = _is_valid_key(settings.GEMINI_API_KEY) or _is_valid_key(settings.GOOGLE_API_KEY)
     has_openai = _is_valid_key(settings.OPENAI_API_KEY)
 
     if not model_id or model_id not in MODEL_REGISTRY or model_id in BROKEN_MODEL_IDS:
@@ -112,6 +113,8 @@ def resolve_model(model_id: Optional[str], role: Optional[str] = None) -> tuple[
     if default_provider == "openai":
         if has_openai:
             return model_name, "openai"
+        if has_gemini:
+            return "gemini-2.0-flash", "gemini"
         if has_nvidia:
             return _nvidia_model_name(model_id), "nvidia"
         if has_groq:
@@ -123,6 +126,8 @@ def resolve_model(model_id: Optional[str], role: Optional[str] = None) -> tuple[
         return _nvidia_model_name(model_id), "nvidia"
     elif has_groq:
         return _groq_model_name(model_id), "groq"
+    elif has_gemini:
+        return "gemini-2.0-flash", "gemini"
     elif has_nvidia:
         return _nvidia_model_name(model_id), "nvidia"
     elif has_openai:
@@ -136,7 +141,7 @@ def resolve_model(model_id: Optional[str], role: Optional[str] = None) -> tuple[
 def get_llm(model_id: Optional[str] = None, role: Optional[str] = None, temperature: float = 0.0):
     """
     Build a ChatOpenAI instance for the requested model, using the appropriate
-    API key and base URL (NVIDIA NIM, Groq, or OpenAI).
+    API key and base URL (NVIDIA NIM, Groq, Gemini, or OpenAI).
     """
     model_name, provider = resolve_model(model_id, role)
 
@@ -146,6 +151,9 @@ def get_llm(model_id: Optional[str] = None, role: Optional[str] = None, temperat
     elif provider == "groq":
         api_key = settings.GROQ_API_KEY
         base_url = "https://api.groq.com/openai/v1"
+    elif provider == "gemini":
+        api_key = settings.GEMINI_API_KEY or settings.GOOGLE_API_KEY
+        base_url = settings.GEMINI_BASE_URL
     else:
         api_key = settings.OPENAI_API_KEY
         base_url = None
@@ -153,7 +161,7 @@ def get_llm(model_id: Optional[str] = None, role: Optional[str] = None, temperat
     if not _is_valid_key(api_key):
         logger.warning(
             f"No valid API key configured for provider '{provider}'. "
-            "Please configure NVIDIA_API_KEY, GROQ_API_KEY, or OPENAI_API_KEY in your .env file."
+            "Please configure NVIDIA_API_KEY, GROQ_API_KEY, GEMINI_API_KEY, or OPENAI_API_KEY in your .env file."
         )
 
     logger.info(f"Initializing LLM: requested={model_id!r}, role={role!r}, resolved_provider={provider}, resolved_model={model_name}")

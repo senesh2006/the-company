@@ -248,3 +248,68 @@ export const useInjectInstruction = () => {
         },
     });
 };
+
+// --- Finance & Google Sheets Hooks ---
+export const useFinanceAccounts = () => {
+    return useQuery({
+        queryKey: ['finance-accounts'],
+        queryFn: api.getFinanceAccounts,
+        refetchInterval: 6000,
+        retry: 1,
+        staleTime: 3000,
+    });
+};
+
+export const useJournalEntries = () => {
+    return useQuery({
+        queryKey: ['finance-journal'],
+        queryFn: api.getJournalEntries,
+        refetchInterval: 6000,
+        retry: 1,
+        staleTime: 3000,
+    });
+};
+
+export const useSheetsConfig = () => {
+    return useQuery({
+        queryKey: ['finance-sheets-config'],
+        queryFn: api.getSheetsConfig,
+        staleTime: 30000,
+    });
+};
+
+export const useSyncSheets = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: api.syncGoogleSheets,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['finance-accounts'] });
+            queryClient.invalidateQueries({ queryKey: ['finance-journal'] });
+            queryClient.invalidateQueries({ queryKey: ['finance-sheets-config'] });
+            queryClient.invalidateQueries({ queryKey: ['company-feed'] });
+        },
+    });
+};
+
+export const usePostJournalEntry = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: api.postJournalEntry,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['finance-accounts'] });
+            queryClient.invalidateQueries({ queryKey: ['finance-journal'] });
+            queryClient.invalidateQueries({ queryKey: ['company-feed'] });
+        },
+    });
+};
+
+export const useCreateAccount = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: api.createOrUpdateAccount,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['finance-accounts'] });
+        },
+    });
+};
+

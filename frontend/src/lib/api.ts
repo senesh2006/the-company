@@ -178,6 +178,66 @@ export interface HireWorkerPayload {
   capabilities?: string[];
 }
 
+export interface FinanceAccount {
+  code: string;
+  name: string;
+  category: 'Assets' | 'Liabilities' | 'Equity' | 'Revenue' | 'COGS' | 'OPEX' | string;
+  type: string;
+  balance: number;
+  normal_balance: 'Debit' | 'Credit';
+  description?: string;
+}
+
+export interface JournalEntry {
+  id: string;
+  date: string;
+  reference: string;
+  description: string;
+  debit_account: string;
+  credit_account: string;
+  amount: number;
+  verified_by_checker?: boolean;
+  status: string;
+  source?: string;
+}
+
+export interface TrialBalance {
+  total_debits: number;
+  total_credits: number;
+  is_balanced: boolean;
+  variance: number;
+  summary: {
+    total_assets: number;
+    total_liabilities: number;
+    total_equity: number;
+    total_revenue: number;
+    total_cogs: number;
+    total_opex: number;
+    net_income: number;
+  };
+}
+
+export interface SheetsConfig {
+  spreadsheet_id: string;
+  spreadsheet_url: string;
+  spreadsheet_title: string;
+  is_connected: boolean;
+  mode: 'live_api' | 'durable_sync';
+  last_synced_at: string;
+  sheets: Array<{
+    name: string;
+    rows: number;
+    range: string;
+  }>;
+}
+
+export interface FinanceAccountsResponse {
+  accounts: FinanceAccount[];
+  total_count: number;
+  trial_balance: TrialBalance;
+  sheets_config: SheetsConfig;
+}
+
 export const getBaseUrl = (): string => {
   if (typeof window !== 'undefined') {
     const isLocal = 
@@ -461,5 +521,66 @@ export const api = {
       body: JSON.stringify(payload),
     });
     if (!res.ok) throw new Error(`Failed to hire worker (${res.status})`);
+  },
+
+  // --- Finance & Google Sheets ---
+  getFinanceAccounts: async (): Promise<FinanceAccountsResponse> => {
+    const baseUrl = getBaseUrl();
+    const res = await authFetch(`${baseUrl}/api/v1/finance/accounts`);
+    if (!res.ok) throw new Error(`Failed to fetch finance accounts (${res.status})`);
+    return res.json();
+  },
+
+  createOrUpdateAccount: async (payload: Partial<FinanceAccount>): Promise<any> => {
+    const baseUrl = getBaseUrl();
+    const res = await authFetch(`${baseUrl}/api/v1/finance/accounts`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) throw new Error(`Failed to save account (${res.status})`);
+    return res.json();
+  },
+
+  getJournalEntries: async (): Promise<{ entries: JournalEntry[]; total_count: number }> => {
+    const baseUrl = getBaseUrl();
+    const res = await authFetch(`${baseUrl}/api/v1/finance/journal`);
+    if (!res.ok) throw new Error(`Failed to fetch journal entries (${res.status})`);
+    return res.json();
+  },
+
+  postJournalEntry: async (payload: Partial<JournalEntry>): Promise<any> => {
+    const baseUrl = getBaseUrl();
+    const res = await authFetch(`${baseUrl}/api/v1/finance/journal`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) throw new Error(`Failed to post journal entry (${res.status})`);
+    return res.json();
+  },
+
+  getTrialBalance: async (): Promise<TrialBalance> => {
+    const baseUrl = getBaseUrl();
+    const res = await authFetch(`${baseUrl}/api/v1/finance/trial-balance`);
+    if (!res.ok) throw new Error(`Failed to fetch trial balance (${res.status})`);
+    return res.json();
+  },
+
+  getSheetsConfig: async (): Promise<SheetsConfig> => {
+    const baseUrl = getBaseUrl();
+    const res = await authFetch(`${baseUrl}/api/v1/finance/sheets-config`);
+    if (!res.ok) throw new Error(`Failed to fetch sheets config (${res.status})`);
+    return res.json();
+  },
+
+  syncGoogleSheets: async (): Promise<any> => {
+    const baseUrl = getBaseUrl();
+    const res = await authFetch(`${baseUrl}/api/v1/finance/sync-sheets`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    if (!res.ok) throw new Error(`Failed to sync Google Sheets (${res.status})`);
+    return res.json();
   },
 };

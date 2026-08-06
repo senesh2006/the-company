@@ -5,6 +5,7 @@ from typing import List, Optional, Any, Dict
 from pydantic import BaseModel, Field
 from app.agents.tool_registry import BaseTool, registry
 from app.agents.tools import ReadSharedMemoryTool, WriteSharedMemoryTool, SpawnSubtaskTool
+from app.agents.google_sheets_tool import GoogleSheetsTool
 from app.core.config import settings
 from app.services.mcp_client import mcp_call_or_default
 
@@ -385,6 +386,7 @@ def register_finance_tools(business_id: str, agent_id: Optional[str] = None, tas
     Registers the full suite of allowed MCP tools for the Finance Manager.
     """
     tools = [
+        GoogleSheetsTool(),
         SupabaseLedgerTool(),
         StripeFinanceTool(),
         GoogleWorkspaceTool(),
@@ -406,6 +408,8 @@ def register_finance_tools(business_id: str, agent_id: Optional[str] = None, tas
         
     registry.register_tools("Finance Manager", tools)
     registry.register_tools("finance_manager", tools)
+    registry.register_tools("Accountant", tools)
+    registry.register_tools("accountant", tools)
     return tools
 
 def register_subworker_tools(business_id: str, role: str, agent_id: Optional[str] = None, task_id: Optional[str] = None) -> List[BaseTool]:
@@ -416,6 +420,7 @@ def register_subworker_tools(business_id: str, role: str, agent_id: Optional[str
     
     if "bookkeeper" in role_normalized:
         tools = [
+            GoogleSheetsTool(),
             SupabaseLedgerTool(),
             StripeFinanceTool(),
             FilesystemTool(),
@@ -425,6 +430,7 @@ def register_subworker_tools(business_id: str, role: str, agent_id: Optional[str
         ]
     elif "reconciler" in role_normalized:
         tools = [
+            GoogleSheetsTool(),
             SupabaseLedgerTool(),
             PlaywrightTool(),
             FilesystemTool(),
@@ -434,6 +440,7 @@ def register_subworker_tools(business_id: str, role: str, agent_id: Optional[str
         ]
     elif "tax" in role_normalized:
         tools = [
+            GoogleSheetsTool(),
             BraveSearchTool(),
             FetchTool(),
             NotionTool(),
@@ -442,6 +449,7 @@ def register_subworker_tools(business_id: str, role: str, agent_id: Optional[str
         ]
     elif "report" in role_normalized or "analyst" in role_normalized:
         tools = [
+            GoogleSheetsTool(),
             GoogleWorkspaceTool(),
             NotionTool(),
             SupabaseLedgerTool(),
@@ -450,6 +458,7 @@ def register_subworker_tools(business_id: str, role: str, agent_id: Optional[str
         ]
     else:
         tools = [
+            GoogleSheetsTool(),
             SupabaseLedgerTool(),
             GoogleWorkspaceTool(),
             ReadSharedMemoryTool(business_id=business_id),
