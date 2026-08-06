@@ -337,4 +337,37 @@ export const useInitializeFinanceTemplate = () => {
     });
 };
 
+export const useDepartmentDetails = (deptId: string) => {
+    return useQuery({
+        queryKey: ['department-details', deptId],
+        queryFn: () => api.getDepartmentDetails(deptId),
+        enabled: !!deptId,
+        refetchInterval: 10000,
+    });
+};
+
+export const useToggleDepartmentChecklist = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ deptId, taskId }: { deptId: string; taskId: number }) =>
+            api.toggleDepartmentChecklist(deptId, taskId),
+        onSuccess: (_, variables) => {
+            queryClient.invalidateQueries({ queryKey: ['department-details', variables.deptId] });
+        },
+    });
+};
+
+export const useDispatchDepartmentDirective = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ deptId, directive, priority }: { deptId: string; directive: string; priority?: string }) =>
+            api.dispatchDepartmentDirective(deptId, directive, priority),
+        onSuccess: (_, variables) => {
+            queryClient.invalidateQueries({ queryKey: ['department-details', variables.deptId] });
+            queryClient.invalidateQueries({ queryKey: ['tasks'] });
+            queryClient.invalidateQueries({ queryKey: ['agents'] });
+        },
+    });
+};
+
 

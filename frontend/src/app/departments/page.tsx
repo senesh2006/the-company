@@ -66,7 +66,14 @@ import {
   UserCheck,
   ZapOff
 } from "lucide-react";
-import { useAgents, useMetrics, useTasks } from "@/lib/queries";
+import { 
+  useAgents, 
+  useMetrics, 
+  useTasks, 
+  useDepartmentDetails, 
+  useToggleDepartmentChecklist, 
+  useDispatchDepartmentDirective 
+} from "@/lib/queries";
 import { useAppStore } from "@/lib/store";
 import { ChartOfAccountsSheet } from "@/components/finance/ChartOfAccountsSheet";
 
@@ -133,54 +140,19 @@ function DepartmentsContent() {
   const [timeframe, setTimeframe] = useState<"Weekly" | "Monthly" | "Quarterly">("Weekly");
   const [activeTab, setActiveTab] = useState<"overview" | "workspace" | "workforce">("overview");
 
-  // Department-specific checklist state
-  const [checklists, setChecklists] = useState<Record<string, { id: number; title: string; completed: boolean }[]>>({
-    finance: [
-      { id: 1, title: "Connect Google Sheets Ledger", completed: true },
-      { id: 2, title: "Hire Lead Accountant AI Worker", completed: true },
-      { id: 3, title: "Set Authority Limits & Spending Caps", completed: true },
-      { id: 4, title: "Enable GAAP Double-Entry Validation", completed: true },
-      { id: 5, title: "Configure Automated Trial Balance Audits", completed: false },
-      { id: 6, title: "Set Up Tax & Payroll Directives", completed: false }
-    ],
-    marketing: [
-      { id: 1, title: "Set Up Perplexity Search Tool", completed: true },
-      { id: 2, title: "Hire Growth Copywriter AI Agent", completed: true },
-      { id: 3, title: "Configure Social Campaign Directives", completed: true },
-      { id: 4, title: "Define Brand Voice Guidelines", completed: true },
-      { id: 5, title: "Integrate Notion Content Workspace", completed: false },
-      { id: 6, title: "Enable Automated Lead Scoring", completed: false }
-    ],
-    engineering: [
-      { id: 1, title: "Connect GitHub Repository Pipeline", completed: true },
-      { id: 2, title: "Hire Autonomous Code Architect Agent", completed: true },
-      { id: 3, title: "Configure PyTest & Automated Testing", completed: true },
-      { id: 4, title: "Enable Terminal Subprocess Sandbox", completed: true },
-      { id: 5, title: "Configure Railway Production Deployment", completed: true },
-      { id: 6, title: "Verify Pull Request Auto-Reviews", completed: false }
-    ],
-    operations: [
-      { id: 1, title: "Initialize Shared Memory Store", completed: true },
-      { id: 2, title: "Hire Lead Operations Orchestrator AI", completed: true },
-      { id: 3, title: "Set Up Maker-Checker Approval Gate", completed: true },
-      { id: 4, title: "Configure Executive Notification Triage", completed: true },
-      { id: 5, title: "Set Up Cross-Department Event Bus", completed: false },
-      { id: 6, title: "Enable SOX Compliance Audit Logging", completed: false }
-    ]
-  });
-
   // Modal State
   const [isDispatchModalOpen, setIsDispatchModalOpen] = useState(false);
   const [directivePrompt, setDirectivePrompt] = useState("");
-  const [isDispatching, setIsDispatching] = useState(false);
   const [dispatchSuccess, setDispatchSuccess] = useState(false);
 
+  // Queries & Mutations
   const { data: rawAgents } = useAgents();
-  const { data: rawTasks } = useTasks();
+  const { data: deptDetails, isLoading: isDeptLoading } = useDepartmentDetails(selectedDeptId);
+  const toggleChecklistMutation = useToggleDepartmentChecklist();
+  const dispatchDirectiveMutation = useDispatchDepartmentDirective();
   const { setSelectedAgentId } = useAppStore();
 
   const agents = rawAgents || [];
-  const tasks = rawTasks || [];
   const currentDept = DEPARTMENTS.find(d => d.id === selectedDeptId) || DEPARTMENTS[0];
 
   useEffect(() => {
@@ -195,11 +167,12 @@ function DepartmentsContent() {
     router.replace(`/departments?dept=${deptId}`);
   };
 
-  const toggleChecklistItem = (deptId: string, id: number) => {
-    setChecklists(prev => ({
-      ...prev,
-      [deptId]: prev[deptId].map(item => item.id === id ? { ...item, completed: !item.completed } : item)
-    }));
+  const toggleChecklistItem = async (task_id: number) => {
+    try {
+      await toggleChecklistMutation.mutateAsync({ deptId: selectedDeptId, taskId: task_id });
+    } catch (err) {
+      console.error("Failed to toggle checklist task", err);
+    }
   };
 
   const getDeptAgents = (dept: DepartmentMeta) => {
@@ -210,89 +183,33 @@ function DepartmentsContent() {
   };
 
   const currentDeptAgents = getDeptAgents(currentDept);
-  const currentChecklist = checklists[selectedDeptId] || [];
-  const completedTasksCount = currentChecklist.filter(c => c.completed).length;
+  const currentChecklist = deptDetails?.checklist || [];
+  const completedTasksCount = currentChecklist.filter((c: any) => c.completed).length;
   const DeptIcon = currentDept.icon;
 
-  const handleDispatchDirective = (e: React.FormEvent) => {
+  const handleDispatchDirective = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!directivePrompt.trim()) return;
     
-    setIsDispatching(true);
-    setTimeout(() => {
-      setIsDispatching(false);
+    try {
+      await dispatchDirectiveMutation.mutateAsync({
+        deptId: selectedDeptId,
+        directive: directivePrompt
+      });
       setDispatchSuccess(true);
       setTimeout(() => {
         setDispatchSuccess(false);
         setIsDispatchModalOpen(false);
         setDirectivePrompt("");
       }, 1500);
-    }, 1000);
+    } catch (err) {
+      console.error("Failed to dispatch directive", err);
+    }
   };
 
-  // Department-specific Recent Activities
-  const recentActivitiesMap: Record<string, { time: string; text: string; badge: string; badgeClass: string }[]> = {
-    finance: [
-      { time: "10 mins ago", text: "Lead Accountant AI performed double-entry ledger balance check.", badge: "BALANCED", badgeClass: "bg-emerald-50 text-emerald-800 border-emerald-200" },
-      { time: "25 mins ago", text: "Google Sheets MCP synchronized 4 journal entries.", badge: "SYNCED", badgeClass: "bg-cyan-50 text-cyan-800 border-cyan-200" },
-      { time: "1 hour ago", text: "Automated Trial Balance audit passed zero variance rule.", badge: "VERIFIED", badgeClass: "bg-indigo-50 text-indigo-800 border-indigo-200" }
-    ],
-    marketing: [
-      { time: "5 mins ago", text: "Growth Copywriter AI generated 3 LinkedIn post drafts.", badge: "DRAFTED", badgeClass: "bg-cyan-50 text-cyan-800 border-cyan-200" },
-      { time: "40 mins ago", text: "Perplexity Web Search fetched latest AI Agent trends.", badge: "SEARCHED", badgeClass: "bg-indigo-50 text-indigo-800 border-indigo-200" },
-      { time: "2 hours ago", text: "Social Campaign Directives reached 45,000 impressions.", badge: "GROWTH", badgeClass: "bg-emerald-50 text-emerald-800 border-emerald-200" }
-    ],
-    engineering: [
-      { time: "2 mins ago", text: "Code Architect AI submitted PR #42 (Next.js bundle optimization).", badge: "PULL REQUEST", badgeClass: "bg-indigo-50 text-indigo-800 border-indigo-200" },
-      { time: "15 mins ago", text: "PyTest automated suite passed 18/18 static page tests.", badge: "PASSED", badgeClass: "bg-emerald-50 text-emerald-800 border-emerald-200" },
-      { time: "1 hour ago", text: "Railway production container deployed cleanly.", badge: "DEPLOYED", badgeClass: "bg-cyan-50 text-cyan-800 border-cyan-200" }
-    ],
-    operations: [
-      { time: "12 mins ago", text: "Maker-Checker policy verified executive spending limit.", badge: "APPROVED", badgeClass: "bg-emerald-50 text-emerald-800 border-emerald-200" },
-      { time: "30 mins ago", text: "Ops Orchestrator resolved cross-department event bus message.", badge: "RESOLVED", badgeClass: "bg-purple-50 text-purple-800 border-purple-200" },
-      { time: "2 hours ago", text: "PostgreSQL JSONB shared memory key set up.", badge: "PERSISTED", badgeClass: "bg-indigo-50 text-indigo-800 border-indigo-200" }
-    ]
-  };
-
-  // Department-specific Operational Alerts
-  const alertsMap: Record<string, { type: "ok" | "info" | "warning"; title: string; desc: string }[]> = {
-    finance: [
-      { type: "ok", title: "Double-Entry Balance 100% Verified", desc: "Debits ($79,250) equal Credits ($79,250)." },
-      { type: "info", title: "Google Sheets Live Sync Active", desc: "Connected to Enterprise Cloud Ledger." }
-    ],
-    marketing: [
-      { type: "ok", title: "Brand Voice Guardrail Active", desc: "All copy generated adheres to tone guidelines." },
-      { type: "info", title: "Notion Sync Pending Connection", desc: "Optional workspace integration ready." }
-    ],
-    engineering: [
-      { type: "ok", title: "Subprocess Sandbox 100% Healthy", desc: "Terminal command executor operating cleanly." },
-      { type: "info", title: "FastAPI Uvicorn Worker Active", desc: "Running on http://0.0.0.0:8000." }
-    ],
-    operations: [
-      { type: "ok", title: "SOX Compliance Audit Logging On", desc: "All actions recorded in durable database." },
-      { type: "info", title: "Executive Gate Operational", desc: "Threshold set to $500 authority limit." }
-    ]
-  };
-
-  // Department-specific Attention Queue
-  const attentionMap: Record<string, { title: string; action: string; priority: "high" | "normal" }[]> = {
-    finance: [
-      { title: "Review 1 Spending Exemption Request > $500", action: "Review Approval", priority: "high" },
-      { title: "Configure Tax & Payroll Directives", action: "Setup Directive", priority: "normal" }
-    ],
-    marketing: [
-      { title: "Approve 3 Draft Posts for LinkedIn Campaign", action: "Approve Copy", priority: "normal" },
-      { title: "Connect Notion Content Workspace API", action: "Connect API", priority: "normal" }
-    ],
-    engineering: [
-      { title: "1 Pull Request Pending Founder Review (#42)", action: "Review PR", priority: "high" },
-      { title: "Verify MCP Tool Schema Registrations", action: "Check MCP", priority: "normal" }
-    ],
-    operations: [
-      { title: "1 Cross-Department Mandate Awaiting Confirmation", action: "Confirm Mandate", priority: "high" },
-      { title: "Configure Automated System Backups", action: "Configure Backup", priority: "normal" }
-    ]
-  };
+  const recentActivities = deptDetails?.activities || [];
+  const alerts = deptDetails?.alerts || [];
+  const attentionItems = deptDetails?.attention || [];
 
   return (
     <div className="space-y-6 pb-20 text-slate-800 font-sans">
@@ -709,53 +626,61 @@ function DepartmentsContent() {
               </div>
             )}
 
-            {/* NEW WIDGET: RECENT ACTIVITIES & TELEMETRY STREAM */}
+            {/* LIVE WIDGET: RECENT ACTIVITIES & TELEMETRY STREAM */}
             <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-2">
                   <Activity className="w-4 h-4 text-emerald-700" />
                   <span>Recent {currentDept.shortName} Activities & Stream</span>
                 </h3>
-                <span className="text-[10px] text-slate-400 font-mono">Live Telemetry</span>
+                <span className="text-[10px] text-slate-400 font-mono">Live Backend Feed</span>
               </div>
 
               <div className="space-y-2.5">
-                {(recentActivitiesMap[selectedDeptId] || []).map((act, idx) => (
-                  <div key={idx} className="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between gap-3 text-xs">
-                    <div className="flex items-center gap-3">
-                      <span className="w-2 h-2 rounded-full bg-emerald-600 shrink-0" />
-                      <div>
-                        <p className="font-semibold text-slate-900">{act.text}</p>
-                        <span className="text-[10px] text-slate-500">{act.time}</span>
+                {recentActivities.length === 0 ? (
+                  <p className="text-xs text-slate-400 italic py-4 text-center">No recent activities logged yet.</p>
+                ) : (
+                  recentActivities.map((act: any, idx: number) => (
+                    <div key={idx} className="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between gap-3 text-xs">
+                      <div className="flex items-center gap-3">
+                        <span className="w-2 h-2 rounded-full bg-emerald-600 shrink-0 animate-pulse" />
+                        <div>
+                          <p className="font-semibold text-slate-900">{act.text}</p>
+                          <span className="text-[10px] text-slate-500">{act.time}</span>
+                        </div>
                       </div>
+                      <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border shrink-0 ${act.badgeClass || 'bg-slate-100 text-slate-700 border-slate-200'}`}>
+                        {act.badge || 'EXEC'}
+                      </span>
                     </div>
-                    <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border shrink-0 ${act.badgeClass}`}>
-                      {act.badge}
-                    </span>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </div>
 
-            {/* NEW WIDGET: DEPARTMENT ALERTS & ATTENTION QUEUE */}
+            {/* LIVE WIDGET: AI OPERATIONAL ALERTS & ATTENTION QUEUE */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Operational Alerts */}
               <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-3">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-2">
                   <Bell className="w-4 h-4 text-cyan-700" />
-                  <span>Operational Alerts</span>
+                  <span>AI Operational Alerts</span>
                 </h3>
 
                 <div className="space-y-2">
-                  {(alertsMap[selectedDeptId] || []).map((alt, idx) => (
-                    <div key={idx} className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-0.5">
-                      <div className="flex items-center gap-2">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                        <h4 className="text-xs font-bold text-slate-900">{alt.title}</h4>
+                  {alerts.length === 0 ? (
+                    <p className="text-xs text-slate-400 italic py-2">No active alerts.</p>
+                  ) : (
+                    alerts.map((alt: any, idx: number) => (
+                      <div key={idx} className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-0.5">
+                        <div className="flex items-center gap-2">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                          <h4 className="text-xs font-bold text-slate-900">{alt.title}</h4>
+                        </div>
+                        <p className="text-[11px] text-slate-500 pl-5.5">{alt.desc}</p>
                       </div>
-                      <p className="text-[11px] text-slate-500 pl-5.5">{alt.desc}</p>
-                    </div>
-                  ))}
+                    ))
+                  )}
                 </div>
               </div>
 
@@ -763,28 +688,32 @@ function DepartmentsContent() {
               <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-3">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-2">
                   <AlertCircle className="w-4 h-4 text-amber-700" />
-                  <span>Attention Queue ({attentionMap[selectedDeptId]?.length || 0})</span>
+                  <span>Attention Queue ({attentionItems.length})</span>
                 </h3>
 
                 <div className="space-y-2">
-                  {(attentionMap[selectedDeptId] || []).map((att, idx) => (
-                    <div key={idx} className="p-3 rounded-xl bg-amber-50/60 border border-amber-200 flex items-center justify-between gap-2">
-                      <div>
-                        <h4 className="text-xs font-bold text-amber-950">{att.title}</h4>
-                        <span className="text-[10px] text-amber-800 font-semibold">{att.priority === "high" ? "High Priority" : "Action Needed"}</span>
+                  {attentionItems.length === 0 ? (
+                    <p className="text-xs text-slate-400 italic py-2">Attention queue empty.</p>
+                  ) : (
+                    attentionItems.map((att: any, idx: number) => (
+                      <div key={idx} className="p-3 rounded-xl bg-amber-50/60 border border-amber-200 flex items-center justify-between gap-2">
+                        <div>
+                          <h4 className="text-xs font-bold text-amber-950">{att.title}</h4>
+                          <span className="text-[10px] text-amber-800 font-semibold">{att.priority === "high" ? "High Priority" : "Action Needed"}</span>
+                        </div>
+                        <button className="px-2.5 py-1 rounded-lg bg-amber-200 hover:bg-amber-300 text-amber-900 font-bold text-[10px] transition shrink-0">
+                          {att.action}
+                        </button>
                       </div>
-                      <button className="px-2.5 py-1 rounded-lg bg-amber-200 hover:bg-amber-300 text-amber-900 font-bold text-[10px] transition shrink-0">
-                        {att.action}
-                      </button>
-                    </div>
-                  ))}
+                    ))
+                  )}
                 </div>
               </div>
             </div>
 
           </div>
 
-          {/* RIGHT 4 COLUMNS: CLEAN LIGHT SaaS SETUP GUIDE & ASSISTANCE */}
+          {/* RIGHT 4 COLUMNS: LIVE CHECKLIST & ASSISTANCE */}
           <div className="lg:col-span-4 space-y-6">
 
             {/* CHECKLIST CARD */}
@@ -806,7 +735,7 @@ function DepartmentsContent() {
                 <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden border border-slate-200">
                   <div
                     className="bg-emerald-600 h-full transition-all duration-300"
-                    style={{ width: `${(completedTasksCount / currentChecklist.length) * 100}%` }}
+                    style={{ width: `${currentChecklist.length > 0 ? (completedTasksCount / currentChecklist.length) * 100 : 0}%` }}
                   />
                 </div>
                 <p className="text-[10px] text-slate-500 text-right font-medium">
@@ -816,10 +745,10 @@ function DepartmentsContent() {
 
               {/* Interactive Checklist */}
               <div className="space-y-2 border-t border-slate-100 pt-3">
-                {currentChecklist.map((task) => (
+                {currentChecklist.map((task: any) => (
                   <button
                     key={task.id}
-                    onClick={() => toggleChecklistItem(selectedDeptId, task.id)}
+                    onClick={() => toggleChecklistItem(task.id)}
                     className={`w-full p-2.5 rounded-xl text-left text-xs transition flex items-center gap-2.5 ${
                       task.completed
                         ? "bg-slate-50 text-slate-400 line-through border border-slate-200/60"
@@ -1016,10 +945,10 @@ function DepartmentsContent() {
                     </button>
                     <button
                       type="submit"
-                      disabled={isDispatching || !directivePrompt.trim()}
+                      disabled={dispatchDirectiveMutation.isPending || !directivePrompt.trim()}
                       className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-800 hover:bg-emerald-900 disabled:opacity-50 text-white text-xs font-bold shadow-sm transition active:scale-95"
                     >
-                      {isDispatching ? (
+                      {dispatchDirectiveMutation.isPending ? (
                         <>
                           <RefreshCw className="w-4 h-4 animate-spin" />
                           <span>Dispatching...</span>

@@ -606,4 +606,32 @@ export const api = {
     if (!res.ok) throw new Error(`Failed to initialize template (${res.status})`);
     return res.json();
   },
+
+  getDepartmentDetails: async (deptId: string): Promise<any> => {
+    const baseUrl = getBaseUrl();
+    const res = await authFetch(`${baseUrl}/api/v1/departments/${deptId}`);
+    if (!res.ok) throw new Error(`Failed to fetch department details (${res.status})`);
+    return res.json();
+  },
+
+  toggleDepartmentChecklist: async (deptId: string, taskId: number): Promise<any> => {
+    const baseUrl = getBaseUrl();
+    const res = await authFetch(`${baseUrl}/api/v1/departments/${deptId}/checklist/${taskId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    if (!res.ok) throw new Error(`Failed to toggle checklist task (${res.status})`);
+    return res.json();
+  },
+
+  dispatchDepartmentDirective: async (deptId: string, directive: string, priority: string = "normal"): Promise<any> => {
+    const baseUrl = getBaseUrl();
+    const res = await authFetch(`${baseUrl}/api/v1/departments/${deptId}/dispatch`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ directive, priority }),
+    });
+    if (!res.ok) throw new Error(`Failed to dispatch directive (${res.status})`);
+    return res.json();
+  },
 };
