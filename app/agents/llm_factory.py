@@ -11,13 +11,13 @@ def _is_valid_key(key: Optional[str]) -> bool:
     if not key or not isinstance(key, str):
         return False
     k = key.strip()
-    if not k:
+    if not k or len(k) < 8:
         return False
     placeholders = (
         "sk-...", "gsk_...", "nvapi-...", "your-", "replace-",
-        "sk-dummy", "gsk-dummy", "nvapi-dummy"
+        "sk-dummy", "gsk-dummy", "nvapi-dummy", "AIzaSy..."
     )
-    if any(k.startswith(p) for p in placeholders) or k in {"sk-...", "gsk_...", "nvapi-..."}:
+    if any(k.startswith(p) for p in placeholders) or k in {"sk-...", "gsk_...", "nvapi-...", "AIzaSy..."}:
         return False
     return True
 
@@ -96,13 +96,24 @@ def _nvidia_model_name(model_id: str) -> str:
 def resolve_model(model_id: Optional[str], role: Optional[str] = None) -> tuple[str, str]:
     """Resolve a requested model id to a known model and provider, falling back based on configured keys.
 
-    Supported providers in order of preference:
-    NVIDIA NIM -> Groq -> Gemini/Google -> OpenAI (fallback).
+    Supported providers:
+    NVIDIA NIM, Groq, Gemini/Google, OpenAI.
     """
     has_nvidia = _is_valid_key(settings.NVIDIA_API_KEY)
     has_groq = _is_valid_key(settings.GROQ_API_KEY)
     has_gemini = _is_valid_key(settings.GEMINI_API_KEY) or _is_valid_key(settings.GOOGLE_API_KEY)
     has_openai = _is_valid_key(settings.OPENAI_API_KEY)
+
+    # Allow explicit provider selection via LLM_PROVIDER env var
+    forced_provider = (getattr(settings, "LLM_PROVIDER", None) or "").strip().lower()
+    if forced_provider == "gemini" and has_gemini:
+        return "gemini-2.0-flash", "gemini"
+    elif forced_provider == "groq" and has_groq:
+        return _groq_model_name(model_id or "kimi-k3"), "groq"
+    elif forced_provider == "nvidia" and has_nvidia:
+        return _nvidia_model_name(model_id or "kimi-k3"), "nvidia"
+    elif forced_provider == "openai" and has_openai:
+        return "gpt-4o-mini", "openai"
 
     if not model_id or model_id not in MODEL_REGISTRY or model_id in BROKEN_MODEL_IDS:
         model_id = DEFAULT_MODEL_BY_ROLE.get(role or "default", DEFAULT_MODEL_BY_ROLE["default"])
@@ -115,21 +126,21 @@ def resolve_model(model_id: Optional[str], role: Optional[str] = None) -> tuple[
             return model_name, "openai"
         if has_gemini:
             return "gemini-2.0-flash", "gemini"
-        if has_nvidia:
-            return _nvidia_model_name(model_id), "nvidia"
         if has_groq:
             return _groq_model_name(model_id), "groq"
+        if has_nvidia:
+            return _nvidia_model_name(model_id), "nvidia"
         return model_name, "openai"
 
     # Handle open-weights models (kimi-k3, llama, qwen, deepseek, mistral)
-    if has_nvidia and not has_groq:
-        return _nvidia_model_name(model_id), "nvidia"
+    if has_gemini and not has_groq and not has_nvidia:
+        return "gemini-2.0-flash", "gemini"
     elif has_groq:
         return _groq_model_name(model_id), "groq"
-    elif has_gemini:
-        return "gemini-2.0-flash", "gemini"
     elif has_nvidia:
         return _nvidia_model_name(model_id), "nvidia"
+    elif has_gemini:
+        return "gemini-2.0-flash", "gemini"
     elif has_openai:
         fallback_model = MODEL_REGISTRY["gpt-4o-mini"][0] if "gpt-4o-mini" in MODEL_REGISTRY else "gpt-4o"
         return fallback_model, "openai"

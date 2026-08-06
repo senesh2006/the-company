@@ -399,6 +399,30 @@ class TaskService:
             logger.error(f"Error updating task {task_id} result: {e}")
             raise e
 
+    def complete_task(self, task_id: str, result: Optional[str] = None) -> dict[str, Any]:
+        """Marks a task as completed with optional result."""
+        data = {"status": "completed"}
+        if result is not None:
+            data["result"] = result
+        try:
+            response = self.client.table("tasks").update(data).eq("id", task_id).execute()
+            return response.data[0] if response.data else {}
+        except Exception as e:
+            logger.error(f"Error completing task {task_id}: {e}")
+            return {}
+
+    def fail_task(self, task_id: str, error: Optional[str] = None) -> dict[str, Any]:
+        """Marks a task as failed with optional error message."""
+        data = {"status": "failed"}
+        if error is not None:
+            data["result"] = error
+        try:
+            response = self.client.table("tasks").update(data).eq("id", task_id).execute()
+            return response.data[0] if response.data else {}
+        except Exception as e:
+            logger.error(f"Error failing task {task_id}: {e}")
+            return {}
+
     # --- Company Feed / Audit Trail (PRD v6.0 §4.2, §10.1) ---
 
     def log_audit_event(

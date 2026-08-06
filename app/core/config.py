@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: Optional[str] = None
     GOOGLE_API_KEY: Optional[str] = None
     GEMINI_BASE_URL: str = "https://generativelanguage.googleapis.com/v1beta/openai/"
+    LLM_PROVIDER: Optional[str] = None
 
     # Security
     SECRET_KEY: str = "your-super-secret-key-change-in-production"
