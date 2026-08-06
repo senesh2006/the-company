@@ -51,16 +51,22 @@ import {
   Landmark,
   FileText,
   Globe,
-  Share,
   Code2,
   GitBranch,
   Terminal,
   Server,
   Database,
   Check,
-  AlertCircle
+  AlertCircle,
+  Bell,
+  AlertTriangle,
+  FileCode,
+  Workflow,
+  ShieldAlert,
+  UserCheck,
+  ZapOff
 } from "lucide-react";
-import { useAgents, useMetrics } from "@/lib/queries";
+import { useAgents, useMetrics, useTasks } from "@/lib/queries";
 import { useAppStore } from "@/lib/store";
 import { ChartOfAccountsSheet } from "@/components/finance/ChartOfAccountsSheet";
 
@@ -170,9 +176,11 @@ function DepartmentsContent() {
   const [dispatchSuccess, setDispatchSuccess] = useState(false);
 
   const { data: rawAgents } = useAgents();
+  const { data: rawTasks } = useTasks();
   const { setSelectedAgentId } = useAppStore();
 
   const agents = rawAgents || [];
+  const tasks = rawTasks || [];
   const currentDept = DEPARTMENTS.find(d => d.id === selectedDeptId) || DEPARTMENTS[0];
 
   useEffect(() => {
@@ -222,13 +230,77 @@ function DepartmentsContent() {
     }, 1000);
   };
 
+  // Department-specific Recent Activities
+  const recentActivitiesMap: Record<string, { time: string; text: string; badge: string; badgeClass: string }[]> = {
+    finance: [
+      { time: "10 mins ago", text: "Lead Accountant AI performed double-entry ledger balance check.", badge: "BALANCED", badgeClass: "bg-emerald-50 text-emerald-800 border-emerald-200" },
+      { time: "25 mins ago", text: "Google Sheets MCP synchronized 4 journal entries.", badge: "SYNCED", badgeClass: "bg-cyan-50 text-cyan-800 border-cyan-200" },
+      { time: "1 hour ago", text: "Automated Trial Balance audit passed zero variance rule.", badge: "VERIFIED", badgeClass: "bg-indigo-50 text-indigo-800 border-indigo-200" }
+    ],
+    marketing: [
+      { time: "5 mins ago", text: "Growth Copywriter AI generated 3 LinkedIn post drafts.", badge: "DRAFTED", badgeClass: "bg-cyan-50 text-cyan-800 border-cyan-200" },
+      { time: "40 mins ago", text: "Perplexity Web Search fetched latest AI Agent trends.", badge: "SEARCHED", badgeClass: "bg-indigo-50 text-indigo-800 border-indigo-200" },
+      { time: "2 hours ago", text: "Social Campaign Directives reached 45,000 impressions.", badge: "GROWTH", badgeClass: "bg-emerald-50 text-emerald-800 border-emerald-200" }
+    ],
+    engineering: [
+      { time: "2 mins ago", text: "Code Architect AI submitted PR #42 (Next.js bundle optimization).", badge: "PULL REQUEST", badgeClass: "bg-indigo-50 text-indigo-800 border-indigo-200" },
+      { time: "15 mins ago", text: "PyTest automated suite passed 18/18 static page tests.", badge: "PASSED", badgeClass: "bg-emerald-50 text-emerald-800 border-emerald-200" },
+      { time: "1 hour ago", text: "Railway production container deployed cleanly.", badge: "DEPLOYED", badgeClass: "bg-cyan-50 text-cyan-800 border-cyan-200" }
+    ],
+    operations: [
+      { time: "12 mins ago", text: "Maker-Checker policy verified executive spending limit.", badge: "APPROVED", badgeClass: "bg-emerald-50 text-emerald-800 border-emerald-200" },
+      { time: "30 mins ago", text: "Ops Orchestrator resolved cross-department event bus message.", badge: "RESOLVED", badgeClass: "bg-purple-50 text-purple-800 border-purple-200" },
+      { time: "2 hours ago", text: "PostgreSQL JSONB shared memory key set up.", badge: "PERSISTED", badgeClass: "bg-indigo-50 text-indigo-800 border-indigo-200" }
+    ]
+  };
+
+  // Department-specific Operational Alerts
+  const alertsMap: Record<string, { type: "ok" | "info" | "warning"; title: string; desc: string }[]> = {
+    finance: [
+      { type: "ok", title: "Double-Entry Balance 100% Verified", desc: "Debits ($79,250) equal Credits ($79,250)." },
+      { type: "info", title: "Google Sheets Live Sync Active", desc: "Connected to Enterprise Cloud Ledger." }
+    ],
+    marketing: [
+      { type: "ok", title: "Brand Voice Guardrail Active", desc: "All copy generated adheres to tone guidelines." },
+      { type: "info", title: "Notion Sync Pending Connection", desc: "Optional workspace integration ready." }
+    ],
+    engineering: [
+      { type: "ok", title: "Subprocess Sandbox 100% Healthy", desc: "Terminal command executor operating cleanly." },
+      { type: "info", title: "FastAPI Uvicorn Worker Active", desc: "Running on http://0.0.0.0:8000." }
+    ],
+    operations: [
+      { type: "ok", title: "SOX Compliance Audit Logging On", desc: "All actions recorded in durable database." },
+      { type: "info", title: "Executive Gate Operational", desc: "Threshold set to $500 authority limit." }
+    ]
+  };
+
+  // Department-specific Attention Queue
+  const attentionMap: Record<string, { title: string; action: string; priority: "high" | "normal" }[]> = {
+    finance: [
+      { title: "Review 1 Spending Exemption Request > $500", action: "Review Approval", priority: "high" },
+      { title: "Configure Tax & Payroll Directives", action: "Setup Directive", priority: "normal" }
+    ],
+    marketing: [
+      { title: "Approve 3 Draft Posts for LinkedIn Campaign", action: "Approve Copy", priority: "normal" },
+      { title: "Connect Notion Content Workspace API", action: "Connect API", priority: "normal" }
+    ],
+    engineering: [
+      { title: "1 Pull Request Pending Founder Review (#42)", action: "Review PR", priority: "high" },
+      { title: "Verify MCP Tool Schema Registrations", action: "Check MCP", priority: "normal" }
+    ],
+    operations: [
+      { title: "1 Cross-Department Mandate Awaiting Confirmation", action: "Confirm Mandate", priority: "high" },
+      { title: "Configure Automated System Backups", action: "Configure Backup", priority: "normal" }
+    ]
+  };
+
   return (
     <div className="space-y-6 pb-20 text-slate-800 font-sans">
       {/* 1. CLEAN LIGHT SaaS HEADER & DEPARTMENT NAVIGATION */}
       <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 mb-1">
-            <Building2 className="w-4 h-4 text-emerald-600" />
+            <Building2 className="w-4 h-4 text-emerald-700" />
             <span>Company Organization</span>
             <ChevronRight className="w-3 h-3 text-slate-400" />
             <span className="text-slate-900 font-bold">Departments Hub</span>
@@ -288,7 +360,7 @@ function DepartmentsContent() {
                 : "text-slate-500 hover:text-slate-800"
             }`}
           >
-            <BarChart3 className="w-4 h-4 text-emerald-600" />
+            <BarChart3 className="w-4 h-4 text-emerald-700" />
             <span>Department Telemetry & Dashboard</span>
           </button>
 
@@ -300,7 +372,7 @@ function DepartmentsContent() {
                 : "text-slate-500 hover:text-slate-800"
             }`}
           >
-            <FileSpreadsheet className="w-4 h-4 text-cyan-600" />
+            <FileSpreadsheet className="w-4 h-4 text-cyan-700" />
             <span>Domain Workspace & Tools</span>
           </button>
 
@@ -312,7 +384,7 @@ function DepartmentsContent() {
                 : "text-slate-500 hover:text-slate-800"
             }`}
           >
-            <Bot className="w-4 h-4 text-indigo-600" />
+            <Bot className="w-4 h-4 text-indigo-700" />
             <span>Assigned AI Fleet ({currentDeptAgents.length})</span>
           </button>
         </div>
@@ -409,39 +481,6 @@ function DepartmentsContent() {
                     <p className="text-[11px] text-slate-500">Pending Receipt Audits</p>
                   </div>
                 </div>
-
-                {/* Revenue Inflow Avatar Cards Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div className="p-3.5 rounded-2xl bg-white border border-slate-200 shadow-xs flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-cyan-100 text-cyan-800 flex items-center justify-center flex-shrink-0 font-bold">
-                      <DollarSign className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <h4 className="text-sm font-bold text-slate-900 font-mono">$100,000</h4>
-                      <p className="text-[11px] text-slate-500">Total Cash Collected</p>
-                    </div>
-                  </div>
-
-                  <div className="p-3.5 rounded-2xl bg-white border border-slate-200 shadow-xs flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-rose-100 text-rose-800 flex items-center justify-center flex-shrink-0 font-bold">
-                      <Landmark className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <h4 className="text-sm font-bold text-slate-900 font-mono">$150,000</h4>
-                      <p className="text-[11px] text-slate-500">Total Collection In Bank</p>
-                    </div>
-                  </div>
-
-                  <div className="p-3.5 rounded-2xl bg-white border border-slate-200 shadow-xs flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-purple-100 text-purple-800 flex items-center justify-center flex-shrink-0 font-bold">
-                      <CreditCard className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <h4 className="text-sm font-bold text-slate-900 font-mono">$150,000</h4>
-                      <p className="text-[11px] text-slate-500">Unavoidable Payables</p>
-                    </div>
-                  </div>
-                </div>
               </div>
             )}
 
@@ -490,7 +529,7 @@ function DepartmentsContent() {
                 {/* Campaign Channel Grid */}
                 <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-4">
                   <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-2">
-                    <Share2 className="w-4 h-4 text-cyan-600" />
+                    <Share2 className="w-4 h-4 text-cyan-700" />
                     <span>Active Marketing Campaigns & Channels</span>
                   </h3>
 
@@ -562,14 +601,14 @@ function DepartmentsContent() {
                 {/* Tech Stack & Pipeline Status */}
                 <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-4">
                   <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-2">
-                    <Server className="w-4 h-4 text-indigo-600" />
+                    <Server className="w-4 h-4 text-indigo-700" />
                     <span>Production Services & CI/CD Telemetry</span>
                   </h3>
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
                       <span className="text-[10px] font-bold uppercase text-emerald-700 flex items-center gap-1">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse" />
                         Next.js Frontend
                       </span>
                       <p className="text-sm font-extrabold text-slate-900 mt-1">Railway Production</p>
@@ -578,7 +617,7 @@ function DepartmentsContent() {
 
                     <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
                       <span className="text-[10px] font-bold uppercase text-indigo-700 flex items-center gap-1">
-                        <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-indigo-600 animate-pulse" />
                         FastAPI Engine
                       </span>
                       <p className="text-sm font-extrabold text-slate-900 mt-1">Python 3.11 Uvicorn</p>
@@ -587,7 +626,7 @@ function DepartmentsContent() {
 
                     <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
                       <span className="text-[10px] font-bold uppercase text-cyan-700 flex items-center gap-1">
-                        <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 animate-pulse" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-cyan-600 animate-pulse" />
                         PostgreSQL Store
                       </span>
                       <p className="text-sm font-extrabold text-slate-900 mt-1">Durable Key-Value</p>
@@ -643,7 +682,7 @@ function DepartmentsContent() {
                 {/* Operations Governance & Compliance Grid */}
                 <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-4">
                   <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-2">
-                    <ShieldCheck className="w-4 h-4 text-purple-600" />
+                    <ShieldCheck className="w-4 h-4 text-purple-700" />
                     <span>Governance & Executive Operations Telemetry</span>
                   </h3>
 
@@ -669,6 +708,79 @@ function DepartmentsContent() {
                 </div>
               </div>
             )}
+
+            {/* NEW WIDGET: RECENT ACTIVITIES & TELEMETRY STREAM */}
+            <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-2">
+                  <Activity className="w-4 h-4 text-emerald-700" />
+                  <span>Recent {currentDept.shortName} Activities & Stream</span>
+                </h3>
+                <span className="text-[10px] text-slate-400 font-mono">Live Telemetry</span>
+              </div>
+
+              <div className="space-y-2.5">
+                {(recentActivitiesMap[selectedDeptId] || []).map((act, idx) => (
+                  <div key={idx} className="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between gap-3 text-xs">
+                    <div className="flex items-center gap-3">
+                      <span className="w-2 h-2 rounded-full bg-emerald-600 shrink-0" />
+                      <div>
+                        <p className="font-semibold text-slate-900">{act.text}</p>
+                        <span className="text-[10px] text-slate-500">{act.time}</span>
+                      </div>
+                    </div>
+                    <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border shrink-0 ${act.badgeClass}`}>
+                      {act.badge}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* NEW WIDGET: DEPARTMENT ALERTS & ATTENTION QUEUE */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Operational Alerts */}
+              <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-3">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-2">
+                  <Bell className="w-4 h-4 text-cyan-700" />
+                  <span>Operational Alerts</span>
+                </h3>
+
+                <div className="space-y-2">
+                  {(alertsMap[selectedDeptId] || []).map((alt, idx) => (
+                    <div key={idx} className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-0.5">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                        <h4 className="text-xs font-bold text-slate-900">{alt.title}</h4>
+                      </div>
+                      <p className="text-[11px] text-slate-500 pl-5.5">{alt.desc}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Attention Queue */}
+              <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-3">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 text-amber-700" />
+                  <span>Attention Queue ({attentionMap[selectedDeptId]?.length || 0})</span>
+                </h3>
+
+                <div className="space-y-2">
+                  {(attentionMap[selectedDeptId] || []).map((att, idx) => (
+                    <div key={idx} className="p-3 rounded-xl bg-amber-50/60 border border-amber-200 flex items-center justify-between gap-2">
+                      <div>
+                        <h4 className="text-xs font-bold text-amber-950">{att.title}</h4>
+                        <span className="text-[10px] text-amber-800 font-semibold">{att.priority === "high" ? "High Priority" : "Action Needed"}</span>
+                      </div>
+                      <button className="px-2.5 py-1 rounded-lg bg-amber-200 hover:bg-amber-300 text-amber-900 font-bold text-[10px] transition shrink-0">
+                        {att.action}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
 
           </div>
 

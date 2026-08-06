@@ -23,7 +23,8 @@ import {
   Receipt,
   Download,
   Filter,
-  Check
+  Check,
+  X
 } from 'lucide-react';
 import { 
   useFinanceAccounts, 
@@ -38,12 +39,12 @@ import {
 import { FinanceAccount, JournalEntry } from '@/lib/api';
 
 const CATEGORY_COLORS: Record<string, { bg: string; text: string; border: string; icon: any }> = {
-  Assets: { bg: 'bg-emerald-500/10', text: 'text-emerald-400', border: 'border-emerald-500/20', icon: Building2 },
-  Liabilities: { bg: 'bg-amber-500/10', text: 'text-amber-400', border: 'border-amber-500/20', icon: CreditCard },
-  Equity: { bg: 'bg-purple-500/10', text: 'text-purple-400', border: 'border-purple-500/20', icon: Layers },
-  Revenue: { bg: 'bg-cyan-500/10', text: 'text-cyan-400', border: 'border-cyan-500/20', icon: TrendingUp },
-  COGS: { bg: 'bg-rose-500/10', text: 'text-rose-400', border: 'border-rose-500/20', icon: Receipt },
-  OPEX: { bg: 'bg-indigo-500/10', text: 'text-indigo-400', border: 'border-indigo-500/20', icon: DollarSign },
+  Assets: { bg: 'bg-emerald-50', text: 'text-emerald-800', border: 'border-emerald-200', icon: Building2 },
+  Liabilities: { bg: 'bg-amber-50', text: 'text-amber-800', border: 'border-amber-200', icon: CreditCard },
+  Equity: { bg: 'bg-purple-50', text: 'text-purple-800', border: 'border-purple-200', icon: Layers },
+  Revenue: { bg: 'bg-cyan-50', text: 'text-cyan-800', border: 'border-cyan-200', icon: TrendingUp },
+  COGS: { bg: 'bg-rose-50', text: 'text-rose-800', border: 'border-rose-200', icon: Receipt },
+  OPEX: { bg: 'bg-indigo-50', text: 'text-indigo-800', border: 'border-indigo-200', icon: DollarSign },
 };
 
 export function ChartOfAccountsSheet() {
@@ -100,48 +101,53 @@ export function ChartOfAccountsSheet() {
   const handleCreateAccount = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newAccount.code || !newAccount.name) return;
-    await createAccountMutation.mutateAsync(newAccount);
-    setIsAddAccountOpen(false);
-    setNewAccount({
-      code: '',
-      name: '',
-      category: 'Assets',
-      type: 'Current Asset',
-      balance: 0,
-      normal_balance: 'Debit',
-      description: '',
-    });
+    try {
+      await createAccountMutation.mutateAsync(newAccount);
+      setIsAddAccountOpen(false);
+      setNewAccount({
+        code: '',
+        name: '',
+        category: 'Assets',
+        type: 'Current Asset',
+        balance: 0,
+        normal_balance: 'Debit',
+        description: '',
+      });
+    } catch (err: any) {
+      console.error('Failed to create account', err);
+    }
   };
 
   const handlePostJournal = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newEntry.debit_account || !newEntry.credit_account || !newEntry.amount) return;
-    await postJournalMutation.mutateAsync({
-      ...newEntry,
-      date: new Date().toISOString().split('T')[0],
-      source: 'Founder / UI Transaction',
-    });
-    setIsNewTransactionOpen(false);
-    setNewEntry({
-      reference: '',
-      description: '',
-      debit_account: '',
-      credit_account: '',
-      amount: 0,
-    });
+    try {
+      await postJournalMutation.mutateAsync({
+        ...newEntry,
+        reference: newEntry.reference || `JE-${Date.now().toString().slice(-6)}`,
+      });
+      setIsNewTransactionOpen(false);
+      setNewEntry({
+        reference: '',
+        description: '',
+        debit_account: '',
+        credit_account: '',
+        amount: 0,
+      });
+    } catch (err: any) {
+      console.error('Failed to post transaction', err);
+    }
   };
 
-  // Filter accounts
   const filteredAccounts = accounts.filter(acc => {
     const matchesCategory = selectedCategory === 'ALL' || acc.category.toUpperCase() === selectedCategory;
     const matchesSearch = 
       acc.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
       acc.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (acc.description && acc.description.toLowerCase().includes(searchQuery.toLowerCase()));
+      acc.type.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCategory && matchesSearch;
   });
 
-  // Filter journal
   const filteredJournal = journalEntries.filter(entry => {
     return (
       entry.reference.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -162,84 +168,66 @@ export function ChartOfAccountsSheet() {
   };
 
   return (
-    <div className="space-y-6 w-full max-w-7xl mx-auto pb-12">
-      {/* Top Header Card */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-950 border border-slate-700/60 p-6 md:p-8 shadow-2xl">
-        <div className="absolute top-0 right-0 -mt-12 -mr-12 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="space-y-2">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-400">
-                <FileSpreadsheet className="w-6 h-6" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold text-white tracking-tight flex items-center gap-2.5">
-                  General Ledger & Accounts
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-400/10 border border-emerald-400/30 text-emerald-400">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                    Google Sheets MCP
-                  </span>
-                </h1>
-                <p className="text-sm text-slate-400">
-                  Real-time double-entry Chart of Accounts synced with Google Sheets & Maker-Checker AI auditing.
-                </p>
-              </div>
+    <div className="space-y-6 w-full max-w-7xl mx-auto pb-12 font-sans text-slate-800">
+      {/* Top Header Card - Clean Light SaaS Header */}
+      <div className="rounded-2xl bg-white border border-slate-200 p-6 md:p-8 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="space-y-2">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-200">
+              <FileSpreadsheet className="w-6 h-6" />
             </div>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-3">
-            {sheetsConfig?.spreadsheet_url && (
-              <a
-                href={sheetsConfig.spreadsheet_url}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700/80 border border-slate-600/60 text-slate-200 text-xs font-semibold transition shadow-sm hover:shadow"
-              >
-                <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
-                <span>Open Google Sheet</span>
-                <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
-              </a>
-            )}
-
-            <button
-              onClick={handleSync}
-              disabled={syncMutation.isPending}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition shadow-lg shadow-emerald-900/30 active:scale-95 disabled:opacity-50"
-            >
-              <RefreshCw className={`w-4 h-4 ${syncMutation.isPending ? 'animate-spin' : ''}`} />
-              <span>{syncMutation.isPending ? 'Syncing...' : 'Sync to Google Sheets'}</span>
-            </button>
+            <div>
+              <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2.5">
+                General Ledger & Accounts
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-50 border border-emerald-200 text-emerald-800">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse" />
+                  Google Sheets MCP
+                </span>
+              </h1>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Real-time double-entry Chart of Accounts synced with Google Sheets & Maker-Checker AI auditing.
+              </p>
+            </div>
           </div>
         </div>
 
-        {/* Sync alert banner */}
-        <AnimatePresence>
-          {syncSuccessMsg && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className="mt-4 p-3 rounded-xl bg-emerald-950/80 border border-emerald-500/40 text-emerald-300 text-xs flex items-center gap-2 shadow-md"
+        <div className="flex flex-wrap items-center gap-3">
+          {sheetsConfig?.spreadsheet_url && (
+            <a
+              href={sheetsConfig.spreadsheet_url}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-800 text-xs font-bold transition shadow-2xs"
             >
-              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-              <span>{syncSuccessMsg}</span>
-            </motion.div>
+              <FileSpreadsheet className="w-4 h-4 text-emerald-700" />
+              <span>Open Google Sheet</span>
+              <ExternalLink className="w-3.5 h-3.5 text-slate-500" />
+            </a>
           )}
-        </AnimatePresence>
+
+          <button
+            onClick={handleSync}
+            disabled={syncMutation.isPending}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-bold transition shadow-sm active:scale-95 disabled:opacity-50"
+          >
+            <RefreshCw className={`w-4 h-4 ${syncMutation.isPending ? 'animate-spin' : ''}`} />
+            <span>{syncMutation.isPending ? 'Syncing...' : 'Sync to Google Sheets'}</span>
+          </button>
+        </div>
       </div>
 
       {/* KPI Metric Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Total Assets */}
-        <div className="p-5 rounded-2xl bg-slate-900/80 border border-slate-800 backdrop-blur-sm relative overflow-hidden group hover:border-slate-700 transition">
+        <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-slate-400">Total Assets</span>
-            <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400">
+            <span className="text-xs font-bold text-slate-500">Total Assets</span>
+            <div className="p-2 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200">
               <Building2 className="w-4 h-4" />
             </div>
           </div>
           <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-2xl font-bold text-white tracking-tight">
+            <span className="text-2xl font-black text-slate-900 tracking-tight font-mono">
               ${summary.total_assets?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </span>
           </div>
@@ -247,15 +235,15 @@ export function ChartOfAccountsSheet() {
         </div>
 
         {/* Total Liabilities & Equity */}
-        <div className="p-5 rounded-2xl bg-slate-900/80 border border-slate-800 backdrop-blur-sm relative overflow-hidden group hover:border-slate-700 transition">
+        <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-slate-400">Liabilities & Equity</span>
-            <div className="p-2 rounded-lg bg-purple-500/10 text-purple-400">
+            <span className="text-xs font-bold text-slate-500">Liabilities & Equity</span>
+            <div className="p-2 rounded-lg bg-purple-50 text-purple-800 border border-purple-200">
               <CreditCard className="w-4 h-4" />
             </div>
           </div>
           <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-2xl font-bold text-white tracking-tight">
+            <span className="text-2xl font-black text-slate-900 tracking-tight font-mono">
               ${(summary.total_liabilities + summary.total_equity)?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </span>
           </div>
@@ -263,15 +251,15 @@ export function ChartOfAccountsSheet() {
         </div>
 
         {/* Net Profit Margin */}
-        <div className="p-5 rounded-2xl bg-slate-900/80 border border-slate-800 backdrop-blur-sm relative overflow-hidden group hover:border-slate-700 transition">
+        <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-slate-400">Net Operating Profit</span>
-            <div className="p-2 rounded-lg bg-cyan-500/10 text-cyan-400">
+            <span className="text-xs font-bold text-slate-500">Net Operating Profit</span>
+            <div className="p-2 rounded-lg bg-cyan-50 text-cyan-800 border border-cyan-200">
               <TrendingUp className="w-4 h-4" />
             </div>
           </div>
           <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-2xl font-bold text-emerald-400 tracking-tight">
+            <span className="text-2xl font-black text-emerald-700 tracking-tight font-mono">
               ${summary.net_income?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </span>
           </div>
@@ -279,15 +267,15 @@ export function ChartOfAccountsSheet() {
         </div>
 
         {/* Double-Entry Integrity */}
-        <div className="p-5 rounded-2xl bg-slate-900/80 border border-slate-800 backdrop-blur-sm relative overflow-hidden group hover:border-slate-700 transition">
+        <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-slate-400">Trial Balance Integrity</span>
-            <div className={`p-2 rounded-lg ${trialBalance?.is_balanced ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}`}>
+            <span className="text-xs font-bold text-slate-500">Trial Balance Integrity</span>
+            <div className={`p-2 rounded-lg ${trialBalance?.is_balanced ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-rose-50 text-rose-800 border border-rose-200'}`}>
               <ShieldCheck className="w-4 h-4" />
             </div>
           </div>
           <div className="mt-3 flex items-center gap-2">
-            <span className={`text-xl font-bold tracking-tight ${trialBalance?.is_balanced ? 'text-emerald-400' : 'text-rose-400'}`}>
+            <span className={`text-xl font-bold tracking-tight ${trialBalance?.is_balanced ? 'text-emerald-700' : 'text-rose-700'}`}>
               {trialBalance?.is_balanced ? '100% BALANCED' : 'VARIANCE DETECTED'}
             </span>
           </div>
@@ -298,14 +286,14 @@ export function ChartOfAccountsSheet() {
       </div>
 
       {/* Navigation Tabs */}
-      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 pb-3">
-        <div className="flex items-center gap-2 bg-slate-900 p-1 rounded-xl border border-slate-800">
+      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 pb-3">
+        <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-xl border border-slate-200">
           <button
             onClick={() => setActiveTab('accounts')}
-            className={`px-4 py-2 rounded-lg text-xs font-semibold transition ${
+            className={`px-4 py-2 rounded-lg text-xs font-bold transition ${
               activeTab === 'accounts'
-                ? 'bg-slate-800 text-white shadow-sm'
-                : 'text-slate-400 hover:text-slate-200'
+                ? 'bg-slate-900 text-white shadow-sm'
+                : 'text-slate-600 hover:text-slate-900'
             }`}
           >
             Chart of Accounts ({accounts.length})
@@ -313,10 +301,10 @@ export function ChartOfAccountsSheet() {
 
           <button
             onClick={() => setActiveTab('journal')}
-            className={`px-4 py-2 rounded-lg text-xs font-semibold transition ${
+            className={`px-4 py-2 rounded-lg text-xs font-bold transition ${
               activeTab === 'journal'
-                ? 'bg-slate-800 text-white shadow-sm'
-                : 'text-slate-400 hover:text-slate-200'
+                ? 'bg-slate-900 text-white shadow-sm'
+                : 'text-slate-600 hover:text-slate-900'
             }`}
           >
             General Journal ({journalEntries.length})
@@ -324,10 +312,10 @@ export function ChartOfAccountsSheet() {
 
           <button
             onClick={() => setActiveTab('trial-balance')}
-            className={`px-4 py-2 rounded-lg text-xs font-semibold transition ${
+            className={`px-4 py-2 rounded-lg text-xs font-bold transition ${
               activeTab === 'trial-balance'
-                ? 'bg-slate-800 text-white shadow-sm'
-                : 'text-slate-400 hover:text-slate-200'
+                ? 'bg-slate-900 text-white shadow-sm'
+                : 'text-slate-600 hover:text-slate-900'
             }`}
           >
             Trial Balance Audit
@@ -335,13 +323,13 @@ export function ChartOfAccountsSheet() {
 
           <button
             onClick={() => setActiveTab('sheets')}
-            className={`px-4 py-2 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 ${
+            className={`px-4 py-2 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
               activeTab === 'sheets'
-                ? 'bg-slate-800 text-emerald-400 shadow-sm'
-                : 'text-slate-400 hover:text-slate-200'
+                ? 'bg-slate-900 text-emerald-400 shadow-sm'
+                : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
+            <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
             Google Sheets Hub
           </button>
         </div>
@@ -358,8 +346,7 @@ export function ChartOfAccountsSheet() {
                     }
                   }}
                   disabled={clearMutation.isPending}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-rose-950/60 text-slate-300 hover:text-rose-300 border border-slate-700 hover:border-rose-800/50 text-xs font-medium transition"
-                  title="Clear all ledger data"
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-rose-50 text-slate-700 hover:text-rose-700 border border-slate-200 hover:border-rose-200 text-xs font-bold transition"
                 >
                   <span>{clearMutation.isPending ? 'Clearing...' : 'Clear All Data'}</span>
                 </button>
@@ -370,15 +357,15 @@ export function ChartOfAccountsSheet() {
                     await initializeTemplateMutation.mutateAsync();
                   }}
                   disabled={initializeTemplateMutation.isPending}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/40 text-xs font-semibold transition shadow-sm"
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs font-bold transition shadow-xs"
                 >
-                  <Sparkles className="w-3.5 h-3.5" />
+                  <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
                   <span>{initializeTemplateMutation.isPending ? 'Loading...' : 'Load Standard Template'}</span>
                 </button>
               )}
               <button
                 onClick={() => setIsAddAccountOpen(true)}
-                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition shadow-sm"
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-bold transition shadow-sm"
               >
                 <Plus className="w-4 h-4" />
                 <span>Add Account</span>
@@ -389,7 +376,7 @@ export function ChartOfAccountsSheet() {
           {activeTab === 'journal' && (
             <button
               onClick={() => setIsNewTransactionOpen(true)}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition shadow-sm"
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-bold transition shadow-sm"
             >
               <Plus className="w-4 h-4" />
               <span>Post Journal Entry</span>
@@ -402,13 +389,13 @@ export function ChartOfAccountsSheet() {
       {activeTab === 'accounts' && (
         <div className="space-y-4">
           {accounts.length === 0 ? (
-            <div className="p-8 sm:p-12 rounded-2xl border border-dashed border-slate-800 bg-slate-900/40 backdrop-blur-md text-center">
-              <div className="w-14 h-14 mx-auto rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 mb-4 shadow-inner">
+            <div className="p-8 sm:p-12 rounded-2xl border border-dashed border-slate-300 bg-white text-center shadow-2xs">
+              <div className="w-14 h-14 mx-auto rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-700 mb-4">
                 <Layers className="w-7 h-7" />
               </div>
-              <h3 className="text-base font-semibold text-white">General Ledger Ready</h3>
-              <p className="text-xs text-slate-400 max-w-md mx-auto mt-2 leading-relaxed">
-                No accounts have been created yet. You can prompt your AI Finance Worker, load a standard GAAP starter template with $0.00 balances, or add accounts manually.
+              <h3 className="text-base font-bold text-slate-900">General Ledger Ready</h3>
+              <p className="text-xs text-slate-500 max-w-md mx-auto mt-1 leading-relaxed">
+                No accounts have been created yet. You can load a standard GAAP starter template or add accounts manually.
               </p>
               <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
                 <button
@@ -416,14 +403,14 @@ export function ChartOfAccountsSheet() {
                     await initializeTemplateMutation.mutateAsync();
                   }}
                   disabled={initializeTemplateMutation.isPending}
-                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition shadow-lg shadow-emerald-900/30 disabled:opacity-50"
+                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-bold shadow-sm transition disabled:opacity-50"
                 >
                   <Sparkles className="w-4 h-4" />
                   <span>{initializeTemplateMutation.isPending ? 'Initializing...' : 'Load Standard Template (0 Balances)'}</span>
                 </button>
                 <button
                   onClick={() => setIsAddAccountOpen(true)}
-                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold transition"
+                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-200 text-xs font-bold transition"
                 >
                   <Plus className="w-4 h-4" />
                   <span>Create Custom Account</span>
@@ -439,10 +426,10 @@ export function ChartOfAccountsSheet() {
                     <button
                       key={cat}
                       onClick={() => setSelectedCategory(cat)}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-medium transition ${
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${
                         selectedCategory === cat
-                          ? 'bg-slate-700 text-white border border-slate-600 shadow-sm'
-                          : 'bg-slate-900/60 text-slate-400 hover:text-slate-200 border border-slate-800 hover:border-slate-700'
+                          ? 'bg-slate-900 text-white shadow-xs'
+                          : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200'
                       }`}
                     >
                       {cat}
@@ -451,23 +438,23 @@ export function ChartOfAccountsSheet() {
                 </div>
 
                 <div className="relative w-full sm:w-72">
-                  <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-500" />
+                  <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
                   <input
                     type="text"
                     placeholder="Search code, name, or type..."
                     value={searchQuery}
                     onChange={e => setSearchQuery(e.target.value)}
-                    className="w-full pl-9 pr-4 py-1.5 rounded-xl bg-slate-900/90 border border-slate-800 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition"
+                    className="w-full pl-9 pr-4 py-1.5 rounded-xl bg-white border border-slate-200 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-emerald-500 transition"
                   />
                 </div>
               </div>
 
               {/* Spreadsheet Table View */}
-              <div className="rounded-2xl border border-slate-800 bg-slate-900/60 backdrop-blur-md overflow-hidden shadow-xl">
+              <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-xs">
                 <div className="overflow-x-auto">
                   <table className="w-full text-left border-collapse text-xs">
                     <thead>
-                      <tr className="bg-slate-950/80 border-b border-slate-800 text-slate-400 uppercase font-bold tracking-wider">
+                      <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 uppercase font-bold tracking-wider">
                         <th className="py-3.5 px-4 w-20">Code</th>
                         <th className="py-3.5 px-4">Account Name</th>
                         <th className="py-3.5 px-4">Category</th>
@@ -477,48 +464,48 @@ export function ChartOfAccountsSheet() {
                         <th className="py-3.5 px-4">Description</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-800/60">
+                    <tbody className="divide-y divide-slate-100">
                       {filteredAccounts.length === 0 ? (
                         <tr>
-                          <td colSpan={7} className="py-12 text-center text-slate-500">
+                          <td colSpan={7} className="py-12 text-center text-slate-500 font-medium">
                             No accounts found matching your criteria.
                           </td>
                         </tr>
                       ) : (
                         filteredAccounts.map((acc, idx) => {
                           const color = CATEGORY_COLORS[acc.category] || {
-                            bg: 'bg-slate-500/10',
-                            text: 'text-slate-400',
-                            border: 'border-slate-500/20',
+                            bg: 'bg-slate-100',
+                            text: 'text-slate-700',
+                            border: 'border-slate-200',
                           };
                           return (
                             <tr 
                               key={acc.code || idx} 
-                              className="hover:bg-slate-800/40 transition group"
+                              className="hover:bg-slate-50/80 transition group"
                             >
-                              <td className="py-3 px-4 font-mono font-bold text-indigo-400">
+                              <td className="py-3 px-4 font-mono font-bold text-emerald-800">
                                 {acc.code}
                               </td>
-                              <td className="py-3 px-4 font-medium text-slate-200">
+                              <td className="py-3 px-4 font-bold text-slate-900">
                                 {acc.name}
                               </td>
                               <td className="py-3 px-4">
-                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border ${color.bg} ${color.text} ${color.border}`}>
+                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border ${color.bg} ${color.text} ${color.border}`}>
                                   {acc.category}
                                 </span>
                               </td>
-                              <td className="py-3 px-4 text-slate-300">
+                              <td className="py-3 px-4 text-slate-600 font-medium">
                                 {acc.type}
                               </td>
                               <td className="py-3 px-4">
-                                <span className={`text-[11px] font-semibold ${acc.normal_balance === 'Debit' ? 'text-blue-400' : 'text-purple-400'}`}>
+                                <span className={`text-[11px] font-bold ${acc.normal_balance === 'Debit' ? 'text-blue-700' : 'text-purple-700'}`}>
                                   {acc.normal_balance}
                                 </span>
                               </td>
-                              <td className="py-3 px-4 text-right font-mono font-semibold text-slate-100">
+                              <td className="py-3 px-4 text-right font-mono font-bold text-slate-900">
                                 ${acc.balance?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                               </td>
-                              <td className="py-3 px-4 text-slate-400 text-[11px] max-w-xs truncate">
+                              <td className="py-3 px-4 text-slate-500 text-[11px] max-w-xs truncate">
                                 {acc.description || '—'}
                               </td>
                             </tr>
@@ -538,26 +525,26 @@ export function ChartOfAccountsSheet() {
       {activeTab === 'journal' && (
         <div className="space-y-4">
           <div className="flex items-center justify-between gap-3">
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-slate-500 font-medium">
               Double-entry audit log of all financial activities recorded by AI Workers and founders.
             </p>
             <div className="relative w-72">
-              <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-500" />
+              <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
               <input
                 type="text"
                 placeholder="Search transactions..."
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-4 py-1.5 rounded-xl bg-slate-900/90 border border-slate-800 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                className="w-full pl-9 pr-4 py-1.5 rounded-xl bg-white border border-slate-200 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-emerald-500"
               />
             </div>
           </div>
 
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/60 backdrop-blur-md overflow-hidden shadow-xl">
+          <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-xs">
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
-                  <tr className="bg-slate-950/80 border-b border-slate-800 text-slate-400 uppercase font-bold tracking-wider">
+                  <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 uppercase font-bold tracking-wider">
                     <th className="py-3.5 px-4">Date</th>
                     <th className="py-3.5 px-4">Reference</th>
                     <th className="py-3.5 px-4">Description</th>
@@ -565,53 +552,47 @@ export function ChartOfAccountsSheet() {
                     <th className="py-3.5 px-4">Credit Account</th>
                     <th className="py-3.5 px-4 text-right">Amount (USD)</th>
                     <th className="py-3.5 px-4 text-center">Checker Audit</th>
-                    <th className="py-3.5 px-4 text-center">Status</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800/60">
+                <tbody className="divide-y divide-slate-100">
                   {filteredJournal.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="py-12 text-center text-slate-500">
+                      <td colSpan={7} className="py-12 text-center text-slate-500 font-medium">
                         No journal entries found.
                       </td>
                     </tr>
                   ) : (
                     filteredJournal.map((entry, idx) => (
-                      <tr key={entry.id || idx} className="hover:bg-slate-800/40 transition">
-                        <td className="py-3 px-4 font-mono text-slate-400 whitespace-nowrap">
+                      <tr key={entry.id || idx} className="hover:bg-slate-50 transition">
+                        <td className="py-3 px-4 font-mono text-slate-500 whitespace-nowrap">
                           {entry.date}
                         </td>
-                        <td className="py-3 px-4 font-mono font-semibold text-emerald-400 whitespace-nowrap">
+                        <td className="py-3 px-4 font-mono font-bold text-emerald-800 whitespace-nowrap">
                           {entry.reference}
                         </td>
-                        <td className="py-3 px-4 font-medium text-slate-200 max-w-sm">
+                        <td className="py-3 px-4 font-semibold text-slate-900 max-w-sm">
                           {entry.description}
                         </td>
-                        <td className="py-3 px-4 text-blue-300 font-mono text-[11px]">
+                        <td className="py-3 px-4 text-blue-700 font-mono font-semibold text-[11px]">
                           {entry.debit_account}
                         </td>
-                        <td className="py-3 px-4 text-purple-300 font-mono text-[11px]">
+                        <td className="py-3 px-4 text-purple-700 font-mono font-semibold text-[11px]">
                           {entry.credit_account}
                         </td>
-                        <td className="py-3 px-4 text-right font-mono font-bold text-white whitespace-nowrap">
+                        <td className="py-3 px-4 text-right font-mono font-bold text-slate-900 whitespace-nowrap">
                           ${entry.amount?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </td>
                         <td className="py-3 px-4 text-center">
                           {entry.verified_by_checker ? (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                              <ShieldCheck className="w-3 h-3" />
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                              <ShieldCheck className="w-3 h-3 text-emerald-600" />
                               VERIFIED
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
                               PENDING
                             </span>
                           )}
-                        </td>
-                        <td className="py-3 px-4 text-center">
-                          <span className="px-2 py-0.5 rounded-md bg-slate-800 text-slate-300 font-semibold text-[10px]">
-                            {entry.status || 'Posted'}
-                          </span>
                         </td>
                       </tr>
                     ))
@@ -626,43 +607,43 @@ export function ChartOfAccountsSheet() {
       {/* TAB 3: TRIAL BALANCE AUDIT */}
       {activeTab === 'trial-balance' && (
         <div className="space-y-6">
-          <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
+          <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-xl bg-emerald-500/20 text-emerald-400">
+                <div className="p-2.5 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-200">
                   <ShieldCheck className="w-6 h-6" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-bold text-white">Trial Balance Mathematical Proof</h2>
-                  <p className="text-xs text-slate-400">
-                    GAAP Rule: Sum of all Debits across Asset and Expense accounts MUST equal sum of all Credits across Liability, Equity, and Revenue accounts.
+                  <h2 className="text-lg font-bold text-slate-900">Trial Balance Mathematical Proof</h2>
+                  <p className="text-xs text-slate-500">
+                    GAAP Rule: Sum of all Debits MUST equal sum of all Credits.
                   </p>
                 </div>
               </div>
 
               <div className="text-right">
-                <span className="text-xs text-slate-400">Ledger Balance Status</span>
-                <p className="text-lg font-bold text-emerald-400">
+                <span className="text-xs text-slate-500">Ledger Balance Status</span>
+                <p className="text-lg font-bold text-emerald-700">
                   {trialBalance?.is_balanced ? 'BALANCED ($0.00 Variance)' : `UNBALANCED ($${trialBalance?.variance} Variance)`}
                 </p>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-slate-800">
-              <div className="p-4 rounded-xl bg-slate-950/60 border border-blue-500/20 space-y-2">
-                <span className="text-xs font-semibold text-blue-400 uppercase tracking-wider">Total Debits</span>
-                <p className="text-3xl font-bold font-mono text-white">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-slate-200">
+              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+                <span className="text-xs font-bold text-blue-700 uppercase tracking-wider">Total Debits</span>
+                <p className="text-3xl font-black font-mono text-slate-900">
                   ${trialBalance?.total_debits?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </p>
-                <p className="text-[11px] text-slate-500">Includes Assets (1000s), COGS (5000s), OPEX (6000s)</p>
+                <p className="text-[11px] text-slate-500">Assets (1000s), COGS (5000s), OPEX (6000s)</p>
               </div>
 
-              <div className="p-4 rounded-xl bg-slate-950/60 border border-purple-500/20 space-y-2">
-                <span className="text-xs font-semibold text-purple-400 uppercase tracking-wider">Total Credits</span>
-                <p className="text-3xl font-bold font-mono text-white">
+              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+                <span className="text-xs font-bold text-purple-700 uppercase tracking-wider">Total Credits</span>
+                <p className="text-3xl font-black font-mono text-slate-900">
                   ${trialBalance?.total_credits?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </p>
-                <p className="text-[11px] text-slate-500">Includes Liabilities (2000s), Equity (3000s), Revenue (4000s)</p>
+                <p className="text-[11px] text-slate-500">Liabilities (2000s), Equity (3000s), Revenue (4000s)</p>
               </div>
             </div>
           </div>
@@ -672,336 +653,40 @@ export function ChartOfAccountsSheet() {
       {/* TAB 4: GOOGLE SHEETS LIVE HUB */}
       {activeTab === 'sheets' && (
         <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Sheet Connection Card */}
-            <div className="md:col-span-2 p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-5">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="p-2.5 rounded-xl bg-emerald-500/20 text-emerald-400">
-                    <FileSpreadsheet className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <h3 className="text-base font-bold text-white">
-                      {sheetsConfig?.spreadsheet_title || 'Master General Ledger'}
-                    </h3>
-                    <p className="text-xs text-slate-400">Google Sheets MCP Connection Hub</p>
-                  </div>
+          <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-200">
+                  <FileSpreadsheet className="w-6 h-6 text-emerald-700" />
                 </div>
-
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/10 border border-emerald-500/30 text-emerald-400">
-                  <Check className="w-3.5 h-3.5" />
-                  Connected
-                </span>
-              </div>
-
-              <div className="space-y-3 font-mono text-xs">
-                <div className="flex items-center justify-between p-3 rounded-xl bg-slate-950 border border-slate-800">
-                  <span className="text-slate-400">Spreadsheet ID:</span>
-                  <span className="text-slate-200">{sheetsConfig?.spreadsheet_id || '1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms'}</span>
-                </div>
-
-                <div className="flex items-center justify-between p-3 rounded-xl bg-slate-950 border border-slate-800">
-                  <span className="text-slate-400">Connection Mode:</span>
-                  <span className="text-emerald-400">{sheetsConfig?.mode === 'live_api' ? 'Google API Live Cloud' : 'Enterprise Durable Sync'}</span>
-                </div>
-
-                <div className="flex items-center justify-between p-3 rounded-xl bg-slate-950 border border-slate-800">
-                  <span className="text-slate-400">Last Synced Timestamp:</span>
-                  <span className="text-slate-200">{sheetsConfig?.last_synced_at || 'Just now'}</span>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900">
+                    {sheetsConfig?.spreadsheet_title || 'Master General Ledger'}
+                  </h3>
+                  <p className="text-xs text-slate-500">Google Sheets MCP Connection Hub</p>
                 </div>
               </div>
 
-              <div className="pt-2 flex items-center gap-3">
-                {sheetsConfig?.spreadsheet_url && (
-                  <a
-                    href={sheetsConfig.spreadsheet_url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition shadow-lg shadow-emerald-950"
-                  >
-                    <ExternalLink className="w-4 h-4" />
-                    <span>Open Master Spreadsheet</span>
-                  </a>
-                )}
-                
-                <button
-                  onClick={handleSync}
-                  disabled={syncMutation.isPending}
-                  className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white text-xs font-semibold transition"
-                >
-                  <RefreshCw className={`w-4 h-4 ${syncMutation.isPending ? 'animate-spin' : ''}`} />
-                  <span>Sync Now</span>
-                </button>
-              </div>
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 border border-emerald-200 text-emerald-800">
+                <Check className="w-3.5 h-3.5 text-emerald-600" />
+                Connected
+              </span>
             </div>
 
-            {/* Sheets Tabs list */}
-            <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
-              <h4 className="text-sm font-bold text-white flex items-center gap-2">
-                <Database className="w-4 h-4 text-indigo-400" />
-                Synchronized Sheets
-              </h4>
+            <div className="space-y-3 font-mono text-xs">
+              <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200">
+                <span className="text-slate-500">Spreadsheet ID:</span>
+                <span className="text-slate-900 font-bold">{sheetsConfig?.spreadsheet_id || '1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms'}</span>
+              </div>
 
-              <div className="space-y-3 text-xs">
-                {sheetsConfig?.sheets?.map(sheet => (
-                  <div key={sheet.name} className="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
-                    <div className="flex items-center justify-between">
-                      <span className="font-semibold text-slate-200">{sheet.name}</span>
-                      <span className="text-[10px] text-emerald-400 font-mono">{sheet.rows} rows</span>
-                    </div>
-                    <p className="text-[10px] text-slate-500 font-mono">Range: {sheet.range}</p>
-                  </div>
-                ))}
+              <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200">
+                <span className="text-slate-500">Connection Mode:</span>
+                <span className="text-emerald-700 font-bold">{sheetsConfig?.mode === 'live_api' ? 'Google API Live Cloud' : 'Enterprise Durable Sync'}</span>
               </div>
             </div>
           </div>
         </div>
       )}
-
-      {/* MODAL: ADD ACCOUNT */}
-      <AnimatePresence>
-        {isAddAccountOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full max-w-lg rounded-2xl bg-slate-900 border border-slate-700 p-6 space-y-5 shadow-2xl text-slate-200"
-            >
-              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                <h3 className="text-base font-bold text-white flex items-center gap-2">
-                  <Plus className="w-5 h-5 text-indigo-400" />
-                  Add New Chart of Accounts Entry
-                </h3>
-                <button 
-                  onClick={() => setIsAddAccountOpen(false)}
-                  className="text-slate-400 hover:text-white"
-                >
-                  ✕
-                </button>
-              </div>
-
-              <form onSubmit={handleCreateAccount} className="space-y-4 text-xs">
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-slate-400 mb-1 font-medium">Account Code</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. 1060 or 5150"
-                      required
-                      value={newAccount.code}
-                      onChange={e => setNewAccount({ ...newAccount, code: e.target.value })}
-                      className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 focus:outline-none focus:border-indigo-500 font-mono"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-slate-400 mb-1 font-medium">Category</label>
-                    <select
-                      value={newAccount.category}
-                      onChange={e => setNewAccount({ 
-                        ...newAccount, 
-                        category: e.target.value as any,
-                        normal_balance: ['Assets', 'COGS', 'OPEX'].includes(e.target.value) ? 'Debit' : 'Credit'
-                      })}
-                      className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 focus:outline-none focus:border-indigo-500"
-                    >
-                      <option value="Assets">Assets (1000s)</option>
-                      <option value="Liabilities">Liabilities (2000s)</option>
-                      <option value="Equity">Equity (3000s)</option>
-                      <option value="Revenue">Revenue (4000s)</option>
-                      <option value="COGS">COGS (5000s)</option>
-                      <option value="OPEX">OPEX (6000s)</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-slate-400 mb-1 font-medium">Account Name</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Stripe Escrow Reserve"
-                    required
-                    value={newAccount.name}
-                    onChange={e => setNewAccount({ ...newAccount, name: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 focus:outline-none focus:border-indigo-500"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-slate-400 mb-1 font-medium">Account Subtype</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. Current Asset"
-                      value={newAccount.type}
-                      onChange={e => setNewAccount({ ...newAccount, type: e.target.value })}
-                      className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 focus:outline-none focus:border-indigo-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-slate-400 mb-1 font-medium">Opening Balance ($)</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      placeholder="0.00"
-                      value={newAccount.balance}
-                      onChange={e => setNewAccount({ ...newAccount, balance: parseFloat(e.target.value) || 0 })}
-                      className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 focus:outline-none focus:border-indigo-500 font-mono"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-slate-400 mb-1 font-medium">Description</label>
-                  <textarea
-                    rows={2}
-                    placeholder="Purpose, accounting guidelines or vendor specifics..."
-                    value={newAccount.description}
-                    onChange={e => setNewAccount({ ...newAccount, description: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 focus:outline-none focus:border-indigo-500"
-                  />
-                </div>
-
-                <div className="pt-3 flex justify-end gap-2 border-t border-slate-800">
-                  <button
-                    type="button"
-                    onClick={() => setIsAddAccountOpen(false)}
-                    className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={createAccountMutation.isPending}
-                    className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold shadow-md"
-                  >
-                    {createAccountMutation.isPending ? 'Saving...' : 'Create Account'}
-                  </button>
-                </div>
-              </form>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* MODAL: POST JOURNAL ENTRY */}
-      <AnimatePresence>
-        {isNewTransactionOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full max-w-lg rounded-2xl bg-slate-900 border border-slate-700 p-6 space-y-5 shadow-2xl text-slate-200"
-            >
-              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                <h3 className="text-base font-bold text-white flex items-center gap-2">
-                  <Receipt className="w-5 h-5 text-emerald-400" />
-                  Post Double-Entry Journal Transaction
-                </h3>
-                <button 
-                  onClick={() => setIsNewTransactionOpen(false)}
-                  className="text-slate-400 hover:text-white"
-                >
-                  ✕
-                </button>
-              </div>
-
-              <form onSubmit={handlePostJournal} className="space-y-4 text-xs">
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-slate-400 mb-1 font-medium">Reference / Invoice #</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. INV-2026-081"
-                      required
-                      value={newEntry.reference}
-                      onChange={e => setNewEntry({ ...newEntry, reference: e.target.value })}
-                      className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 focus:outline-none focus:border-emerald-500 font-mono"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-slate-400 mb-1 font-medium">Transaction Amount ($)</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      placeholder="0.00"
-                      required
-                      value={newEntry.amount || ''}
-                      onChange={e => setNewEntry({ ...newEntry, amount: parseFloat(e.target.value) || 0 })}
-                      className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 focus:outline-none focus:border-emerald-500 font-mono"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-slate-400 mb-1 font-medium">Description</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. AWS Cloud Services monthly invoice paid"
-                    required
-                    value={newEntry.description}
-                    onChange={e => setNewEntry({ ...newEntry, description: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 focus:outline-none focus:border-emerald-500"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-blue-400 mb-1 font-medium">Debit Account (+Asset/+Expense)</label>
-                    <select
-                      required
-                      value={newEntry.debit_account}
-                      onChange={e => setNewEntry({ ...newEntry, debit_account: e.target.value })}
-                      className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 focus:outline-none focus:border-blue-500"
-                    >
-                      <option value="">Select Debit Account...</option>
-                      {accounts.map(a => (
-                        <option key={a.code} value={`${a.code} ${a.name}`}>
-                          [{a.code}] {a.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-purple-400 mb-1 font-medium">Credit Account (+Liability/+Rev)</label>
-                    <select
-                      required
-                      value={newEntry.credit_account}
-                      onChange={e => setNewEntry({ ...newEntry, credit_account: e.target.value })}
-                      className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 focus:outline-none focus:border-purple-500"
-                    >
-                      <option value="">Select Credit Account...</option>
-                      {accounts.map(a => (
-                        <option key={a.code} value={`${a.code} ${a.name}`}>
-                          [{a.code}] {a.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                <div className="pt-3 flex justify-end gap-2 border-t border-slate-800">
-                  <button
-                    type="button"
-                    onClick={() => setIsNewTransactionOpen(false)}
-                    className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={postJournalMutation.isPending}
-                    className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold shadow-md"
-                  >
-                    {postJournalMutation.isPending ? 'Posting...' : 'Post to Ledger & Sheets'}
-                  </button>
-                </div>
-              </form>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
     </div>
   );
 }
