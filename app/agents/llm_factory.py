@@ -1,5 +1,5 @@
 import logging
-from typing import Optional
+from typing import Optional, List, Dict, Any
 from langchain_openai import ChatOpenAI
 from app.core.config import settings
 
@@ -44,14 +44,9 @@ NVIDIA_MODEL_MAP = {
     "mistral-small-24b": "mistralai/mixtral-8x7b-instruct-v0.1",
 }
 
-# Default model used when the user does not specify one for a new agent.
 DEFAULT_AGENT_MODEL_ID = "kimi-k3"
-
-# Model IDs that are known to be broken or unavailable on the provider.
-# They are silently remapped to the default so old agents don't crash the system.
 BROKEN_MODEL_IDS = {"llama-3.1-8b"}
 
-# Model display metadata for the frontend and agent defaults.
 MODEL_DISPLAY = {
     "kimi-k3": {"name": "Llama 3.3 70B", "provider": "Groq", "tier": "power"},
     "gpt-4o": {"name": "GPT-4o", "provider": "OpenAI", "tier": "standard"},
@@ -63,7 +58,6 @@ MODEL_DISPLAY = {
     "mistral-small-24b": {"name": "Mixtral 8x7B", "provider": "Groq", "tier": "fast"},
 }
 
-# Recommended defaults by role (worker specialization).
 DEFAULT_MODEL_BY_ROLE = {
     "Finance Manager": "kimi-k3",
     "Marketing Manager": "kimi-k3",
@@ -78,7 +72,6 @@ DEFAULT_MODEL_BY_ROLE = {
 
 
 def _groq_model_name(model_id: str) -> str:
-    """Return the Groq provider model ID, supporting a custom override env var."""
     custom = getattr(settings, "GROQ_CUSTOM_MODEL", None)
     if custom:
         return custom
@@ -86,7 +79,6 @@ def _groq_model_name(model_id: str) -> str:
 
 
 def _nvidia_model_name(model_id: str) -> str:
-    """Return the NVIDIA NIM provider model ID, supporting a custom override env var."""
     custom = getattr(settings, "NVIDIA_CUSTOM_MODEL", None)
     if custom:
         return custom
@@ -94,65 +86,54 @@ def _nvidia_model_name(model_id: str) -> str:
 
 
 def resolve_model(model_id: Optional[str], role: Optional[str] = None) -> tuple[str, str]:
-    """Resolve a requested model id to a known model and provider, falling back based on configured keys.
-
-    Supported providers:
-    NVIDIA NIM, Groq, Gemini/Google, OpenAI.
     """
-    has_nvidia = _is_valid_key(settings.NVIDIA_API_KEY)
+    Resolve a requested model id to a known model and provider, prioritizing high-reliability providers (Groq -> OpenAI -> NVIDIA -> Gemini).
+    """
     has_groq = _is_valid_key(settings.GROQ_API_KEY)
-    has_gemini = _is_valid_key(settings.GEMINI_API_KEY) or _is_valid_key(settings.GOOGLE_API_KEY)
     has_openai = _is_valid_key(settings.OPENAI_API_KEY)
+    has_nvidia = _is_valid_key(settings.NVIDIA_API_KEY)
+    has_gemini = _is_valid_key(settings.GEMINI_API_KEY) or _is_valid_key(settings.GOOGLE_API_KEY)
 
-    # Allow explicit provider selection via LLM_PROVIDER env var
+    # Allow explicit provider override via LLM_PROVIDER env var
     forced_provider = (getattr(settings, "LLM_PROVIDER", None) or "").strip().lower()
-    if forced_provider == "gemini" and has_gemini:
-        return "gemini-2.0-flash", "gemini"
-    elif forced_provider == "groq" and has_groq:
+    if forced_provider == "groq" and has_groq:
         return _groq_model_name(model_id or "kimi-k3"), "groq"
-    elif forced_provider == "nvidia" and has_nvidia:
-        return _nvidia_model_name(model_id or "kimi-k3"), "nvidia"
     elif forced_provider == "openai" and has_openai:
         return "gpt-4o-mini", "openai"
+    elif forced_provider == "nvidia" and has_nvidia:
+        return _nvidia_model_name(model_id or "kimi-k3"), "nvidia"
+    elif forced_provider == "gemini" and has_gemini:
+        return "gemini-2.0-flash", "gemini"
 
     if not model_id or model_id not in MODEL_REGISTRY or model_id in BROKEN_MODEL_IDS:
         model_id = DEFAULT_MODEL_BY_ROLE.get(role or "default", DEFAULT_MODEL_BY_ROLE["default"])
 
     model_name, default_provider = MODEL_REGISTRY[model_id]
 
-    # Handle OpenAI-native models (e.g. gpt-4o, gpt-4o-mini)
-    if default_provider == "openai":
-        if has_openai:
-            return model_name, "openai"
-        if has_gemini:
-            return "gemini-2.0-flash", "gemini"
-        if has_groq:
-            return _groq_model_name(model_id), "groq"
-        if has_nvidia:
-            return _nvidia_model_name(model_id), "nvidia"
-        return model_name, "openai"
-
-    # Handle open-weights models (kimi-k3, llama, qwen, deepseek, mistral)
-    if has_gemini and not has_groq and not has_nvidia:
-        return "gemini-2.0-flash", "gemini"
-    elif has_groq:
+    # Priority 1: Groq (Primary high-velocity provider)
+    if has_groq:
         return _groq_model_name(model_id), "groq"
-    elif has_nvidia:
-        return _nvidia_model_name(model_id), "nvidia"
-    elif has_gemini:
-        return "gemini-2.0-flash", "gemini"
-    elif has_openai:
+
+    # Priority 2: OpenAI
+    if has_openai:
         fallback_model = MODEL_REGISTRY["gpt-4o-mini"][0] if "gpt-4o-mini" in MODEL_REGISTRY else "gpt-4o"
         return fallback_model, "openai"
 
-    # Default fallback when no keys are configured yet
+    # Priority 3: NVIDIA NIM
+    if has_nvidia:
+        return _nvidia_model_name(model_id), "nvidia"
+
+    # Priority 4: Gemini (Fallback if explicitly configured)
+    if has_gemini:
+        return "gemini-2.0-flash", "gemini"
+
+    # Default fallback if no keys configured
     return model_name, default_provider
 
 
 def get_llm(model_id: Optional[str] = None, role: Optional[str] = None, temperature: float = 0.0):
     """
-    Build a ChatOpenAI instance for the requested model, using the appropriate
-    API key and base URL (NVIDIA NIM, Groq, Gemini, or OpenAI).
+    Build a ChatOpenAI instance for the requested model with automatic fallback.
     """
     model_name, provider = resolve_model(model_id, role)
 
@@ -172,17 +153,44 @@ def get_llm(model_id: Optional[str] = None, role: Optional[str] = None, temperat
     if not _is_valid_key(api_key):
         logger.warning(
             f"No valid API key configured for provider '{provider}'. "
-            "Please configure NVIDIA_API_KEY, GROQ_API_KEY, GEMINI_API_KEY, or OPENAI_API_KEY in your .env file."
+            "Please configure GROQ_API_KEY, OPENAI_API_KEY, NVIDIA_API_KEY, or GEMINI_API_KEY in your environment."
         )
 
     logger.info(f"Initializing LLM: requested={model_id!r}, role={role!r}, resolved_provider={provider}, resolved_model={model_name}")
 
-    return ChatOpenAI(
+    llm = ChatOpenAI(
         model=model_name,
         api_key=api_key,
         base_url=base_url,
         temperature=temperature,
     )
+
+    # Build fallbacks if secondary valid keys exist
+    fallbacks = []
+    if provider != "groq" and _is_valid_key(settings.GROQ_API_KEY):
+        fallbacks.append(ChatOpenAI(
+            model=_groq_model_name(model_id or "kimi-k3"),
+            api_key=settings.GROQ_API_KEY,
+            base_url="https://api.groq.com/openai/v1",
+            temperature=temperature
+        ))
+    if provider != "openai" and _is_valid_key(settings.OPENAI_API_KEY):
+        fallbacks.append(ChatOpenAI(
+            model="gpt-4o-mini",
+            api_key=settings.OPENAI_API_KEY,
+            temperature=temperature
+        ))
+    if provider != "nvidia" and _is_valid_key(settings.NVIDIA_API_KEY):
+        fallbacks.append(ChatOpenAI(
+            model=_nvidia_model_name(model_id or "kimi-k3"),
+            api_key=settings.NVIDIA_API_KEY,
+            base_url=settings.NVIDIA_BASE_URL,
+            temperature=temperature
+        ))
+
+    if fallbacks:
+        return llm.with_fallbacks(fallbacks)
+    return llm
 
 
 def list_available_models() -> list[dict]:
@@ -203,10 +211,7 @@ def list_available_models() -> list[dict]:
             provider_display = "OpenAI"
             actual_model = model_name
         else:
-            if has_nvidia and not has_groq:
-                provider_display = "NVIDIA NIM"
-                actual_model = _nvidia_model_name(model_id)
-            elif has_groq:
+            if has_groq:
                 provider_display = "Groq"
                 actual_model = _groq_model_name(model_id)
             elif has_nvidia:
