@@ -81,16 +81,6 @@
   --text-code-sm: 13px;
   --text-code-sm--line-height: 18px;
   --text-code-sm--font-weight: 400;
-
-  --spacing-base: 4px;
-  --spacing-xs: 8px;
-  --spacing-sm: 12px;
-  --spacing-md: 16px;
-  --spacing-lg: 24px;
-  --spacing-xl: 32px;
-  --spacing-xxl: 48px;
-  --spacing-gutter: 24px;
-  --spacing-container-max: 1440px;
 }
 
 @layer base {
