@@ -583,4 +583,24 @@ export const api = {
     if (!res.ok) throw new Error(`Failed to sync Google Sheets (${res.status})`);
     return res.json();
   },
+
+  clearFinanceData: async (): Promise<any> => {
+    const baseUrl = getBaseUrl();
+    const res = await authFetch(`${baseUrl}/api/v1/finance/clear`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    if (!res.ok) throw new Error(`Failed to clear finance data (${res.status})`);
+    return res.json();
+  },
+
+  initializeFinanceTemplate: async (): Promise<any> => {
+    const baseUrl = getBaseUrl();
+    const res = await authFetch(`${baseUrl}/api/v1/finance/initialize-template`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    if (!res.ok) throw new Error(`Failed to initialize template (${res.status})`);
+    return res.json();
+  },
 };

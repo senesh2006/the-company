@@ -313,3 +313,28 @@ export const useCreateAccount = () => {
     });
 };
 
+export const useClearFinanceData = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: api.clearFinanceData,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['finance-accounts'] });
+            queryClient.invalidateQueries({ queryKey: ['finance-journal'] });
+            queryClient.invalidateQueries({ queryKey: ['finance-sheets-config'] });
+        },
+    });
+};
+
+export const useInitializeFinanceTemplate = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: api.initializeFinanceTemplate,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['finance-accounts'] });
+            queryClient.invalidateQueries({ queryKey: ['finance-journal'] });
+            queryClient.invalidateQueries({ queryKey: ['finance-sheets-config'] });
+        },
+    });
+};
+
+

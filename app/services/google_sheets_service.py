@@ -8,103 +8,35 @@ from app.services.shared_memory import SharedMemoryService
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_CHART_OF_ACCOUNTS = [
+DEFAULT_CHART_OF_ACCOUNTS: List[Dict[str, Any]] = []
+DEFAULT_JOURNAL_ENTRIES: List[Dict[str, Any]] = []
+
+STANDARD_CHART_OF_ACCOUNTS_TEMPLATE = [
     # Assets (1000s)
-    {"code": "1000", "name": "Cash & Cash Equivalents", "category": "Assets", "type": "Current Asset", "balance": 48250.00, "normal_balance": "Debit", "description": "Primary operating cash"},
-    {"code": "1050", "name": "Silicon Valley Bank (Operating)", "category": "Assets", "type": "Current Asset", "balance": 35000.00, "normal_balance": "Debit", "description": "Primary checking account"},
-    {"code": "1100", "name": "Accounts Receivable (A/R)", "category": "Assets", "type": "Current Asset", "balance": 12400.00, "normal_balance": "Debit", "description": "Invoiced B2B contracts pending payment"},
-    {"code": "1200", "name": "Prepaid SaaS & Cloud Subscriptions", "category": "Assets", "type": "Current Asset", "balance": 3600.00, "normal_balance": "Debit", "description": "Annual prepaid software licenses"},
-    {"code": "1500", "name": "Computer Hardware & GPU Equipment", "category": "Assets", "type": "Fixed Asset", "balance": 15000.00, "normal_balance": "Debit", "description": "On-premise servers and MacBooks"},
+    {"code": "1000", "name": "Cash & Cash Equivalents", "category": "Assets", "type": "Current Asset", "balance": 0.00, "normal_balance": "Debit", "description": "Primary operating cash"},
+    {"code": "1050", "name": "Operating Bank Account", "category": "Assets", "type": "Current Asset", "balance": 0.00, "normal_balance": "Debit", "description": "Primary checking account"},
+    {"code": "1100", "name": "Accounts Receivable (A/R)", "category": "Assets", "type": "Current Asset", "balance": 0.00, "normal_balance": "Debit", "description": "Invoiced contracts pending payment"},
+    {"code": "1500", "name": "Computer Hardware & Equipment", "category": "Assets", "type": "Fixed Asset", "balance": 0.00, "normal_balance": "Debit", "description": "Servers, workstations and equipment"},
     
     # Liabilities (2000s)
-    {"code": "2000", "name": "Accounts Payable (A/P)", "category": "Liabilities", "type": "Current Liability", "balance": 4350.00, "normal_balance": "Credit", "description": "Vendor invoices due in 30 days"},
-    {"code": "2100", "name": "Accrued Payroll & Contractor Fees", "category": "Liabilities", "type": "Current Liability", "balance": 8500.00, "normal_balance": "Credit", "description": "Accrued workforce compensation"},
-    {"code": "2200", "name": "Brex Corporate Credit Card", "category": "Liabilities", "type": "Current Liability", "balance": 2850.00, "normal_balance": "Credit", "description": "Active credit card revolving balance"},
-    {"code": "2500", "name": "Deferred Subscription Revenue", "category": "Liabilities", "type": "Current Liability", "balance": 6000.00, "normal_balance": "Credit", "description": "Unearned revenue paid in advance"},
+    {"code": "2000", "name": "Accounts Payable (A/P)", "category": "Liabilities", "type": "Current Liability", "balance": 0.00, "normal_balance": "Credit", "description": "Vendor invoices due"},
+    {"code": "2200", "name": "Corporate Credit Card", "category": "Liabilities", "type": "Current Liability", "balance": 0.00, "normal_balance": "Credit", "description": "Active credit card balance"},
     
     # Equity (3000s)
-    {"code": "3000", "name": "Common Stock (Founder Capital)", "category": "Equity", "type": "Equity", "balance": 50000.00, "normal_balance": "Credit", "description": "Initial paid-in capital"},
-    {"code": "3100", "name": "Retained Earnings", "category": "Equity", "type": "Equity", "balance": 22500.00, "normal_balance": "Credit", "description": "Accumulated historical net earnings"},
+    {"code": "3000", "name": "Common Stock (Paid-in Capital)", "category": "Equity", "type": "Equity", "balance": 0.00, "normal_balance": "Credit", "description": "Initial founder capital"},
+    {"code": "3100", "name": "Retained Earnings", "category": "Equity", "type": "Equity", "balance": 0.00, "normal_balance": "Credit", "description": "Cumulative earnings"},
     
     # Revenue (4000s)
-    {"code": "4000", "name": "SaaS Platform Subscription Revenue", "category": "Revenue", "type": "Operating Revenue", "balance": 38500.00, "normal_balance": "Credit", "description": "Monthly recurring SaaS revenue (MRR)"},
-    {"code": "4100", "name": "AI Inference & API Usage Fees", "category": "Revenue", "type": "Operating Revenue", "balance": 14200.00, "normal_balance": "Credit", "description": "Usage-based metered billing"},
-    {"code": "4200", "name": "Professional AI Integration Services", "category": "Revenue", "type": "Operating Revenue", "balance": 7500.00, "normal_balance": "Credit", "description": "Enterprise deployment packages"},
+    {"code": "4000", "name": "Platform Subscription Revenue", "category": "Revenue", "type": "Operating Revenue", "balance": 0.00, "normal_balance": "Credit", "description": "Recurring subscription revenue"},
+    {"code": "4100", "name": "API & Usage Fees", "category": "Revenue", "type": "Operating Revenue", "balance": 0.00, "normal_balance": "Credit", "description": "Usage metered revenue"},
     
     # COGS (5000s)
-    {"code": "5000", "name": "AWS Cloud Hosting & Server Infrastructure", "category": "COGS", "type": "Cost of Goods Sold", "balance": 4850.00, "normal_balance": "Debit", "description": "AWS EC2, RDS, and S3 cluster infrastructure"},
-    {"code": "5100", "name": "LLM Inference & GPU API Costs (OpenAI / Anthropic)", "category": "COGS", "type": "Cost of Goods Sold", "balance": 3420.00, "normal_balance": "Debit", "description": "Token usage and model inference fees"},
-    {"code": "5200", "name": "Stripe & Payment Gateway Fees", "category": "COGS", "type": "Cost of Goods Sold", "balance": 890.00, "normal_balance": "Debit", "description": "Merchant processing fee (2.9% + $0.30)"},
+    {"code": "5000", "name": "Cloud Hosting & Server Infrastructure", "category": "COGS", "type": "Cost of Goods Sold", "balance": 0.00, "normal_balance": "Debit", "description": "Cloud hosting and compute"},
+    {"code": "5100", "name": "LLM Inference & API Costs", "category": "COGS", "type": "Cost of Goods Sold", "balance": 0.00, "normal_balance": "Debit", "description": "AI model token fees"},
     
     # OPEX (6000s)
-    {"code": "6000", "name": "Software Subscriptions & SaaS Tools", "category": "OPEX", "type": "Operating Expense", "balance": 2450.00, "normal_balance": "Debit", "description": "GitHub, Notion, Slack, Figma"},
-    {"code": "6100", "name": "Growth & Performance Marketing", "category": "OPEX", "type": "Operating Expense", "balance": 3200.00, "normal_balance": "Debit", "description": "Google Ads, LinkedIn campaigns"},
-    {"code": "6200", "name": "Legal, Compliance & SOX Audit", "category": "OPEX", "type": "Operating Expense", "balance": 1800.00, "normal_balance": "Debit", "description": "Corporate filings, compliance auditing"},
-    {"code": "6300", "name": "Bank & Wire Transfer Fees", "category": "OPEX", "type": "Operating Expense", "balance": 95.00, "normal_balance": "Debit", "description": "ACH, wire fees"},
-    {"code": "6500", "name": "Corporate Income Tax Reserve (21%)", "category": "OPEX", "type": "Operating Expense", "balance": 2150.00, "normal_balance": "Debit", "description": "Estimated quarterly tax provision"}
-]
-
-DEFAULT_JOURNAL_ENTRIES = [
-    {
-        "id": "je_1001",
-        "date": "2026-08-01",
-        "reference": "STRIPE-PAYOUT-0801",
-        "description": "Received monthly customer subscription revenue via Stripe",
-        "debit_account": "1050 Silicon Valley Bank (Operating)",
-        "credit_account": "4000 SaaS Platform Subscription Revenue",
-        "amount": 12500.00,
-        "verified_by_checker": True,
-        "status": "Posted",
-        "source": "AI Finance Worker (Maker-Checker)"
-    },
-    {
-        "id": "je_1002",
-        "date": "2026-08-02",
-        "reference": "AWS-INV-99201",
-        "description": "AWS Cloud Services monthly cluster hosting invoice paid",
-        "debit_account": "5000 AWS Cloud Hosting & Server Infrastructure",
-        "credit_account": "2200 Brex Corporate Credit Card",
-        "amount": 1420.50,
-        "verified_by_checker": True,
-        "status": "Posted",
-        "source": "AI Finance Worker (Maker-Checker)"
-    },
-    {
-        "id": "je_1003",
-        "date": "2026-08-03",
-        "reference": "OAI-TOKENS-202608",
-        "description": "OpenAI API inference token refill for AI agent fleet",
-        "debit_account": "5100 LLM Inference & GPU API Costs (OpenAI / Anthropic)",
-        "credit_account": "2200 Brex Corporate Credit Card",
-        "amount": 850.00,
-        "verified_by_checker": True,
-        "status": "Posted",
-        "source": "AI Finance Worker (Maker-Checker)"
-    },
-    {
-        "id": "je_1004",
-        "date": "2026-08-04",
-        "reference": "NOTION-SLACK-SUB",
-        "description": "Monthly team SaaS licenses (Notion, GitHub, Slack)",
-        "debit_account": "6000 Software Subscriptions & SaaS Tools",
-        "credit_account": "2200 Brex Corporate Credit Card",
-        "amount": 340.00,
-        "verified_by_checker": True,
-        "status": "Posted",
-        "source": "AI Finance Worker (Maker-Checker)"
-    },
-    {
-        "id": "je_1005",
-        "date": "2026-08-05",
-        "reference": "STRIPE-FEE-AUG",
-        "description": "Payment processing fees for August receivables",
-        "debit_account": "5200 Stripe & Payment Gateway Fees",
-        "credit_account": "1050 Silicon Valley Bank (Operating)",
-        "amount": 362.50,
-        "verified_by_checker": True,
-        "status": "Posted",
-        "source": "AI Finance Worker (Maker-Checker)"
-    }
+    {"code": "6000", "name": "Software Subscriptions & SaaS Tools", "category": "OPEX", "type": "Operating Expense", "balance": 0.00, "normal_balance": "Debit", "description": "Software tools and licenses"},
+    {"code": "6100", "name": "Growth & Marketing", "category": "OPEX", "type": "Operating Expense", "balance": 0.00, "normal_balance": "Debit", "description": "Marketing and acquisition"}
 ]
 
 
@@ -138,23 +70,49 @@ class GoogleSheetsService:
         """Ensure initial chart of accounts and journal entries exist in persistent memory."""
         raw_accounts = self.memory.get(self.business_id, "finance_chart_of_accounts")
         accounts = self._unpack_memory(raw_accounts, None)
-        if not accounts or not isinstance(accounts, list) or len(accounts) == 0:
+        if accounts is None:
             self.memory.set(
                 business_id=self.business_id,
                 key="finance_chart_of_accounts",
-                value=DEFAULT_CHART_OF_ACCOUNTS,
+                value=[],
                 tags=["finance", "google_sheets", "chart_of_accounts"]
             )
 
         raw_journal = self.memory.get(self.business_id, "finance_journal_entries")
         journal = self._unpack_memory(raw_journal, None)
-        if not journal or not isinstance(journal, list) or len(journal) == 0:
+        if journal is None:
             self.memory.set(
                 business_id=self.business_id,
                 key="finance_journal_entries",
-                value=DEFAULT_JOURNAL_ENTRIES,
+                value=[],
                 tags=["finance", "google_sheets", "journal"]
             )
+
+    def clear_all_data(self) -> Dict[str, Any]:
+        """Reset accounts and journal entries back to a clean empty state."""
+        self.memory.set(
+            business_id=self.business_id,
+            key="finance_chart_of_accounts",
+            value=[],
+            tags=["finance", "google_sheets", "chart_of_accounts"]
+        )
+        self.memory.set(
+            business_id=self.business_id,
+            key="finance_journal_entries",
+            value=[],
+            tags=["finance", "google_sheets", "journal"]
+        )
+        return {"status": "success", "message": "All financial accounts and journal entries cleared to empty."}
+
+    def initialize_standard_template(self) -> List[Dict[str, Any]]:
+        """Populate standard starter accounts structure with 0 balances."""
+        self.memory.set(
+            business_id=self.business_id,
+            key="finance_chart_of_accounts",
+            value=STANDARD_CHART_OF_ACCOUNTS_TEMPLATE,
+            tags=["finance", "google_sheets", "chart_of_accounts"]
+        )
+        return STANDARD_CHART_OF_ACCOUNTS_TEMPLATE
 
     def get_config(self) -> Dict[str, Any]:
         """Returns the current Google Sheets connection configuration and status."""

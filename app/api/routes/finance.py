@@ -92,3 +92,19 @@ def sync_with_google_sheets(user = Depends(get_current_user)):
     service = GoogleSheetsService(business_id=biz_id)
     result = service.sync_to_google_sheets()
     return result
+
+@router.post("/clear", response_model=Dict[str, Any])
+def clear_finance_data(user = Depends(get_current_user)):
+    """Clear all accounts and journal entries in the ledger to empty."""
+    biz_id = getattr(user, "business_id", "default-business-id") or "default-business-id"
+    service = GoogleSheetsService(business_id=biz_id)
+    return service.clear_all_data()
+
+@router.post("/initialize-template", response_model=Dict[str, Any])
+def initialize_standard_template(user = Depends(get_current_user)):
+    """Initialize a standard GAAP Chart of Accounts template with 0 initial balances."""
+    biz_id = getattr(user, "business_id", "default-business-id") or "default-business-id"
+    service = GoogleSheetsService(business_id=biz_id)
+    accounts = service.initialize_standard_template()
+    return {"status": "success", "accounts": accounts, "total_count": len(accounts)}
+

@@ -12,6 +12,7 @@ import {
   ClipboardList, 
   Database, 
   BarChart3, 
+  Building2,
   FileSpreadsheet,
   UserPlus, 
   ShieldCheck, 
@@ -51,9 +52,9 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
 
   const mainNavItems: NavItem[] = [
     { name: 'Dashboard', href: '/', icon: LayoutDashboard },
+    { name: 'Departments', href: '/departments', icon: Building2 },
     { name: 'AI Workers', href: '/agents', icon: Bot, badge: activeWorkerCount > 0 ? `${activeWorkerCount}` : undefined },
     { name: 'Tasks & Operations', href: '/tasks', icon: ClipboardList },
-    { name: 'Finance & Ledger', href: '/finance', icon: FileSpreadsheet },
     { name: 'Shared Memory', href: '/memory', icon: Database },
     { name: 'Cost & Analytics', href: '/analytics', icon: BarChart3 },
   ];

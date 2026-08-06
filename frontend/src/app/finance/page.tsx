@@ -1,11 +1,15 @@
 "use client";
 
-import { ChartOfAccountsSheet } from "@/components/finance/ChartOfAccountsSheet";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 export default function FinancePage() {
-  return (
-    <div className="p-4 md:p-8 space-y-8">
-      <ChartOfAccountsSheet />
-    </div>
-  );
+  const router = useRouter();
+
+  useEffect(() => {
+    router.replace("/departments?dept=finance");
+  }, [router]);
+
+  return null;
 }
+

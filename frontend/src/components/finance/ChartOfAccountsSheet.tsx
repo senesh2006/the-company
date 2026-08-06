@@ -31,7 +31,9 @@ import {
   useSheetsConfig, 
   useSyncSheets, 
   usePostJournalEntry,
-  useCreateAccount 
+  useCreateAccount,
+  useClearFinanceData,
+  useInitializeFinanceTemplate 
 } from '@/lib/queries';
 import { FinanceAccount, JournalEntry } from '@/lib/api';
 
@@ -59,6 +61,8 @@ export function ChartOfAccountsSheet() {
   const syncMutation = useSyncSheets();
   const createAccountMutation = useCreateAccount();
   const postJournalMutation = usePostJournalEntry();
+  const clearMutation = useClearFinanceData();
+  const initializeTemplateMutation = useInitializeFinanceTemplate();
 
   // Form states
   const [newAccount, setNewAccount] = useState<Partial<FinanceAccount>>({
@@ -343,15 +347,43 @@ export function ChartOfAccountsSheet() {
         </div>
 
         {/* Action Buttons */}
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {activeTab === 'accounts' && (
-            <button
-              onClick={() => setIsAddAccountOpen(true)}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition shadow-sm"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Add Account</span>
-            </button>
+            <>
+              {accounts.length > 0 && (
+                <button
+                  onClick={async () => {
+                    if (window.confirm('Are you sure you want to clear all accounts and journal entries? This will reset the ledger to empty.')) {
+                      await clearMutation.mutateAsync();
+                    }
+                  }}
+                  disabled={clearMutation.isPending}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-rose-950/60 text-slate-300 hover:text-rose-300 border border-slate-700 hover:border-rose-800/50 text-xs font-medium transition"
+                  title="Clear all ledger data"
+                >
+                  <span>{clearMutation.isPending ? 'Clearing...' : 'Clear All Data'}</span>
+                </button>
+              )}
+              {accounts.length === 0 && (
+                <button
+                  onClick={async () => {
+                    await initializeTemplateMutation.mutateAsync();
+                  }}
+                  disabled={initializeTemplateMutation.isPending}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/40 text-xs font-semibold transition shadow-sm"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>{initializeTemplateMutation.isPending ? 'Loading...' : 'Load Standard Template'}</span>
+                </button>
+              )}
+              <button
+                onClick={() => setIsAddAccountOpen(true)}
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition shadow-sm"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Add Account</span>
+              </button>
+            </>
           )}
 
           {activeTab === 'journal' && (
@@ -369,103 +401,136 @@ export function ChartOfAccountsSheet() {
       {/* TAB 1: CHART OF ACCOUNTS */}
       {activeTab === 'accounts' && (
         <div className="space-y-4">
-          {/* Filters & Search */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
-            <div className="flex flex-wrap items-center gap-1.5 w-full sm:w-auto">
-              {['ALL', 'ASSETS', 'LIABILITIES', 'EQUITY', 'REVENUE', 'COGS', 'OPEX'].map(cat => (
+          {accounts.length === 0 ? (
+            <div className="p-8 sm:p-12 rounded-2xl border border-dashed border-slate-800 bg-slate-900/40 backdrop-blur-md text-center">
+              <div className="w-14 h-14 mx-auto rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 mb-4 shadow-inner">
+                <Layers className="w-7 h-7" />
+              </div>
+              <h3 className="text-base font-semibold text-white">General Ledger Ready</h3>
+              <p className="text-xs text-slate-400 max-w-md mx-auto mt-2 leading-relaxed">
+                No accounts have been created yet. You can prompt your AI Finance Worker, load a standard GAAP starter template with $0.00 balances, or add accounts manually.
+              </p>
+              <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
                 <button
-                  key={cat}
-                  onClick={() => setSelectedCategory(cat)}
-                  className={`px-3 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wider transition ${
-                    selectedCategory === cat
-                      ? 'bg-slate-200 text-slate-900 font-extrabold'
-                      : 'bg-slate-900/60 text-slate-400 hover:bg-slate-800 hover:text-slate-200 border border-slate-800'
-                  }`}
+                  onClick={async () => {
+                    await initializeTemplateMutation.mutateAsync();
+                  }}
+                  disabled={initializeTemplateMutation.isPending}
+                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition shadow-lg shadow-emerald-900/30 disabled:opacity-50"
                 >
-                  {cat}
+                  <Sparkles className="w-4 h-4" />
+                  <span>{initializeTemplateMutation.isPending ? 'Initializing...' : 'Load Standard Template (0 Balances)'}</span>
                 </button>
-              ))}
+                <button
+                  onClick={() => setIsAddAccountOpen(true)}
+                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold transition"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Create Custom Account</span>
+                </button>
+              </div>
             </div>
+          ) : (
+            <>
+              {/* Filters & Search */}
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+                <div className="flex flex-wrap items-center gap-1.5 w-full sm:w-auto">
+                  {['ALL', 'ASSETS', 'LIABILITIES', 'EQUITY', 'REVENUE', 'COGS', 'OPEX'].map(cat => (
+                    <button
+                      key={cat}
+                      onClick={() => setSelectedCategory(cat)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-medium transition ${
+                        selectedCategory === cat
+                          ? 'bg-slate-700 text-white border border-slate-600 shadow-sm'
+                          : 'bg-slate-900/60 text-slate-400 hover:text-slate-200 border border-slate-800 hover:border-slate-700'
+                      }`}
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
 
-            <div className="relative w-full sm:w-72">
-              <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-500" />
-              <input
-                type="text"
-                placeholder="Search code, name, description..."
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-4 py-1.5 rounded-xl bg-slate-900/90 border border-slate-800 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500"
-              />
-            </div>
-          </div>
+                <div className="relative w-full sm:w-72">
+                  <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-500" />
+                  <input
+                    type="text"
+                    placeholder="Search code, name, or type..."
+                    value={searchQuery}
+                    onChange={e => setSearchQuery(e.target.value)}
+                    className="w-full pl-9 pr-4 py-1.5 rounded-xl bg-slate-900/90 border border-slate-800 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition"
+                  />
+                </div>
+              </div>
 
-          {/* Spreadsheet Table View */}
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/60 backdrop-blur-md overflow-hidden shadow-xl">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-xs">
-                <thead>
-                  <tr className="bg-slate-950/80 border-b border-slate-800 text-slate-400 uppercase font-bold tracking-wider">
-                    <th className="py-3.5 px-4 w-20">Code</th>
-                    <th className="py-3.5 px-4">Account Name</th>
-                    <th className="py-3.5 px-4">Category</th>
-                    <th className="py-3.5 px-4">Subtype</th>
-                    <th className="py-3.5 px-4">Normal Balance</th>
-                    <th className="py-3.5 px-4 text-right">Current Balance (USD)</th>
-                    <th className="py-3.5 px-4">Description</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800/60">
-                  {filteredAccounts.length === 0 ? (
-                    <tr>
-                      <td colSpan={7} className="py-12 text-center text-slate-500">
-                        No accounts found matching your criteria.
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredAccounts.map((acc, idx) => {
-                      const color = CATEGORY_COLORS[acc.category] || {
-                        bg: 'bg-slate-500/10',
-                        text: 'text-slate-400',
-                        border: 'border-slate-500/20',
-                      };
-                      return (
-                        <tr 
-                          key={acc.code || idx} 
-                          className="hover:bg-slate-800/40 transition group"
-                        >
-                          <td className="py-3 px-4 font-mono font-bold text-indigo-400">
-                            {acc.code}
-                          </td>
-                          <td className="py-3 px-4 font-medium text-slate-200">
-                            {acc.name}
-                          </td>
-                          <td className="py-3 px-4">
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border ${color.bg} ${color.text} ${color.border}`}>
-                              {acc.category}
-                            </span>
-                          </td>
-                          <td className="py-3 px-4 text-slate-400">
-                            {acc.type}
-                          </td>
-                          <td className="py-3 px-4">
-                            <span className={`text-[11px] font-semibold ${acc.normal_balance === 'Debit' ? 'text-blue-400' : 'text-purple-400'}`}>
-                              {acc.normal_balance}
-                            </span>
-                          </td>
-                          <td className="py-3 px-4 text-right font-mono font-semibold text-slate-100">
-                            ${acc.balance?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                          </td>
-                          <td className="py-3 px-4 text-slate-500 text-[11px] max-w-xs truncate">
-                            {acc.description || '—'}
+              {/* Spreadsheet Table View */}
+              <div className="rounded-2xl border border-slate-800 bg-slate-900/60 backdrop-blur-md overflow-hidden shadow-xl">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="bg-slate-950/80 border-b border-slate-800 text-slate-400 uppercase font-bold tracking-wider">
+                        <th className="py-3.5 px-4 w-20">Code</th>
+                        <th className="py-3.5 px-4">Account Name</th>
+                        <th className="py-3.5 px-4">Category</th>
+                        <th className="py-3.5 px-4">Subtype</th>
+                        <th className="py-3.5 px-4">Normal Balance</th>
+                        <th className="py-3.5 px-4 text-right">Current Balance (USD)</th>
+                        <th className="py-3.5 px-4">Description</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800/60">
+                      {filteredAccounts.length === 0 ? (
+                        <tr>
+                          <td colSpan={7} className="py-12 text-center text-slate-500">
+                            No accounts found matching your criteria.
                           </td>
                         </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
+                      ) : (
+                        filteredAccounts.map((acc, idx) => {
+                          const color = CATEGORY_COLORS[acc.category] || {
+                            bg: 'bg-slate-500/10',
+                            text: 'text-slate-400',
+                            border: 'border-slate-500/20',
+                          };
+                          return (
+                            <tr 
+                              key={acc.code || idx} 
+                              className="hover:bg-slate-800/40 transition group"
+                            >
+                              <td className="py-3 px-4 font-mono font-bold text-indigo-400">
+                                {acc.code}
+                              </td>
+                              <td className="py-3 px-4 font-medium text-slate-200">
+                                {acc.name}
+                              </td>
+                              <td className="py-3 px-4">
+                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border ${color.bg} ${color.text} ${color.border}`}>
+                                  {acc.category}
+                                </span>
+                              </td>
+                              <td className="py-3 px-4 text-slate-300">
+                                {acc.type}
+                              </td>
+                              <td className="py-3 px-4">
+                                <span className={`text-[11px] font-semibold ${acc.normal_balance === 'Debit' ? 'text-blue-400' : 'text-purple-400'}`}>
+                                  {acc.normal_balance}
+                                </span>
+                              </td>
+                              <td className="py-3 px-4 text-right font-mono font-semibold text-slate-100">
+                                ${acc.balance?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              </td>
+                              <td className="py-3 px-4 text-slate-400 text-[11px] max-w-xs truncate">
+                                {acc.description || '—'}
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </>
+          )}
         </div>
       )}
 
