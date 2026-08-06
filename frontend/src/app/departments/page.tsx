@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
@@ -109,7 +109,7 @@ const DEPARTMENTS: DepartmentMeta[] = [
   }
 ];
 
-export default function DepartmentsPage() {
+function DepartmentsContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const initialDept = searchParams?.get("dept") || "finance";
@@ -497,3 +497,12 @@ export default function DepartmentsPage() {
     </div>
   );
 }
+
+export default function DepartmentsPage() {
+  return (
+    <Suspense fallback={<div className="p-12 text-center text-slate-500 font-medium">Loading Departments...</div>}>
+      <DepartmentsContent />
+    </Suspense>
+  );
+}
+
