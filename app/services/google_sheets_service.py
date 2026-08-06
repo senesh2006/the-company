@@ -121,10 +121,24 @@ class GoogleSheetsService:
         self.spreadsheet_id = os.getenv("GOOGLE_SHEETS_SPREADSHEET_ID") or "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
         self._ensure_initialized()
 
+    def _unpack_memory(self, val: Any, default: Any) -> Any:
+        """Helper to unpack Supabase shared_memory record or json string."""
+        if val is None:
+            return default
+        if isinstance(val, dict) and "value" in val:
+            val = val["value"]
+        if isinstance(val, str):
+            try:
+                val = json.loads(val)
+            except Exception:
+                pass
+        return val if val is not None else default
+
     def _ensure_initialized(self):
         """Ensure initial chart of accounts and journal entries exist in persistent memory."""
-        accounts = self.memory.get(self.business_id, "finance_chart_of_accounts")
-        if not accounts:
+        raw_accounts = self.memory.get(self.business_id, "finance_chart_of_accounts")
+        accounts = self._unpack_memory(raw_accounts, None)
+        if not accounts or not isinstance(accounts, list) or len(accounts) == 0:
             self.memory.set(
                 business_id=self.business_id,
                 key="finance_chart_of_accounts",
@@ -132,8 +146,9 @@ class GoogleSheetsService:
                 tags=["finance", "google_sheets", "chart_of_accounts"]
             )
 
-        journal = self.memory.get(self.business_id, "finance_journal_entries")
-        if not journal:
+        raw_journal = self.memory.get(self.business_id, "finance_journal_entries")
+        journal = self._unpack_memory(raw_journal, None)
+        if not journal or not isinstance(journal, list) or len(journal) == 0:
             self.memory.set(
                 business_id=self.business_id,
                 key="finance_journal_entries",
@@ -149,7 +164,13 @@ class GoogleSheetsService:
             os.getenv("GOOGLE_API_KEY")
         )
         sheet_url = f"https://docs.google.com/spreadsheets/d/{self.spreadsheet_id}/edit"
-        last_sync = self.memory.get(self.business_id, "finance_last_sheets_sync") or datetime.utcnow().isoformat()
+        raw_sync = self.memory.get(self.business_id, "finance_last_sheets_sync")
+        last_sync = self._unpack_memory(raw_sync, datetime.utcnow().isoformat())
+        if isinstance(last_sync, dict):
+            last_sync = str(last_sync)
+
+        accounts = self.get_accounts()
+        journal = self.get_journal_entries()
 
         return {
             "spreadsheet_id": self.spreadsheet_id,
@@ -159,21 +180,33 @@ class GoogleSheetsService:
             "mode": "live_api" if has_credentials else "durable_sync",
             "last_synced_at": last_sync,
             "sheets": [
-                {"name": "Chart of Accounts", "rows": len(self.get_accounts()), "range": "Accounts!A1:G"},
-                {"name": "General Journal", "rows": len(self.get_journal_entries()), "range": "Journal!A1:H"},
-                {"name": "Trial Balance", "rows": len(self.get_accounts()) + 2, "range": "TrialBalance!A1:E"}
+                {"name": "Chart of Accounts", "rows": len(accounts), "range": "Accounts!A1:G"},
+                {"name": "General Journal", "rows": len(journal), "range": "Journal!A1:H"},
+                {"name": "Trial Balance", "rows": len(accounts) + 2, "range": "TrialBalance!A1:E"}
             ]
         }
 
     def get_accounts(self) -> List[Dict[str, Any]]:
         """Retrieve the Chart of Accounts list."""
-        accounts = self.memory.get(self.business_id, "finance_chart_of_accounts")
-        return accounts or DEFAULT_CHART_OF_ACCOUNTS
+        raw = self.memory.get(self.business_id, "finance_chart_of_accounts")
+        accounts = self._unpack_memory(raw, DEFAULT_CHART_OF_ACCOUNTS)
+        if isinstance(accounts, list):
+            cleaned = []
+            for acc in accounts:
+                if isinstance(acc, str):
+                    try:
+                        acc = json.loads(acc)
+                    except Exception:
+                        continue
+                if isinstance(acc, dict):
+                    cleaned.append(acc)
+            return cleaned if cleaned else DEFAULT_CHART_OF_ACCOUNTS
+        return DEFAULT_CHART_OF_ACCOUNTS
 
     def add_or_update_account(self, account: Dict[str, Any]) -> Dict[str, Any]:
         """Add or update an account in the Chart of Accounts."""
         accounts = self.get_accounts()
-        existing_idx = next((i for i, a in enumerate(accounts) if a["code"] == account["code"]), None)
+        existing_idx = next((i for i, a in enumerate(accounts) if isinstance(a, dict) and a.get("code") == account.get("code")), None)
         
         if existing_idx is not None:
             accounts[existing_idx].update(account)
@@ -192,8 +225,20 @@ class GoogleSheetsService:
 
     def get_journal_entries(self) -> List[Dict[str, Any]]:
         """Retrieve all recorded journal entries."""
-        entries = self.memory.get(self.business_id, "finance_journal_entries")
-        return entries or DEFAULT_JOURNAL_ENTRIES
+        raw = self.memory.get(self.business_id, "finance_journal_entries")
+        entries = self._unpack_memory(raw, DEFAULT_JOURNAL_ENTRIES)
+        if isinstance(entries, list):
+            cleaned = []
+            for entry in entries:
+                if isinstance(entry, str):
+                    try:
+                        entry = json.loads(entry)
+                    except Exception:
+                        continue
+                if isinstance(entry, dict):
+                    cleaned.append(entry)
+            return cleaned if cleaned else DEFAULT_JOURNAL_ENTRIES
+        return DEFAULT_JOURNAL_ENTRIES
 
     def post_journal_entry(self, entry: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -221,22 +266,24 @@ class GoogleSheetsService:
 
         # Update account balances
         accounts = self.get_accounts()
-        amt = float(entry.get("amount", 0))
+        amt = float(entry.get("amount", 0) or 0)
 
-        debit_code = entry.get("debit_account", "").split(" ")[0]
-        credit_code = entry.get("credit_account", "").split(" ")[0]
+        debit_code = str(entry.get("debit_account", "")).split(" ")[0]
+        credit_code = str(entry.get("credit_account", "")).split(" ")[0]
 
         for acc in accounts:
-            if acc["code"] == debit_code:
-                if acc["normal_balance"] == "Debit":
-                    acc["balance"] = round(acc.get("balance", 0) + amt, 2)
+            if not isinstance(acc, dict):
+                continue
+            if acc.get("code") == debit_code:
+                if acc.get("normal_balance") == "Debit":
+                    acc["balance"] = round(float(acc.get("balance", 0) or 0) + amt, 2)
                 else:
-                    acc["balance"] = round(acc.get("balance", 0) - amt, 2)
-            elif acc["code"] == credit_code:
-                if acc["normal_balance"] == "Credit":
-                    acc["balance"] = round(acc.get("balance", 0) + amt, 2)
+                    acc["balance"] = round(float(acc.get("balance", 0) or 0) - amt, 2)
+            elif acc.get("code") == credit_code:
+                if acc.get("normal_balance") == "Credit":
+                    acc["balance"] = round(float(acc.get("balance", 0) or 0) + amt, 2)
                 else:
-                    acc["balance"] = round(acc.get("balance", 0) - amt, 2)
+                    acc["balance"] = round(float(acc.get("balance", 0) or 0) - amt, 2)
 
         self.memory.set(
             business_id=self.business_id,
@@ -250,15 +297,47 @@ class GoogleSheetsService:
     def get_trial_balance(self) -> Dict[str, Any]:
         """Calculates total debits, credits, and verification integrity."""
         accounts = self.get_accounts()
-        total_debits = sum(a.get("balance", 0) for a in accounts if a.get("normal_balance") == "Debit")
-        total_credits = sum(a.get("balance", 0) for a in accounts if a.get("normal_balance") == "Credit")
+        total_debits = sum(
+            float(a.get("balance", 0) or 0)
+            for a in accounts
+            if isinstance(a, dict) and a.get("normal_balance") == "Debit"
+        )
+        total_credits = sum(
+            float(a.get("balance", 0) or 0)
+            for a in accounts
+            if isinstance(a, dict) and a.get("normal_balance") == "Credit"
+        )
 
-        total_assets = sum(a.get("balance", 0) for a in accounts if a.get("category") == "Assets")
-        total_liabilities = sum(a.get("balance", 0) for a in accounts if a.get("category") == "Liabilities")
-        total_equity = sum(a.get("balance", 0) for a in accounts if a.get("category") == "Equity")
-        total_revenue = sum(a.get("balance", 0) for a in accounts if a.get("category") == "Revenue")
-        total_cogs = sum(a.get("balance", 0) for a in accounts if a.get("category") == "COGS")
-        total_opex = sum(a.get("balance", 0) for a in accounts if a.get("category") == "OPEX")
+        total_assets = sum(
+            float(a.get("balance", 0) or 0)
+            for a in accounts
+            if isinstance(a, dict) and a.get("category") == "Assets"
+        )
+        total_liabilities = sum(
+            float(a.get("balance", 0) or 0)
+            for a in accounts
+            if isinstance(a, dict) and a.get("category") == "Liabilities"
+        )
+        total_equity = sum(
+            float(a.get("balance", 0) or 0)
+            for a in accounts
+            if isinstance(a, dict) and a.get("category") == "Equity"
+        )
+        total_revenue = sum(
+            float(a.get("balance", 0) or 0)
+            for a in accounts
+            if isinstance(a, dict) and a.get("category") == "Revenue"
+        )
+        total_cogs = sum(
+            float(a.get("balance", 0) or 0)
+            for a in accounts
+            if isinstance(a, dict) and a.get("category") == "COGS"
+        )
+        total_opex = sum(
+            float(a.get("balance", 0) or 0)
+            for a in accounts
+            if isinstance(a, dict) and a.get("category") == "OPEX"
+        )
 
         net_income = total_revenue - (total_cogs + total_opex)
 
@@ -313,16 +392,35 @@ class GoogleSheetsService:
             accounts = self.get_accounts()
             header = ["Code", "Account Name", "Category", "Type", "Normal Balance", "Balance (USD)", "Description"]
             rows = [
-                [a["code"], a["name"], a["category"], a["type"], a["normal_balance"], a["balance"], a.get("description", "")]
+                [
+                    a.get("code", ""),
+                    a.get("name", ""),
+                    a.get("category", ""),
+                    a.get("type", ""),
+                    a.get("normal_balance", ""),
+                    a.get("balance", 0.0),
+                    a.get("description", "")
+                ]
                 for a in accounts
+                if isinstance(a, dict)
             ]
             return [header] + rows
         elif "journal" in sheet_name.lower():
             journal = self.get_journal_entries()
             header = ["ID", "Date", "Reference", "Description", "Debit Account", "Credit Account", "Amount (USD)", "Status"]
             rows = [
-                [j["id"], j["date"], j["reference"], j["description"], j["debit_account"], j["credit_account"], j["amount"], j["status"]]
+                [
+                    j.get("id", ""),
+                    j.get("date", ""),
+                    j.get("reference", ""),
+                    j.get("description", ""),
+                    j.get("debit_account", ""),
+                    j.get("credit_account", ""),
+                    j.get("amount", 0.0),
+                    j.get("status", "")
+                ]
                 for j in journal
+                if isinstance(j, dict)
             ]
             return [header] + rows
         else:
