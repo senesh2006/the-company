@@ -34,7 +34,22 @@ import {
   SlidersHorizontal,
   Zap,
   RefreshCw,
-  Play
+  Play,
+  ChevronDown,
+  TrendingDown,
+  PieChart,
+  CheckSquare,
+  Square,
+  HelpCircle,
+  MessageSquare,
+  Mail,
+  Video,
+  Gift,
+  Share2,
+  ArrowUpRight,
+  Wallet,
+  Landmark,
+  FileText
 } from "lucide-react";
 import { useAgents, useMetrics } from "@/lib/queries";
 import { useAppStore } from "@/lib/store";
@@ -46,14 +61,32 @@ interface DepartmentMeta {
   shortName: string;
   description: string;
   icon: React.ComponentType<{ className?: string }>;
-  color: {
-    bg: string;
-    border: string;
-    text: string;
-    badge: string;
-    gradient: string;
-    ring: string;
+  accentColor: string;
+  badgeBg: string;
+  badgeText: string;
+  borderColor: string;
+  pulses: {
+    income: string;
+    expenses: string;
+    profit: string;
   };
+  metrics: {
+    receivable: string;
+    receivablePct: string;
+    payable: string;
+    payablePct: string;
+    pending: string;
+    pendingPct: string;
+  };
+  inflow: {
+    cashCollected: string;
+    bankCollection: string;
+    payables: string;
+    cashBalance: string;
+    bankBalance: string;
+    taxPayables: string;
+  };
+  checklist: { id: number; title: string; completed: boolean }[];
   keywords: string[];
 }
 
@@ -64,14 +97,41 @@ const DEPARTMENTS: DepartmentMeta[] = [
     shortName: "Accounting",
     description: "Autonomous general ledger, GAAP double-entry bookkeeping, Google Sheets live synchronization, and expense auditing.",
     icon: Briefcase,
-    color: {
-      bg: "bg-emerald-500/10",
-      border: "border-emerald-500/30",
-      text: "text-emerald-400",
-      badge: "bg-emerald-500/20 text-emerald-300 border-emerald-500/40",
-      gradient: "from-emerald-950/50 via-slate-900/80 to-slate-950/90",
-      ring: "ring-emerald-500/40"
+    accentColor: "emerald",
+    badgeBg: "bg-emerald-500/10",
+    badgeText: "text-emerald-400",
+    borderColor: "border-emerald-500/30",
+    pulses: {
+      income: "$200,000",
+      expenses: "$50,000",
+      profit: "$150,000"
     },
+    metrics: {
+      receivable: "$200,000",
+      receivablePct: "96.6%",
+      payable: "$150,000",
+      payablePct: "56.3%",
+      pending: "$150,000",
+      pendingPct: "45%"
+    },
+    inflow: {
+      cashCollected: "$100,000",
+      bankCollection: "$150,000",
+      payables: "$150,000",
+      cashBalance: "$200,000",
+      bankBalance: "$100,000",
+      taxPayables: "$120,000"
+    },
+    checklist: [
+      { id: 1, title: "Connect Google Sheets Ledger", completed: true },
+      { id: 2, title: "Hire Lead Accountant AI Worker", completed: true },
+      { id: 3, title: "Set Authority Limits & Spending Caps", completed: true },
+      { id: 4, title: "Enable GAAP Double-Entry Validation", completed: true },
+      { id: 5, title: "Configure Automated Trial Balance Audits", completed: false },
+      { id: 6, title: "Set Up Tax & Payroll Directives", completed: false },
+      { id: 7, title: "Configure Approval Thresholds", completed: false },
+      { id: 8, title: "Verify Multi-Currency Accounts", completed: false }
+    ],
     keywords: ["finance", "account", "bookkeeper", "ledger", "tax", "audit", "billing", "payroll"]
   },
   {
@@ -80,14 +140,41 @@ const DEPARTMENTS: DepartmentMeta[] = [
     shortName: "Marketing",
     description: "Autonomous demand generation, social presence, copywriting, SEO campaigns, and audience acquisition.",
     icon: Megaphone,
-    color: {
-      bg: "bg-cyan-500/10",
-      border: "border-cyan-500/30",
-      text: "text-cyan-400",
-      badge: "bg-cyan-500/20 text-cyan-300 border-cyan-500/40",
-      gradient: "from-cyan-950/50 via-slate-900/80 to-slate-950/90",
-      ring: "ring-cyan-500/40"
+    accentColor: "cyan",
+    badgeBg: "bg-cyan-500/10",
+    badgeText: "text-cyan-400",
+    borderColor: "border-cyan-500/30",
+    pulses: {
+      income: "$340,000",
+      expenses: "$82,000",
+      profit: "$258,000"
     },
+    metrics: {
+      receivable: "$340,000",
+      receivablePct: "98.2%",
+      payable: "$82,000",
+      payablePct: "32.1%",
+      pending: "$95,000",
+      pendingPct: "28%"
+    },
+    inflow: {
+      cashCollected: "$180,000",
+      bankCollection: "$160,000",
+      payables: "$82,000",
+      cashBalance: "$310,000",
+      bankBalance: "$240,000",
+      taxPayables: "$45,000"
+    },
+    checklist: [
+      { id: 1, title: "Setup Perplexity AI Web Search Tool", completed: true },
+      { id: 2, title: "Hire Growth Copywriter AI Agent", completed: true },
+      { id: 3, title: "Configure Social Campaign Directives", completed: true },
+      { id: 4, title: "Set Up Brand Voice Guidelines", completed: true },
+      { id: 5, title: "Integrate Notion Content Workspace", completed: false },
+      { id: 6, title: "Configure SEO Landing Page Pipeline", completed: false },
+      { id: 7, title: "Enable Automated Lead Scoring", completed: false },
+      { id: 8, title: "Connect Multi-Channel Analytics", completed: false }
+    ],
     keywords: ["market", "growth", "social", "copy", "brand", "seo", "content", "campaign"]
   },
   {
@@ -96,14 +183,41 @@ const DEPARTMENTS: DepartmentMeta[] = [
     shortName: "Engineering",
     description: "Autonomous software development, code generation, bug fixing, test automation, and infrastructure orchestration.",
     icon: Cpu,
-    color: {
-      bg: "bg-indigo-500/10",
-      border: "border-indigo-500/30",
-      text: "text-indigo-400",
-      badge: "bg-indigo-500/20 text-indigo-300 border-indigo-500/40",
-      gradient: "from-indigo-950/50 via-slate-900/80 to-slate-950/90",
-      ring: "ring-indigo-500/40"
+    accentColor: "indigo",
+    badgeBg: "bg-indigo-500/10",
+    badgeText: "text-indigo-400",
+    borderColor: "border-indigo-500/30",
+    pulses: {
+      income: "$490,000",
+      expenses: "$110,000",
+      profit: "$380,000"
     },
+    metrics: {
+      receivable: "$490,000",
+      receivablePct: "99.4%",
+      payable: "$110,000",
+      payablePct: "41.5%",
+      pending: "$120,000",
+      pendingPct: "35%"
+    },
+    inflow: {
+      cashCollected: "$290,000",
+      bankCollection: "$200,000",
+      payables: "$110,000",
+      cashBalance: "$450,000",
+      bankBalance: "$380,000",
+      taxPayables: "$65,000"
+    },
+    checklist: [
+      { id: 1, title: "Connect GitHub Repository Pipeline", completed: true },
+      { id: 2, title: "Hire Autonomous Code Architect Agent", completed: true },
+      { id: 3, title: "Configure PyTest & Automated Testing", completed: true },
+      { id: 4, title: "Enable Terminal Subprocess Sandbox", completed: true },
+      { id: 5, title: "Configure Railway Production Deployment", completed: true },
+      { id: 6, title: "Set Up FastAPI Endpoint Builders", completed: false },
+      { id: 7, title: "Configure MCP Server Integrations", completed: false },
+      { id: 8, title: "Verify Pull Request Auto-Reviews", completed: false }
+    ],
     keywords: ["engineer", "developer", "code", "tech", "software", "architect", "devops"]
   },
   {
@@ -112,14 +226,41 @@ const DEPARTMENTS: DepartmentMeta[] = [
     shortName: "Operations",
     description: "Autonomous cross-functional orchestration, market intelligence, executive triage, and shared memory governance.",
     icon: Layers,
-    color: {
-      bg: "bg-purple-500/10",
-      border: "border-purple-500/30",
-      text: "text-purple-400",
-      badge: "bg-purple-500/20 text-purple-300 border-purple-500/40",
-      gradient: "from-purple-950/50 via-slate-900/80 to-slate-950/90",
-      ring: "ring-purple-500/40"
+    accentColor: "purple",
+    badgeBg: "bg-purple-500/10",
+    badgeText: "text-purple-400",
+    borderColor: "border-purple-500/30",
+    pulses: {
+      income: "$280,000",
+      expenses: "$45,000",
+      profit: "$235,000"
     },
+    metrics: {
+      receivable: "$280,000",
+      receivablePct: "97.1%",
+      payable: "$45,000",
+      payablePct: "22.4%",
+      pending: "$60,000",
+      pendingPct: "18%"
+    },
+    inflow: {
+      cashCollected: "$150,000",
+      bankCollection: "$130,000",
+      payables: "$45,000",
+      cashBalance: "$260,000",
+      bankBalance: "$210,000",
+      taxPayables: "$30,000"
+    },
+    checklist: [
+      { id: 1, title: "Initialize Shared Memory Store", completed: true },
+      { id: 2, title: "Hire Lead Operations Orchestrator AI", completed: true },
+      { id: 3, title: "Set Up Maker-Checker Approval Gate", completed: true },
+      { id: 4, title: "Configure Executive Notification Triage", completed: true },
+      { id: 5, title: "Set Up Cross-Department Event Bus", completed: false },
+      { id: 6, title: "Configure Automated System Backups", completed: false },
+      { id: 7, title: "Verify Hierarchy Reporting Tree", completed: false },
+      { id: 8, title: "Enable SOX Compliance Audit Logging", completed: false }
+    ],
     keywords: ["ops", "lead", "orchestrator", "research", "analyst", "data", "executive", "admin"]
   }
 ];
@@ -130,19 +271,21 @@ function DepartmentsContent() {
   const initialDept = searchParams?.get("dept") || "finance";
   
   const [selectedDeptId, setSelectedDeptId] = useState<string>(initialDept);
-  const [activeTab, setActiveTab] = useState<"workforce" | "workspace" | "activity">("workforce");
-  const [workerSearchQuery, setWorkerSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"all" | "Running" | "Idle">("all");
-  
+  const [timeframe, setTimeframe] = useState<"Weekly" | "Monthly" | "Quarterly">("Weekly");
+  const [activeTab, setActiveTab] = useState<"dashboard" | "workspace" | "workforce">("dashboard");
+  const [deptChecklist, setDeptChecklist] = useState<{ id: number; title: string; completed: boolean }[]>([]);
+
   // Directive Dispatcher Modal State
   const [isDispatchModalOpen, setIsDispatchModalOpen] = useState(false);
   const [directivePrompt, setDirectivePrompt] = useState("");
   const [isDispatching, setIsDispatching] = useState(false);
   const [dispatchSuccess, setDispatchSuccess] = useState(false);
 
-  const { data: rawAgents, isLoading: agentsLoading } = useAgents();
-  const { data: metrics } = useMetrics();
+  const { data: rawAgents } = useAgents();
   const { setSelectedAgentId } = useAppStore();
+
+  const agents = rawAgents || [];
+  const currentDept = DEPARTMENTS.find(d => d.id === selectedDeptId) || DEPARTMENTS[0];
 
   useEffect(() => {
     const dept = searchParams?.get("dept");
@@ -151,15 +294,21 @@ function DepartmentsContent() {
     }
   }, [searchParams]);
 
+  useEffect(() => {
+    setDeptChecklist(currentDept.checklist);
+  }, [currentDept]);
+
   const handleSelectDept = (deptId: string) => {
     setSelectedDeptId(deptId);
     router.replace(`/departments?dept=${deptId}`);
   };
 
-  const agents = rawAgents || [];
-  const currentDept = DEPARTMENTS.find(d => d.id === selectedDeptId) || DEPARTMENTS[0];
+  const toggleChecklistItem = (id: number) => {
+    setDeptChecklist(prev =>
+      prev.map(item => item.id === id ? { ...item, completed: !item.completed } : item)
+    );
+  };
 
-  // Helper to match agents to departments
   const getDeptAgents = (dept: DepartmentMeta) => {
     return agents.filter((a: any) => {
       const roleStr = `${a.role || ""} ${a.name || ""}`.toLowerCase();
@@ -168,21 +317,8 @@ function DepartmentsContent() {
   };
 
   const currentDeptAgents = getDeptAgents(currentDept);
-  const runningWorkersCount = currentDeptAgents.filter(a => a.status === 'Running').length;
-  const idleWorkersCount = currentDeptAgents.filter(a => a.status === 'Idle' || !a.status).length;
-  const currentDeptCost = currentDeptAgents.reduce((sum, a) => sum + (a.cost_today_usd || 0), 0);
-  const totalFleetCost = agents.reduce((sum, a) => sum + (a.cost_today_usd || 0), 0);
-
-  // Filtered workers for current department
-  const filteredWorkers = currentDeptAgents.filter((agent: any) => {
-    const nameMatch = (agent.name || "").toLowerCase().includes(workerSearchQuery.toLowerCase());
-    const roleMatch = (agent.role || "").toLowerCase().includes(workerSearchQuery.toLowerCase());
-    const taskMatch = (agent.current_task_title || "").toLowerCase().includes(workerSearchQuery.toLowerCase());
-    const passesSearch = nameMatch || roleMatch || taskMatch;
-    
-    if (statusFilter === "all") return passesSearch;
-    return passesSearch && agent.status === statusFilter;
-  });
+  const completedTasksCount = deptChecklist.filter(c => c.completed).length;
+  const DeptIcon = currentDept.icon;
 
   const handleDispatchDirective = (e: React.FormEvent) => {
     e.preventDefault();
@@ -200,619 +336,593 @@ function DepartmentsContent() {
     }, 1000);
   };
 
-  const DeptIcon = currentDept.icon;
-
   return (
-    <div className="space-y-8 pb-20 text-slate-100 font-sans">
-      {/* 1. Header & Overview Stats Bar */}
-      <div className="flex flex-col gap-6 border-b border-slate-800/80 pb-6">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 mb-1.5">
-              <Building2 className="w-4 h-4 text-indigo-400" />
-              <span>Company Organization</span>
-              <ChevronRight className="w-3 h-3 text-slate-600" />
-              <span className="text-slate-200">Departments & AI Workforces</span>
-            </div>
-            <h1 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight flex items-center gap-3">
-              <span>Departments Hub</span>
-              <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
-                4 Autonomous Units
-              </span>
-            </h1>
-            <p className="text-xs md:text-sm text-slate-400 mt-1 max-w-2xl">
-              Specialized functional business units operating autonomous AI workers, shared memory, and domain workspace tools.
-            </p>
+    <div className="space-y-6 pb-20 text-slate-100 font-sans">
+      {/* 1. MUNIM-INSPIRED SaaS TOP BAR */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-slate-900/90 p-4 rounded-2xl border border-slate-800 backdrop-blur-xl shadow-xl">
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-xs font-bold text-slate-200">
+            <Building2 className="w-4 h-4 text-indigo-400" />
+            <span>Company:</span>
+            <select
+              value={selectedDeptId}
+              onChange={(e) => handleSelectDept(e.target.value)}
+              className="bg-transparent text-indigo-300 font-bold focus:outline-none cursor-pointer"
+            >
+              {DEPARTMENTS.map(d => (
+                <option key={d.id} value={d.id} className="bg-slate-900 text-white">
+                  {d.name}
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="w-3.5 h-3.5 text-slate-500" />
           </div>
 
-          <div className="flex items-center gap-3 self-start md:self-auto">
-            <button
-              onClick={() => setIsDispatchModalOpen(true)}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold shadow-lg shadow-emerald-950/50 transition active:scale-95"
-            >
-              <Zap className="w-4 h-4" />
-              <span>Dispatch Department Objective</span>
-            </button>
-            <Link
-              href="/hire"
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-200 text-xs font-semibold transition active:scale-95"
-            >
-              <UserPlus className="w-4 h-4 text-indigo-400" />
-              <span>Recruit Specialist</span>
-            </Link>
+          <div className="hidden sm:flex items-center gap-2">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Department Units:</span>
+            <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800">
+              {DEPARTMENTS.map(dept => {
+                const isSelected = dept.id === selectedDeptId;
+                return (
+                  <button
+                    key={dept.id}
+                    onClick={() => handleSelectDept(dept.id)}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+                      isSelected
+                        ? "bg-indigo-600 text-white shadow-sm"
+                        : "text-slate-400 hover:text-slate-200 hover:bg-slate-900"
+                    }`}
+                  >
+                    <dept.icon className="w-3.5 h-3.5" />
+                    <span>{dept.shortName}</span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
 
-        {/* Global Department Fleet Metrics */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <div className="p-3.5 rounded-2xl bg-slate-900/60 border border-slate-800 backdrop-blur-md">
-            <div className="flex items-center justify-between text-slate-400 mb-1">
-              <span className="text-[11px] font-semibold">Total Workforce</span>
-              <Bot className="w-4 h-4 text-indigo-400" />
-            </div>
-            <div className="flex items-baseline gap-2">
-              <span className="text-xl font-black text-white">{agents.length}</span>
-              <span className="text-[10px] text-emerald-400 font-semibold flex items-center gap-0.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                Live Fleet
-              </span>
-            </div>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 bg-slate-950 px-3 py-1.5 rounded-xl border border-slate-800 text-xs">
+            <span className="text-slate-400 font-medium">Cadence:</span>
+            <select
+              value={timeframe}
+              onChange={(e: any) => setTimeframe(e.target.value)}
+              className="bg-transparent text-emerald-400 font-bold focus:outline-none cursor-pointer"
+            >
+              <option value="Weekly" className="bg-slate-900 text-white">Weekly</option>
+              <option value="Monthly" className="bg-slate-900 text-white">Monthly</option>
+              <option value="Quarterly" className="bg-slate-900 text-white">Quarterly</option>
+            </select>
           </div>
 
-          <div className="p-3.5 rounded-2xl bg-slate-900/60 border border-slate-800 backdrop-blur-md">
-            <div className="flex items-center justify-between text-slate-400 mb-1">
-              <span className="text-[11px] font-semibold">Active Execution</span>
-              <Activity className="w-4 h-4 text-emerald-400" />
-            </div>
-            <div className="flex items-baseline gap-2">
-              <span className="text-xl font-black text-white">
-                {agents.filter(a => a.status === 'Running').length}
-              </span>
-              <span className="text-[10px] text-slate-400">
-                / {agents.length} running tasks
-              </span>
-            </div>
-          </div>
-
-          <div className="p-3.5 rounded-2xl bg-slate-900/60 border border-slate-800 backdrop-blur-md">
-            <div className="flex items-center justify-between text-slate-400 mb-1">
-              <span className="text-[11px] font-semibold">Fleet Spend Today</span>
-              <DollarSign className="w-4 h-4 text-cyan-400" />
-            </div>
-            <div className="flex items-baseline gap-2">
-              <span className="text-xl font-black text-white font-mono">${totalFleetCost.toFixed(2)}</span>
-              <span className="text-[10px] text-cyan-400 font-semibold">LLM Tokens</span>
-            </div>
-          </div>
-
-          <div className="p-3.5 rounded-2xl bg-slate-900/60 border border-slate-800 backdrop-blur-md">
-            <div className="flex items-center justify-between text-slate-400 mb-1">
-              <span className="text-[11px] font-semibold">Department Policy</span>
-              <ShieldCheck className="w-4 h-4 text-amber-400" />
-            </div>
-            <div className="flex items-baseline gap-2">
-              <span className="text-sm font-bold text-slate-200">Maker-Checker</span>
-              <span className="text-[10px] text-amber-400 font-medium">SOX Guardrails</span>
-            </div>
-          </div>
+          <button
+            onClick={() => setIsDispatchModalOpen(true)}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-emerald-600 hover:from-indigo-500 hover:to-emerald-500 text-white text-xs font-bold shadow-lg transition active:scale-95"
+          >
+            <Zap className="w-4 h-4" />
+            <span>Prompt Department</span>
+          </button>
         </div>
       </div>
 
-      {/* 2. Department Selector Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-        {DEPARTMENTS.map((dept) => {
-          const isSelected = dept.id === selectedDeptId;
-          const deptAgents = getDeptAgents(dept);
-          const activeCount = deptAgents.filter(a => a.status === 'Running').length;
-          const deptCost = deptAgents.reduce((sum, a) => sum + (a.cost_today_usd || 0), 0);
-          const Icon = dept.icon;
-
-          return (
-            <button
-              key={dept.id}
-              onClick={() => handleSelectDept(dept.id)}
-              className={`p-4 rounded-2xl text-left border transition-all duration-200 relative overflow-hidden group ${
-                isSelected
-                  ? `bg-slate-900/95 border-slate-700 shadow-2xl ring-2 ${dept.color.ring}`
-                  : `bg-slate-950/60 border-slate-800/80 hover:bg-slate-900/60 hover:border-slate-700`
-              }`}
-            >
-              <div className="flex items-start justify-between">
-                <div className={`p-2.5 rounded-xl ${dept.color.bg} ${dept.color.text} border ${dept.color.border} shadow-inner`}>
-                  <Icon className="w-5 h-5" />
-                </div>
-                <div className="flex flex-col items-end gap-1">
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${dept.color.badge}`}>
-                    {deptAgents.length} {deptAgents.length === 1 ? 'Worker' : 'Workers'}
-                  </span>
-                  {activeCount > 0 && (
-                    <span className="text-[9px] font-bold text-emerald-400 flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                      {activeCount} active
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              <div className="mt-3.5">
-                <h3 className="text-sm font-bold text-white group-hover:text-indigo-300 transition flex items-center justify-between">
-                  <span>{dept.name}</span>
-                </h3>
-                <div className="flex items-center justify-between mt-1 pt-2 border-t border-slate-900 text-[11px] text-slate-400">
-                  <span>Daily Spend</span>
-                  <span className="font-mono text-slate-200 font-semibold">${deptCost.toFixed(2)}</span>
-                </div>
-              </div>
-
-              {isSelected && (
-                <motion.div
-                  layoutId="activeDeptIndicator"
-                  className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-500 via-emerald-500 to-cyan-500"
-                />
-              )}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* 3. Selected Department Hero Banner */}
-      <div className={`rounded-3xl border ${currentDept.color.border} bg-gradient-to-b ${currentDept.color.gradient} p-6 md:p-8 backdrop-blur-2xl relative overflow-hidden shadow-2xl space-y-6`}>
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-6 border-b border-slate-800/80">
-          <div className="flex items-start gap-4">
-            <div className={`p-4 rounded-2xl ${currentDept.color.bg} ${currentDept.color.text} border ${currentDept.color.border} shadow-2xl`}>
-              <DeptIcon className="w-8 h-8" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2.5 flex-wrap">
-                <h2 className="text-xl md:text-2xl font-extrabold text-white tracking-tight">
-                  {currentDept.name}
-                </h2>
-                <span className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-md border ${currentDept.color.badge}`}>
-                  Autonomous Department Unit
-                </span>
-              </div>
-              <p className="text-xs md:text-sm text-slate-300 mt-1 max-w-2xl leading-relaxed">
-                {currentDept.description}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3 flex-wrap sm:flex-nowrap">
-            <button
-              onClick={() => setIsDispatchModalOpen(true)}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-md transition"
-            >
-              <Send className="w-3.5 h-3.5" />
-              <span>Prompt {currentDept.shortName} Fleet</span>
-            </button>
-            <Link
-              href={`/hire?department=${encodeURIComponent(currentDept.name)}`}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-900/90 hover:bg-slate-800 border border-slate-700 text-slate-200 text-xs font-semibold transition"
-            >
-              <Plus className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Hire Specialist</span>
-            </Link>
-          </div>
-        </div>
-
-        {/* Department KPIs Bar */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <div className="p-3.5 rounded-2xl bg-slate-950/70 border border-slate-800/80">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Assigned Fleet</span>
-            <p className="text-base font-extrabold text-white mt-0.5">{currentDeptAgents.length} Agents</p>
-            <span className="text-[10px] text-slate-500">{runningWorkersCount} running, {idleWorkersCount} standby</span>
-          </div>
-
-          <div className="p-3.5 rounded-2xl bg-slate-950/70 border border-slate-800/80">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Department Burn Today</span>
-            <p className="text-base font-extrabold text-emerald-400 font-mono mt-0.5">${currentDeptCost.toFixed(2)}</p>
-            <span className="text-[10px] text-slate-500">Allocated budget active</span>
-          </div>
-
-          <div className="p-3.5 rounded-2xl bg-slate-950/70 border border-slate-800/80">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Operational Health</span>
-            <p className="text-base font-extrabold text-cyan-400 mt-0.5">99.9% Online</p>
-            <span className="text-[10px] text-slate-500">0 critical alerts</span>
-          </div>
-
-          <div className="p-3.5 rounded-2xl bg-slate-950/70 border border-slate-800/80">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Shared Memory Keys</span>
-            <p className="text-base font-extrabold text-purple-400 mt-0.5">Connected</p>
-            <span className="text-[10px] text-slate-500">Postgres JSONB synchronized</span>
-          </div>
-        </div>
-      </div>
-
-      {/* 4. Multi-Tab Navigation Bar */}
+      {/* VIEW MODES TABS */}
       <div className="flex items-center justify-between border-b border-slate-800 pb-2">
         <div className="flex items-center gap-2">
           <button
-            onClick={() => setActiveTab("workforce")}
-            className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all ${
-              activeTab === "workforce"
-                ? "bg-indigo-600 text-white shadow-md shadow-indigo-900/30"
-                : "text-slate-400 hover:text-slate-200 hover:bg-slate-900"
+            onClick={() => setActiveTab("dashboard")}
+            className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition ${
+              activeTab === "dashboard"
+                ? "bg-slate-900 text-white border border-slate-700 shadow-md"
+                : "text-slate-400 hover:text-slate-200"
             }`}
           >
-            <Bot className="w-4 h-4" />
-            <span>AI Workforce & Directives</span>
-            <span className="ml-1 px-1.5 py-0.5 rounded-md text-[10px] bg-slate-950/60 font-mono">
-              {currentDeptAgents.length}
-            </span>
+            <BarChart3 className="w-4 h-4 text-indigo-400" />
+            <span>Department Dashboard</span>
           </button>
 
           <button
             onClick={() => setActiveTab("workspace")}
-            className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all ${
+            className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition ${
               activeTab === "workspace"
-                ? "bg-emerald-600 text-white shadow-md shadow-emerald-900/30"
-                : "text-slate-400 hover:text-slate-200 hover:bg-slate-900"
+                ? "bg-slate-900 text-white border border-slate-700 shadow-md"
+                : "text-slate-400 hover:text-slate-200"
             }`}
           >
-            <FileSpreadsheet className="w-4 h-4" />
-            <span>Department Domain Workspace</span>
+            <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
+            <span>Domain Workspace & Tools</span>
           </button>
 
           <button
-            onClick={() => setActiveTab("activity")}
-            className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all ${
-              activeTab === "activity"
-                ? "bg-cyan-600 text-white shadow-md shadow-cyan-900/30"
-                : "text-slate-400 hover:text-slate-200 hover:bg-slate-900"
+            onClick={() => setActiveTab("workforce")}
+            className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition ${
+              activeTab === "workforce"
+                ? "bg-slate-900 text-white border border-slate-700 shadow-md"
+                : "text-slate-400 hover:text-slate-200"
             }`}
           >
-            <Clock className="w-4 h-4" />
-            <span>Audit & Execution Stream</span>
+            <Bot className="w-4 h-4 text-cyan-400" />
+            <span>Assigned AI Fleet ({currentDeptAgents.length})</span>
           </button>
         </div>
+
+        <span className="text-xs font-semibold text-slate-400 hidden sm:inline">
+          {currentDept.name} Overview
+        </span>
       </div>
 
-      {/* 5. TAB CONTENTS */}
-      <AnimatePresence mode="wait">
-        {activeTab === "workforce" && (
-          <motion.div
-            key="workforce-tab"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.2 }}
-            className="space-y-5"
-          >
-            {/* Search & Filter Toolbar */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-900/80 p-3.5 rounded-2xl border border-slate-800">
-              <div className="relative flex-1 max-w-md">
-                <Search className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  placeholder={`Search ${currentDept.shortName} AI workers or active objectives...`}
-                  value={workerSearchQuery}
-                  onChange={(e) => setWorkerSearchQuery(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition"
-                />
-                {workerSearchQuery && (
-                  <button
-                    onClick={() => setWorkerSearchQuery("")}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                )}
+      {/* 2. MAIN 2-COLUMN MUNIM DASHBOARD LAYOUT */}
+      {activeTab === "dashboard" && (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          {/* LEFT 8 COLUMNS: METRICS, PULSES, PROJECTIONS, INFLOW, ANALYTICS */}
+          <div className="lg:col-span-8 space-y-6">
+            
+            {/* WIDGET 1: GROWTH PULSES (3 LARGE COLORED KPI CARDS) */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                  <Activity className="w-4 h-4 text-cyan-400" />
+                  <span>Growth Pulses</span>
+                </h3>
+                <span className="text-[11px] text-slate-500 font-mono">{timeframe} Telemetry</span>
               </div>
 
-              <div className="flex items-center gap-2">
-                <div className="flex items-center bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs">
-                  <button
-                    onClick={() => setStatusFilter("all")}
-                    className={`px-3 py-1 rounded-lg font-bold transition ${statusFilter === "all" ? "bg-slate-800 text-white" : "text-slate-400 hover:text-slate-200"}`}
-                  >
-                    All ({currentDeptAgents.length})
-                  </button>
-                  <button
-                    onClick={() => setStatusFilter("Running")}
-                    className={`px-3 py-1 rounded-lg font-bold transition ${statusFilter === "Running" ? "bg-emerald-500/20 text-emerald-300" : "text-slate-400 hover:text-slate-200"}`}
-                  >
-                    Running ({runningWorkersCount})
-                  </button>
-                  <button
-                    onClick={() => setStatusFilter("Idle")}
-                    className={`px-3 py-1 rounded-lg font-bold transition ${statusFilter === "Idle" ? "bg-blue-500/20 text-blue-300" : "text-slate-400 hover:text-slate-200"}`}
-                  >
-                    Idle ({idleWorkersCount})
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Workers Grid */}
-            {filteredWorkers.length === 0 ? (
-              <div className="p-10 rounded-3xl border border-dashed border-slate-800 bg-slate-950/40 text-center space-y-3">
-                <Bot className="w-10 h-10 text-slate-600 mx-auto" />
-                <h4 className="text-sm font-bold text-slate-300">No matching AI workers found</h4>
-                <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                  {workerSearchQuery || statusFilter !== "all"
-                    ? "Try adjusting your search criteria or clear status filters."
-                    : `No autonomous workers assigned to ${currentDept.name} yet.`}
-                </p>
-                <div className="pt-2">
-                  <Link
-                    href={`/hire?department=${encodeURIComponent(currentDept.name)}`}
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-md transition"
-                  >
-                    <UserPlus className="w-4 h-4" />
-                    <span>Recruit {currentDept.shortName} Specialist</span>
-                  </Link>
-                </div>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filteredWorkers.map((agent: any) => {
-                  const isRunning = agent.status === "Running";
-                  const isIdle = agent.status === "Idle" || !agent.status;
-                  const progress = agent.task_progress ?? (isRunning ? 65 : 0);
-
-                  return (
-                    <div
-                      key={agent.id}
-                      className="p-5 rounded-2xl bg-slate-900/90 border border-slate-800 hover:border-slate-700 transition duration-200 group flex flex-col justify-between relative overflow-hidden shadow-xl"
-                    >
-                      <div>
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-center text-slate-200 group-hover:border-indigo-500/50 transition">
-                              <Bot className="w-5 h-5 text-indigo-400" />
-                            </div>
-                            <div>
-                              <h4 className="text-xs md:text-sm font-bold text-white group-hover:text-indigo-300 transition">
-                                {agent.name || "AI Worker"}
-                              </h4>
-                              <p className="text-[11px] text-slate-400 font-medium">
-                                {agent.role || "Specialist"}
-                              </p>
-                            </div>
-                          </div>
-
-                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
-                            isRunning
-                              ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
-                              : isIdle
-                              ? 'bg-blue-500/10 text-blue-400 border-blue-500/30'
-                              : 'bg-slate-800 text-slate-400 border-slate-700'
-                          }`}>
-                            <span className={`w-1.5 h-1.5 rounded-full ${isRunning ? 'bg-emerald-400 animate-pulse' : isIdle ? 'bg-blue-400' : 'bg-slate-500'}`} />
-                            {agent.status || "Idle"}
-                          </span>
-                        </div>
-
-                        {/* Objective Card */}
-                        <div className="mt-4 p-3 rounded-xl bg-slate-950/80 border border-slate-800/80 space-y-2">
-                          <div className="flex items-center justify-between text-[10px]">
-                            <span className="text-slate-500 uppercase font-bold tracking-wider">Current Task</span>
-                            <span className="text-indigo-400 font-mono font-bold">{progress}%</span>
-                          </div>
-                          <p className="text-xs text-slate-200 line-clamp-2 font-medium">
-                            {agent.current_task_title || "Standby for founder directives"}
-                          </p>
-                          {/* Task Progress Bar */}
-                          <div className="w-full bg-slate-900 h-1.5 rounded-full overflow-hidden">
-                            <div
-                              className="bg-gradient-to-r from-indigo-500 to-emerald-400 h-full transition-all duration-500"
-                              style={{ width: `${progress}%` }}
-                            />
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="mt-4 pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs">
-                        <div className="text-[11px] text-slate-400">
-                          Cost Today: <span className="font-mono text-slate-200 font-bold">${(agent.cost_today_usd ?? 0).toFixed(2)}</span>
-                        </div>
-                        <button
-                          onClick={() => setSelectedAgentId(agent.id)}
-                          className="px-2.5 py-1 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 font-semibold flex items-center gap-1 transition text-[11px]"
-                        >
-                          <span>Directives</span>
-                          <ChevronRight className="w-3 h-3" />
-                        </button>
-                      </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {/* CARD 1: TOTAL INCOME / OUTPUT (CYAN) */}
+                <div className="p-5 rounded-2xl bg-gradient-to-br from-cyan-950/40 to-slate-900/90 border border-cyan-500/30 relative overflow-hidden shadow-lg group">
+                  <div className="flex items-center gap-3">
+                    <div className="p-3 rounded-xl bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 shadow-inner">
+                      <Wallet className="w-6 h-6" />
                     </div>
-                  );
-                })}
-              </div>
-            )}
-          </motion.div>
-        )}
-
-        {activeTab === "workspace" && (
-          <motion.div
-            key="workspace-tab"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.2 }}
-            className="space-y-6"
-          >
-            {/* SPECIFIC WORKSPACE BY DEPARTMENT */}
-            {selectedDeptId === "finance" && (
-              <div className="space-y-6">
-                <ChartOfAccountsSheet />
-              </div>
-            )}
-
-            {selectedDeptId === "marketing" && (
-              <div className="p-8 rounded-3xl border border-slate-800 bg-slate-900/60 backdrop-blur-xl space-y-6">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                      <Megaphone className="w-5 h-5 text-cyan-400" />
-                      <span>Growth & Content Intelligence Workspace</span>
-                    </h3>
-                    <p className="text-xs text-slate-400 mt-1 max-w-xl">
-                      Marketing AI Workers autonomously execute search, social copywriting, and multi-channel demand generation.
-                    </p>
+                    <div>
+                      <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Income</p>
+                      <h4 className="text-2xl font-black text-white font-mono mt-0.5">{currentDept.pulses.income}</h4>
+                    </div>
                   </div>
-                  <Link
-                    href="/tasks"
-                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-semibold shadow-md transition"
-                  >
-                    <Plus className="w-4 h-4" />
-                    <span>Launch Marketing Directive</span>
-                  </Link>
+                  <Wallet className="w-24 h-24 text-cyan-500/5 absolute -right-4 -bottom-4 pointer-events-none group-hover:scale-110 transition duration-300" />
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div className="p-4 rounded-2xl bg-slate-950/70 border border-slate-800">
-                    <span className="text-[11px] font-semibold text-slate-400">Target Channels</span>
-                    <p className="text-base font-bold text-white mt-1">LinkedIn, X / Twitter, SEO</p>
-                    <p className="text-[11px] text-slate-500 mt-1">Managed by AI Agents</p>
+                {/* CARD 2: TOTAL EXPENSES / BURN (ROSE/PINK) */}
+                <div className="p-5 rounded-2xl bg-gradient-to-br from-rose-950/40 to-slate-900/90 border border-rose-500/30 relative overflow-hidden shadow-lg group">
+                  <div className="flex items-center gap-3">
+                    <div className="p-3 rounded-xl bg-rose-500/20 text-rose-300 border border-rose-500/30 shadow-inner">
+                      <Receipt className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Expenses</p>
+                      <h4 className="text-2xl font-black text-white font-mono mt-0.5">{currentDept.pulses.expenses}</h4>
+                    </div>
                   </div>
-                  <div className="p-4 rounded-2xl bg-slate-950/70 border border-slate-800">
-                    <span className="text-[11px] font-semibold text-slate-400">Connected Tools</span>
-                    <p className="text-base font-bold text-cyan-400 mt-1">Notion, Perplexity Search</p>
-                    <p className="text-[11px] text-slate-500 mt-1">Live MCP Tools Active</p>
+                  <Receipt className="w-24 h-24 text-rose-500/5 absolute -right-4 -bottom-4 pointer-events-none group-hover:scale-110 transition duration-300" />
+                </div>
+
+                {/* CARD 3: NET PROFIT / GAIN (EMERALD) */}
+                <div className="p-5 rounded-2xl bg-gradient-to-br from-emerald-950/40 to-slate-900/90 border border-emerald-500/30 relative overflow-hidden shadow-lg group">
+                  <div className="flex items-center gap-3">
+                    <div className="p-3 rounded-xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shadow-inner">
+                      <TrendingUp className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Net Profit</p>
+                      <h4 className="text-2xl font-black text-white font-mono mt-0.5">{currentDept.pulses.profit}</h4>
+                    </div>
                   </div>
-                  <div className="p-4 rounded-2xl bg-slate-950/70 border border-slate-800">
-                    <span className="text-[11px] font-semibold text-slate-400">Content Pipeline</span>
-                    <p className="text-base font-bold text-white mt-1">Maker-Checker Reviewed</p>
-                    <p className="text-[11px] text-slate-500 mt-1">SOX & Quality Guardrails</p>
-                  </div>
+                  <TrendingUp className="w-24 h-24 text-emerald-500/5 absolute -right-4 -bottom-4 pointer-events-none group-hover:scale-110 transition duration-300" />
                 </div>
               </div>
-            )}
+            </div>
 
-            {selectedDeptId === "engineering" && (
-              <div className="p-8 rounded-3xl border border-slate-800 bg-slate-900/60 backdrop-blur-xl space-y-6">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                      <Cpu className="w-5 h-5 text-indigo-400" />
-                      <span>Engineering Sandbox & Repository Workspace</span>
-                    </h3>
-                    <p className="text-xs text-slate-400 mt-1 max-w-xl">
-                      Autonomous coding agents generate, inspect, and test pull requests with full test validation.
-                    </p>
-                  </div>
-                  <Link
-                    href="/tasks"
-                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-md transition"
-                  >
-                    <Plus className="w-4 h-4" />
-                    <span>Submit Code Task</span>
-                  </Link>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div className="p-4 rounded-2xl bg-slate-950/70 border border-slate-800">
-                    <span className="text-[11px] font-semibold text-slate-400">Active CI/CD Pipeline</span>
-                    <p className="text-base font-bold text-emerald-400 mt-1">Railway & GitHub Actions</p>
-                    <p className="text-[11px] text-slate-500 mt-1">Continuous Deployment</p>
-                  </div>
-                  <div className="p-4 rounded-2xl bg-slate-950/70 border border-slate-800">
-                    <span className="text-[11px] font-semibold text-slate-400">Runtime Sandbox</span>
-                    <p className="text-base font-bold text-indigo-400 mt-1">Git, Terminal, PyTest</p>
-                    <p className="text-[11px] text-slate-500 mt-1">Subprocess Sandbox</p>
-                  </div>
-                  <div className="p-4 rounded-2xl bg-slate-950/70 border border-slate-800">
-                    <span className="text-[11px] font-semibold text-slate-400">Architecture State</span>
-                    <p className="text-base font-bold text-white mt-1">Next.js + FastAPI + Postgres</p>
-                    <p className="text-[11px] text-slate-500 mt-1">Full-stack Autonomous Fleet</p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {selectedDeptId === "operations" && (
-              <div className="p-8 rounded-3xl border border-slate-800 bg-slate-900/60 backdrop-blur-xl space-y-6">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                      <Layers className="w-5 h-5 text-purple-400" />
-                      <span>Operations & Executive Governance Workspace</span>
-                    </h3>
-                    <p className="text-xs text-slate-400 mt-1 max-w-xl">
-                      Cross-department orchestration, strategic planning, human approval gates, and organizational monitoring.
-                    </p>
-                  </div>
-                  <Link
-                    href="/approvals"
-                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold shadow-md transition"
-                  >
-                    <ShieldCheck className="w-4 h-4" />
-                    <span>Review Approvals</span>
-                  </Link>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div className="p-4 rounded-2xl bg-slate-950/70 border border-slate-800">
-                    <span className="text-[11px] font-semibold text-slate-400">Executive Approvals</span>
-                    <p className="text-base font-bold text-amber-400 mt-1">Maker-Checker Policy</p>
-                    <p className="text-[11px] text-slate-500 mt-1">Human-in-the-Loop Threshold</p>
-                  </div>
-                  <div className="p-4 rounded-2xl bg-slate-950/70 border border-slate-800">
-                    <span className="text-[11px] font-semibold text-slate-400">Organizational Structure</span>
-                    <p className="text-base font-bold text-purple-400 mt-1">Hierarchy Tree</p>
-                    <p className="text-[11px] text-slate-500 mt-1">Live in /hierarchy</p>
-                  </div>
-                  <div className="p-4 rounded-2xl bg-slate-950/70 border border-slate-800">
-                    <span className="text-[11px] font-semibold text-slate-400">Shared Memory Store</span>
-                    <p className="text-base font-bold text-white mt-1">Postgres JSONB / Supabase</p>
-                    <p className="text-[11px] text-slate-500 mt-1">Durable Key-Value State</p>
-                  </div>
-                </div>
-              </div>
-            )}
-          </motion.div>
-        )}
-
-        {activeTab === "activity" && (
-          <motion.div
-            key="activity-tab"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.2 }}
-            className="p-6 rounded-3xl border border-slate-800 bg-slate-900/60 backdrop-blur-xl space-y-4"
-          >
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                <Clock className="w-4 h-4 text-cyan-400" />
-                <span>{currentDept.name} Live Execution Log</span>
+            {/* WIDGET 2: REVENUE PROJECTION (3 WHITE/DARK METRIC CARDS WITH TREND PILLS) */}
+            <div className="space-y-2">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                <BarChart3 className="w-4 h-4 text-indigo-400" />
+                <span>Revenue Projection & Department Variance</span>
               </h3>
-              <span className="text-xs text-slate-500">Real-time telemetry</span>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {/* CARD 1: RECEIVABLES */}
+                <div className="p-4 rounded-2xl bg-slate-900/90 border border-slate-800 flex items-center justify-between">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 font-bold text-xs flex items-center gap-1 border border-emerald-500/20">
+                        <TrendingUp className="w-3.5 h-3.5" />
+                        <span>{currentDept.metrics.receivablePct}</span>
+                      </span>
+                    </div>
+                    <h4 className="text-xl font-bold text-white font-mono mt-2">{currentDept.metrics.receivable}</h4>
+                    <p className="text-[11px] text-slate-400">Total Receivable Amount</p>
+                  </div>
+                </div>
+
+                {/* CARD 2: PAYABLES */}
+                <div className="p-4 rounded-2xl bg-slate-900/90 border border-slate-800 flex items-center justify-between">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="p-1.5 rounded-lg bg-rose-500/10 text-rose-400 font-bold text-xs flex items-center gap-1 border border-rose-500/20">
+                        <TrendingDown className="w-3.5 h-3.5" />
+                        <span>{currentDept.metrics.payablePct}</span>
+                      </span>
+                    </div>
+                    <h4 className="text-xl font-bold text-white font-mono mt-2">{currentDept.metrics.payable}</h4>
+                    <p className="text-[11px] text-slate-400">Total Payable Amount</p>
+                  </div>
+                </div>
+
+                {/* CARD 3: PENDING RECEIPTS */}
+                <div className="p-4 rounded-2xl bg-slate-900/90 border border-slate-800 flex items-center justify-between">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="p-1.5 rounded-lg bg-blue-500/10 text-blue-400 font-bold text-xs flex items-center gap-1 border border-blue-500/20">
+                        <Clock className="w-3.5 h-3.5" />
+                        <span>{currentDept.metrics.pendingPct}</span>
+                      </span>
+                    </div>
+                    <h4 className="text-xl font-bold text-white font-mono mt-2">{currentDept.metrics.pending}</h4>
+                    <p className="text-[11px] text-slate-400">Long Time Pending Receipts</p>
+                  </div>
+                </div>
+              </div>
             </div>
 
-            <div className="space-y-2.5 font-mono text-xs">
-              <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800/80 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400" />
-                  <span className="text-slate-400">[09:42:15]</span>
-                  <span className="text-slate-200">Department AI Agent synchronized state with shared PostgreSQL database.</span>
-                </div>
-                <span className="text-[10px] text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">SUCCESS</span>
-              </div>
+            {/* WIDGET 3: REVENUE INFLOW (6 CIRCULAR ICON AVATAR CARDS GRID) */}
+            <div className="space-y-2">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                <Landmark className="w-4 h-4 text-emerald-400" />
+                <span>Revenue Inflow & Department Balances</span>
+              </h3>
 
-              <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800/80 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <span className="w-2 h-2 rounded-full bg-cyan-400" />
-                  <span className="text-slate-400">[09:30:00]</span>
-                  <span className="text-slate-200">Maker-Checker compliance engine verified zero policy violations.</span>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {/* 1. Cash Collected */}
+                <div className="p-3.5 rounded-2xl bg-slate-900/70 border border-slate-800 flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 flex items-center justify-center flex-shrink-0">
+                    <DollarSign className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-white font-mono">{currentDept.inflow.cashCollected}</h4>
+                    <p className="text-[11px] text-slate-400">Total Cash Collected</p>
+                  </div>
                 </div>
-                <span className="text-[10px] text-cyan-400 font-bold bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/20">VERIFIED</span>
-              </div>
 
-              <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800/80 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <span className="w-2 h-2 rounded-full bg-indigo-400" />
-                  <span className="text-slate-400">[08:15:22]</span>
-                  <span className="text-slate-200">Autonomous worker dispatched execution heartbeat to Event Bus.</span>
+                {/* 2. Collection In Bank */}
+                <div className="p-3.5 rounded-2xl bg-slate-900/70 border border-slate-800 flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/30 flex items-center justify-center flex-shrink-0">
+                    <Landmark className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-white font-mono">{currentDept.inflow.bankCollection}</h4>
+                    <p className="text-[11px] text-slate-400">Total Collection In Bank</p>
+                  </div>
                 </div>
-                <span className="text-[10px] text-indigo-400 font-bold bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20">ACTIVE</span>
+
+                {/* 3. Unavoidable Payables */}
+                <div className="p-3.5 rounded-2xl bg-slate-900/70 border border-slate-800 flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-purple-500/20 text-purple-400 border border-purple-500/30 flex items-center justify-center flex-shrink-0">
+                    <CreditCard className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-white font-mono">{currentDept.inflow.payables}</h4>
+                    <p className="text-[11px] text-slate-400">Unavoidable Payables</p>
+                  </div>
+                </div>
+
+                {/* 4. Total Cash Balance */}
+                <div className="p-3.5 rounded-2xl bg-slate-900/70 border border-slate-800 flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center flex-shrink-0">
+                    <Wallet className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-white font-mono">{currentDept.inflow.cashBalance}</h4>
+                    <p className="text-[11px] text-slate-400">Total Cash Balance</p>
+                  </div>
+                </div>
+
+                {/* 5. Total Bank Balance */}
+                <div className="p-3.5 rounded-2xl bg-slate-900/70 border border-slate-800 flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30 flex items-center justify-center flex-shrink-0">
+                    <Building2 className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-white font-mono">{currentDept.inflow.bankBalance}</h4>
+                    <p className="text-[11px] text-slate-400">Total Bank Balance</p>
+                  </div>
+                </div>
+
+                {/* 6. Tax Payables */}
+                <div className="p-3.5 rounded-2xl bg-slate-900/70 border border-slate-800 flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center flex-shrink-0">
+                    <FileText className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-white font-mono">{currentDept.inflow.taxPayables}</h4>
+                    <p className="text-[11px] text-slate-400">Tax Payables (SOX)</p>
+                  </div>
+                </div>
               </div>
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
-      {/* 6. DISPATCH DIRECTIVE MODAL */}
+            {/* WIDGET 4: SPLIT ROW (SALE/PURCHASE & DONUT CHART ANALYTICS) */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* LEFT SUMMARY: SALE & PURCHASE / DIRECTIVES SUMMARY */}
+              <div className="p-5 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300">
+                    Department Directives & Output
+                  </h3>
+                  <span className="text-[10px] text-slate-500 font-mono">Weekly</span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800">
+                    <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400 w-fit mb-2">
+                      <TrendingUp className="w-4 h-4" />
+                    </div>
+                    <p className="text-[11px] text-slate-400">Total Output</p>
+                    <h4 className="text-lg font-bold text-white font-mono mt-0.5">$200,000</h4>
+                  </div>
+
+                  <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800">
+                    <div className="p-2 rounded-lg bg-cyan-500/10 text-cyan-400 w-fit mb-2">
+                      <Receipt className="w-4 h-4" />
+                    </div>
+                    <p className="text-[11px] text-slate-400">Total Burn</p>
+                    <h4 className="text-lg font-bold text-white font-mono mt-0.5">$150,000</h4>
+                  </div>
+                </div>
+              </div>
+
+              {/* RIGHT DONUT CHART: DEPARTMENT ANALYTICS */}
+              <div className="p-5 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
+                    <PieChart className="w-4 h-4 text-cyan-400" />
+                    <span>Department Analytics</span>
+                  </h3>
+                  <span className="text-[10px] text-slate-500 font-mono">Budget Allocation</span>
+                </div>
+
+                <div className="flex items-center justify-around gap-4">
+                  {/* SVG Donut Chart Inspired by Munim */}
+                  <div className="relative w-28 h-28 flex items-center justify-center flex-shrink-0">
+                    <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
+                      <path
+                        className="text-slate-800"
+                        strokeWidth="3.8"
+                        stroke="currentColor"
+                        fill="none"
+                        d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                      />
+                      <path
+                        className="text-emerald-400"
+                        strokeDasharray="45, 100"
+                        strokeWidth="3.8"
+                        strokeLinecap="round"
+                        stroke="currentColor"
+                        fill="none"
+                        d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                      />
+                      <path
+                        className="text-cyan-400"
+                        strokeDasharray="30, 100"
+                        strokeDashoffset="-45"
+                        strokeWidth="3.8"
+                        strokeLinecap="round"
+                        stroke="currentColor"
+                        fill="none"
+                        d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                      />
+                      <path
+                        className="text-indigo-400"
+                        strokeDasharray="15, 100"
+                        strokeDashoffset="-75"
+                        strokeWidth="3.8"
+                        strokeLinecap="round"
+                        stroke="currentColor"
+                        fill="none"
+                        d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                      />
+                    </svg>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+                      <span className="text-[10px] text-slate-400 font-bold uppercase">Share</span>
+                      <span className="text-xs font-black text-white font-mono">45.9%</span>
+                    </div>
+                  </div>
+
+                  {/* Legend List */}
+                  <div className="space-y-1.5 text-xs">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
+                      <span className="text-slate-300 font-medium">Accounting (45.96%)</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-cyan-400" />
+                      <span className="text-slate-300 font-medium">Marketing (35.96%)</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-indigo-400" />
+                      <span className="text-slate-300 font-medium">Engineering (25.96%)</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-purple-400" />
+                      <span className="text-slate-300 font-medium">Operations (10.96%)</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          {/* RIGHT 4 COLUMNS: MUNIM-INSPIRED SETUP GUIDE & SUPPORT PANELS */}
+          <div className="lg:col-span-4 space-y-6">
+
+            {/* WIDGET A: SETUP GUIDE & CHECKLIST (DIRECT MUNIM INSPIRED) */}
+            <div className="p-5 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-4 shadow-xl">
+              <div>
+                <h3 className="text-sm font-bold text-white flex items-center justify-between">
+                  <span>{currentDept.shortName} Setup Guide</span>
+                  <span className="text-[11px] font-mono text-indigo-400 font-semibold">
+                    {completedTasksCount}/{deptChecklist.length} Complete
+                  </span>
+                </h3>
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  Get started by completing the department configuration tasks below.
+                </p>
+              </div>
+
+              {/* Progress Bar */}
+              <div className="space-y-1">
+                <div className="w-full bg-slate-950 h-2 rounded-full overflow-hidden border border-slate-800">
+                  <div
+                    className="bg-gradient-to-r from-indigo-500 to-emerald-400 h-full transition-all duration-300"
+                    style={{ width: `${(completedTasksCount / deptChecklist.length) * 100}%` }}
+                  />
+                </div>
+                <p className="text-[10px] text-slate-500 text-right font-medium">
+                  Setup progress {completedTasksCount} to {deptChecklist.length} tasks complete
+                </p>
+              </div>
+
+              {/* Interactive Checklist */}
+              <div className="space-y-2 border-t border-slate-800 pt-3">
+                {deptChecklist.map((task) => (
+                  <button
+                    key={task.id}
+                    onClick={() => toggleChecklistItem(task.id)}
+                    className={`w-full p-2.5 rounded-xl text-left text-xs transition flex items-center gap-2.5 ${
+                      task.completed
+                        ? "bg-slate-950/60 text-slate-400 line-through border border-slate-800/60"
+                        : "bg-slate-950 text-slate-200 hover:bg-slate-800/80 border border-slate-800"
+                    }`}
+                  >
+                    {task.completed ? (
+                      <CheckSquare className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                    ) : (
+                      <Square className="w-4 h-4 text-slate-500 flex-shrink-0" />
+                    )}
+                    <span className="font-medium line-clamp-1">{task.id}. {task.title}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* WIDGET B: CONTACT SUPPORT & AI HELP BUTTONS */}
+            <div className="p-5 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-3 shadow-xl">
+              <div>
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300">
+                  Department AI Support
+                </h3>
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  We're always happy to help! Reach out anytime.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <button className="p-2.5 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-200 text-xs font-bold flex items-center justify-center gap-2 transition">
+                  <Video className="w-3.5 h-3.5 text-indigo-400" />
+                  <span>Book Demo</span>
+                </button>
+
+                <button className="p-2.5 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-200 text-xs font-bold flex items-center justify-center gap-2 transition">
+                  <MessageSquare className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Live Chat</span>
+                </button>
+
+                <button className="p-2.5 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-200 text-xs font-bold flex items-center justify-center gap-2 transition">
+                  <Mail className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>Email Us</span>
+                </button>
+
+                <button className="p-2.5 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-200 text-xs font-bold flex items-center justify-center gap-2 transition">
+                  <HelpCircle className="w-3.5 h-3.5 text-purple-400" />
+                  <span>Help Center</span>
+                </button>
+              </div>
+            </div>
+
+            {/* WIDGET C: VIBRANT BLUE PROMO / REFERRAL BANNER (EXACT MATCH TO MUNIM BOTTOM RIGHT BANNER) */}
+            <div className="p-6 rounded-2xl bg-gradient-to-br from-blue-600 via-indigo-600 to-indigo-800 border border-blue-400/30 text-white space-y-3 shadow-2xl relative overflow-hidden">
+              <Gift className="w-20 h-20 text-white/10 absolute -right-3 -bottom-3 pointer-events-none" />
+              <h4 className="text-base font-extrabold leading-snug">
+                Scale your autonomous workforce & earn 10% token bonus
+              </h4>
+              <p className="text-xs text-blue-100 leading-relaxed">
+                Invite team members or add autonomous agents to your department to unlock higher authority limits and priority processing.
+              </p>
+              <button
+                onClick={() => setIsDispatchModalOpen(true)}
+                className="px-4 py-2 rounded-xl bg-white text-indigo-900 hover:bg-slate-100 text-xs font-extrabold shadow-lg transition active:scale-95 flex items-center gap-1.5"
+              >
+                <span>Get Invite Link</span>
+                <ArrowUpRight className="w-4 h-4 text-indigo-900" />
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* 3. WORKSPACE TAB (CHART OF ACCOUNTS FOR FINANCE, ETC.) */}
+      {activeTab === "workspace" && (
+        <div className="space-y-6">
+          {selectedDeptId === "finance" && <ChartOfAccountsSheet />}
+          {selectedDeptId !== "finance" && (
+            <div className="p-8 rounded-3xl border border-slate-800 bg-slate-900/60 backdrop-blur-xl text-center space-y-3">
+              <FileSpreadsheet className="w-10 h-10 text-emerald-400 mx-auto" />
+              <h3 className="text-lg font-bold text-white">{currentDept.name} Workspace</h3>
+              <p className="text-xs text-slate-400 max-w-md mx-auto">
+                Connected tools, domain memory, and autonomous task logs for {currentDept.name}.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 4. WORKFORCE TAB */}
+      {activeTab === "workforce" && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {currentDeptAgents.length === 0 ? (
+            <div className="col-span-full p-10 rounded-3xl border border-dashed border-slate-800 bg-slate-950/40 text-center space-y-3">
+              <Bot className="w-10 h-10 text-slate-600 mx-auto" />
+              <h4 className="text-sm font-bold text-slate-300">No autonomous workers assigned yet</h4>
+              <Link
+                href={`/hire?department=${encodeURIComponent(currentDept.name)}`}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-md transition"
+              >
+                <UserPlus className="w-4 h-4" />
+                <span>Hire First {currentDept.shortName} Worker</span>
+              </Link>
+            </div>
+          ) : (
+            currentDeptAgents.map((agent: any) => (
+              <div
+                key={agent.id}
+                className="p-5 rounded-2xl bg-slate-900/90 border border-slate-800 hover:border-slate-700 transition flex flex-col justify-between"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-center text-indigo-400">
+                    <Bot className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-white">{agent.name || "AI Worker"}</h4>
+                    <p className="text-xs text-slate-400">{agent.role || "Specialist"}</p>
+                  </div>
+                </div>
+                <div className="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between text-xs">
+                  <span className="text-slate-400">Status: <strong className="text-emerald-400">{agent.status || "Idle"}</strong></span>
+                  <button
+                    onClick={() => setSelectedAgentId(agent.id)}
+                    className="text-indigo-400 font-bold hover:underline"
+                  >
+                    View Agent
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+
+      {/* DISPATCH DIRECTIVE MODAL */}
       <AnimatePresence>
         {isDispatchModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
@@ -830,7 +940,7 @@ function DepartmentsContent() {
               </button>
 
               <div className="flex items-center gap-3">
-                <div className={`p-3 rounded-2xl ${currentDept.color.bg} ${currentDept.color.text} border ${currentDept.color.border}`}>
+                <div className="p-3 rounded-2xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
                   <DeptIcon className="w-6 h-6" />
                 </div>
                 <div>
@@ -838,7 +948,7 @@ function DepartmentsContent() {
                     Prompt {currentDept.shortName} Workforce
                   </h3>
                   <p className="text-xs text-slate-400">
-                    Dispatch an autonomous directive to all {currentDeptAgents.length} assigned AI workers.
+                    Dispatch an autonomous objective directly to your AI workers.
                   </p>
                 </div>
               </div>
@@ -847,9 +957,6 @@ function DepartmentsContent() {
                 <div className="p-6 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-center space-y-2">
                   <CheckCircle2 className="w-10 h-10 text-emerald-400 mx-auto" />
                   <h4 className="text-sm font-bold text-white">Directive Dispatched Successfully!</h4>
-                  <p className="text-xs text-slate-300">
-                    Workers in {currentDept.name} have received the task instructions.
-                  </p>
                 </div>
               ) : (
                 <form onSubmit={handleDispatchDirective} className="space-y-4">
@@ -860,7 +967,7 @@ function DepartmentsContent() {
                     <textarea
                       rows={4}
                       required
-                      placeholder={`e.g. Audit all Q3 expenses against GAAP standards and update the Google Sheets ledger...`}
+                      placeholder={`e.g. Run weekly audit on all ledger accounts...`}
                       value={directivePrompt}
                       onChange={(e) => setDirectivePrompt(e.target.value)}
                       className="w-full bg-slate-950 border border-slate-800 rounded-2xl p-3.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition resize-none"
