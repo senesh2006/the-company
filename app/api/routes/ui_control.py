@@ -16,12 +16,14 @@ class UICommandRequest(BaseModel):
 async def stream_ui_commands():
     """
     Server-Sent Events (SSE) endpoint for live browser UI control by AI agents.
+    Includes proper streaming headers for proxy compatibility (Railway/Cloudflare/Nginx HTTP/2).
     """
     return StreamingResponse(
         UIControlService.subscribe(),
         media_type="text/event-stream",
         headers={
-            "Cache-Control": "no-cache",
+            "Content-Type": "text/event-stream",
+            "Cache-Control": "no-cache, no-transform",
             "Connection": "keep-alive",
             "X-Accel-Buffering": "no"
         }

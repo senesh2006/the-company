@@ -24,58 +24,74 @@ export function UICommandListener() {
     const streamUrl = `${baseUrl}/api/v1/ui/stream`;
     
     let eventSource: EventSource | null = null;
-    try {
-      eventSource = new EventSource(streamUrl);
+    let isSubscribed = true;
 
-      eventSource.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          if (!data || data.type === "CONNECTED") return;
+    const connectSSE = () => {
+      if (!isSubscribed) return;
+      
+      try {
+        eventSource = new EventSource(streamUrl);
 
-          const action = data.action;
-          const payload = data.payload || {};
+        eventSource.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            if (!data || data.type === "CONNECTED" || data.type === "PING") return;
 
-          if (action === "NAVIGATE") {
-            if (payload.path) {
-              // Show toast with option or auto-navigate
+            const action = data.action;
+            const payload = data.payload || {};
+
+            if (action === "NAVIGATE") {
+              if (payload.path) {
+                const toastId = `toast-${Date.now()}`;
+                setToasts(prev => [
+                  {
+                    id: toastId,
+                    title: "AI Guided Navigation",
+                    message: payload.message || `AI Agent navigated you to ${payload.path}`,
+                    path: payload.path,
+                    type: "info"
+                  },
+                  ...prev.slice(0, 4)
+                ]);
+                router.push(payload.path);
+              }
+            } else if (action === "SHOW_TOAST") {
               const toastId = `toast-${Date.now()}`;
               setToasts(prev => [
                 {
                   id: toastId,
-                  title: "AI Guided Navigation",
-                  message: payload.message || `AI Agent navigated you to ${payload.path}`,
-                  path: payload.path,
-                  type: "info"
+                  title: payload.title || "AI Agent Activity",
+                  message: payload.message || "AI Agent executed an operational directive.",
+                  type: payload.type || "info"
                 },
                 ...prev.slice(0, 4)
               ]);
-              router.push(payload.path);
             }
-          } else if (action === "SHOW_TOAST") {
-            const toastId = `toast-${Date.now()}`;
-            setToasts(prev => [
-              {
-                id: toastId,
-                title: payload.title || "AI Agent Activity",
-                message: payload.message || "AI Agent executed an operational directive.",
-                type: payload.type || "info"
-              },
-              ...prev.slice(0, 4)
-            ]);
+          } catch (err) {
+            // Ignore frame parse errors
           }
-        } catch (err) {
-          console.error("Failed to parse SSE payload", err);
-        }
-      };
+        };
 
-      eventSource.onerror = (err) => {
-        console.warn("UI Command SSE stream reconnecting...", err);
-      };
-    } catch (e) {
-      console.error("Could not setup EventSource", e);
-    }
+        eventSource.onerror = () => {
+          // EventSource automatically reconnects; close current instance to prevent duplicate handlers
+          if (eventSource) {
+            eventSource.close();
+            eventSource = null;
+          }
+          // Silent reconnect after 3 seconds
+          setTimeout(() => {
+            if (isSubscribed) connectSSE();
+          }, 3000);
+        };
+      } catch (e) {
+        // Quiet fallback
+      }
+    };
+
+    connectSSE();
 
     return () => {
+      isSubscribed = false;
       if (eventSource) {
         eventSource.close();
       }
@@ -87,7 +103,7 @@ export function UICommandListener() {
   };
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 space-y-3 max-w-sm w-full pointer-events-none">
+    <div className="fixed bottom-6 right-6 z-50 space-y-3 max-w-sm w-full pointer-events-none font-sans">
       <AnimatePresence>
         {toasts.map((toast) => (
           <motion.div

@@ -11,7 +11,8 @@ class UIControlService:
     Real-Time AI Web-App Command & Control Service.
     Maintains subscriber queues for Server-Sent Events (SSE) streaming UI control directives
     (navigation, modal triggers, toast notifications, component highlights, KPI customization)
-    directly to active user browser sessions.
+    directly to active user browser sessions. Includes automated 15s keepalive heartbeat pings
+    to prevent HTTP/2 proxy timeout drops (ERR_HTTP2_PROTOCOL_ERROR).
     """
 
     _subscribers: List[asyncio.Queue] = []
@@ -20,18 +21,25 @@ class UIControlService:
     async def subscribe(cls) -> AsyncGenerator[str, None]:
         """
         Subscribe a client browser to the real-time SSE stream.
+        Emits keepalive PING frames every 15s so proxies (Railway, Cloudflare, Nginx HTTP/2)
+        do not prematurely close idle connection streams.
         """
         queue = asyncio.Queue()
         cls._subscribers.append(queue)
         logger.info(f"New browser session connected to UI Agent Control Bus. Total active: {len(cls._subscribers)}")
         
         try:
-            # Send initial ping event
+            # Send initial connection event
             yield f"data: {json.dumps({'type': 'CONNECTED', 'timestamp': datetime.now(timezone.utc).isoformat()})}\n\n"
             
             while True:
-                data = await queue.get()
-                yield f"data: {json.dumps(data)}\n\n"
+                try:
+                    # Wait for message or timeout after 15 seconds to issue keepalive heartbeat
+                    data = await asyncio.wait_for(queue.get(), timeout=15.0)
+                    yield f"data: {json.dumps(data)}\n\n"
+                except asyncio.TimeoutError:
+                    # Send periodic keepalive heartbeat ping
+                    yield f"data: {json.dumps({'type': 'PING', 'timestamp': datetime.now(timezone.utc).isoformat()})}\n\n"
         except asyncio.CancelledError:
             logger.info("Browser session disconnected from UI Agent Control Bus.")
         finally:
