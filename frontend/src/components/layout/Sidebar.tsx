@@ -1,12 +1,34 @@
 "use client";
 
-import { usePathname } from 'next/navigation';
-import Link from 'next/link';
-import { cn } from '@/lib/utils';
-import { useAgents, useNeedsAttention } from '@/lib/queries';
-import { useAuth } from '@/lib/auth-context';
+import { usePathname } from "next/navigation";
+import Link from "next/link";
+import { cn } from "@/lib/utils";
+import { useAgents, useNeedsAttention } from "@/lib/queries";
+import { useAuth } from "@/lib/auth-context";
+import { motion, AnimatePresence } from "framer-motion";
+import { 
+  LayoutDashboard, 
+  Bot, 
+  ClipboardList, 
+  Database, 
+  BarChart3, 
+  UserPlus, 
+  ShieldCheck, 
+  Network,
+  LogOut,
+  Menu,
+  X,
+  ChevronRight,
+  Sparkles
+} from "lucide-react";
+import { easings, durations } from "@/lib/motion";
 
-export function Sidebar() {
+interface SidebarProps {
+  mobileOpen: boolean;
+  onMobileClose: () => void;
+}
+
+export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
   const pathname = usePathname();
   const { data: agents } = useAgents();
   const { data: attentionItems } = useNeedsAttention();
@@ -19,29 +41,92 @@ export function Sidebar() {
   const userInitials = userName ? userName.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2) : "U";
 
   const mainNavItems = [
-    { name: 'Dashboard', href: '/', icon: 'dashboard' },
-    { name: 'AI Workers', href: '/agents', icon: 'smart_toy', badge: activeWorkerCount > 0 ? `${activeWorkerCount} active` : undefined },
-    { name: 'Tasks & Operations', href: '/tasks', icon: 'assignment' },
-    { name: 'Shared Memory', href: '/memory', icon: 'memory' },
-    { name: 'Cost & Analytics', href: '/analytics', icon: 'analytics' },
+    { name: 'Dashboard', href: '/', icon: LayoutDashboard },
+    { name: 'AI Workers', href: '/agents', icon: Bot, badge: activeWorkerCount > 0 ? `${activeWorkerCount}` : undefined },
+    { name: 'Tasks & Operations', href: '/tasks', icon: ClipboardList },
+    { name: 'Shared Memory', href: '/memory', icon: Database },
+    { name: 'Cost & Analytics', href: '/analytics', icon: BarChart3 },
   ];
 
   const opsNavItems = [
-    { name: 'Recruit Worker', href: '/hire', icon: 'person_add' },
-    { name: 'Approvals & Attention', href: '/approvals', icon: 'verified_user', badge: pendingAttentionCount > 0 ? `${pendingAttentionCount}` : undefined, badgeColor: 'bg-amber-100 text-amber-800 border-amber-300' },
-    { name: 'Worker Hierarchy', href: '/hierarchy', icon: 'account_tree' },
+    { name: 'Recruit Worker', href: '/hire', icon: UserPlus },
+    { name: 'Approvals & Attention', href: '/approvals', icon: ShieldCheck, badge: pendingAttentionCount > 0 ? `${pendingAttentionCount}` : undefined, badgeColor: 'bg-amber-100 text-amber-800 border-amber-300' },
+    { name: 'Worker Hierarchy', href: '/hierarchy', icon: Network },
   ];
 
-  return (
-    <aside className="fixed left-0 top-0 h-screen w-[280px] bg-white/95 backdrop-blur-2xl border-r border-slate-200/90 shadow-sm flex flex-col p-5 z-50">
+  const NavGroup = ({ items, label }: { items: typeof mainNavItems, label: string }) => (
+    <div className="mb-6">
+      <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">
+        {label}
+      </p>
+      <nav className="space-y-1">
+        {items.map((item) => {
+          const isActive = pathname === item.href;
+          const Icon = item.icon;
+          return (
+            <Link
+              key={item.name}
+              href={item.href}
+              onClick={onMobileClose}
+              className={cn(
+                "relative flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-colors duration-200 group outline-none focus-visible:ring-2 focus-visible:ring-primary/30",
+                isActive
+                  ? "text-slate-900"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
+              )}
+            >
+              {isActive && (
+                <motion.div
+                  layoutId="activeNav"
+                  className="absolute inset-0 bg-slate-900 rounded-xl"
+                  transition={{ type: "spring", stiffness: 320, damping: 30 }}
+                />
+              )}
+              <div className="relative flex items-center gap-3">
+                <Icon className={cn(
+                  "w-4 h-4 transition-colors",
+                  isActive ? "text-emerald-400" : "text-slate-400 group-hover:text-slate-600"
+                )} />
+                <span className={cn(isActive && "text-white")}>{item.name}</span>
+              </div>
+              <div className="relative flex items-center gap-2">
+                {item.badge && (
+                  <span className={cn(
+                    "text-[10px] font-bold px-2 py-0.5 rounded-full border transition-colors",
+                    isActive
+                      ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
+                      : item.badgeColor || "bg-slate-100 text-slate-600 border-slate-200"
+                  )}>
+                    {item.badge}
+                  </span>
+                )}
+                <ChevronRight className={cn(
+                  "w-3.5 h-3.5 transition-all",
+                  isActive ? "text-emerald-400 translate-x-0 opacity-100" : "text-slate-300 -translate-x-1 opacity-0 group-hover:translate-x-0 group-hover:opacity-100"
+                )} />
+              </div>
+            </Link>
+          );
+        })}
+      </nav>
+    </div>
+  );
+
+  const SidebarContent = () => (
+    <>
       {/* Brand Header */}
-      <div className="mb-6 px-3 pt-2">
-        <Link href="/" className="flex items-center gap-3 group">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-600 via-teal-500 to-cyan-500 p-[1px] shadow-md shadow-emerald-500/10 group-hover:scale-105 transition-transform">
+      <div className="mb-8 px-3 pt-2">
+        <Link href="/" className="flex items-center gap-3 group" onClick={onMobileClose}>
+          <motion.div 
+            className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-600 via-teal-500 to-cyan-500 p-[1px] shadow-md shadow-emerald-500/10"
+            whileHover={{ scale: 1.05, rotate: 1 }}
+            whileTap={{ scale: 0.95 }}
+            transition={{ type: "spring", stiffness: 400, damping: 25 }}
+          >
             <div className="w-full h-full bg-white rounded-[11px] flex items-center justify-center">
-              <span className="material-symbols-outlined text-emerald-600 text-xl font-bold">hub</span>
+              <Sparkles className="w-5 h-5 text-emerald-600" />
             </div>
-          </div>
+          </motion.div>
           <div>
             <h1 className="font-bold text-sm tracking-tight text-slate-900 flex items-center gap-1.5">
               Company OS
@@ -55,98 +140,15 @@ export function Sidebar() {
       </div>
 
       {/* Main Navigation */}
-      <div className="flex-1 overflow-y-auto space-y-6 pr-1 custom-scrollbar">
-        <div>
-          <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">
-            Operations
-          </p>
-          <nav className="space-y-1">
-            {mainNavItems.map((item) => {
-              const isActive = pathname === item.href;
-              return (
-                <Link
-                  key={item.name}
-                  href={item.href}
-                  className={cn(
-                    "flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all duration-150 group",
-                    isActive
-                      ? "bg-slate-900 text-white shadow-sm shadow-slate-900/20"
-                      : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
-                  )}
-                >
-                  <div className="flex items-center gap-3">
-                    <span className={cn(
-                      "material-symbols-outlined text-lg transition-transform group-hover:scale-110",
-                      isActive ? "text-emerald-400" : "text-slate-400 group-hover:text-slate-600"
-                    )}>
-                      {item.icon}
-                    </span>
-                    <span>{item.name}</span>
-                  </div>
-                  {item.badge && (
-                    <span className={cn(
-                      "text-[10px] font-bold px-2 py-0.5 rounded-full border",
-                      isActive
-                        ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
-                        : "bg-slate-100 text-slate-600 border-slate-200"
-                    )}>
-                      {item.badge}
-                    </span>
-                  )}
-                </Link>
-              );
-            })}
-          </nav>
-        </div>
-
-        <div>
-          <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">
-            Governance & Hierarchy
-          </p>
-          <nav className="space-y-1">
-            {opsNavItems.map((item) => {
-              const isActive = pathname === item.href;
-              return (
-                <Link
-                  key={item.name}
-                  href={item.href}
-                  className={cn(
-                    "flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all duration-150 group",
-                    isActive
-                      ? "bg-slate-900 text-white shadow-sm shadow-slate-900/20"
-                      : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
-                  )}
-                >
-                  <div className="flex items-center gap-3">
-                    <span className={cn(
-                      "material-symbols-outlined text-lg transition-transform group-hover:scale-110",
-                      isActive ? "text-emerald-400" : "text-slate-400 group-hover:text-slate-600"
-                    )}>
-                      {item.icon}
-                    </span>
-                    <span>{item.name}</span>
-                  </div>
-                  {item.badge && (
-                    <span className={cn(
-                      "text-[10px] font-bold px-2 py-0.5 rounded-full border animate-pulse",
-                      item.badgeColor || (isActive
-                        ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
-                        : "bg-amber-100 text-amber-800 border-amber-300")
-                    )}>
-                      {item.badge}
-                    </span>
-                  )}
-                </Link>
-              );
-            })}
-          </nav>
-        </div>
+      <div className="flex-1 overflow-y-auto pr-1 custom-scrollbar">
+        <NavGroup items={mainNavItems} label="Operations" />
+        <NavGroup items={opsNavItems} label="Governance & Hierarchy" />
       </div>
 
       {/* Trust & Autonomy Telemetry */}
       <div className="my-3 px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+          <span className="w-2 h-2 rounded-full bg-emerald-500 pulse-emerald"></span>
           <div>
             <p className="text-[10px] font-semibold text-slate-700">Governance Active</p>
             <p className="text-[9px] text-slate-500">Tier Guardrails Online</p>
@@ -173,27 +175,82 @@ export function Sidebar() {
                 <p className="text-[10px] text-slate-500 truncate">{userEmail}</p>
               </div>
             </div>
-            <button 
+            <motion.button 
               onClick={() => signOut()}
               className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
               title="Sign Out"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.9 }}
             >
-              <span className="material-symbols-outlined text-lg">logout</span>
-            </button>
+              <LogOut className="w-4 h-4" />
+            </motion.button>
           </div>
         ) : (
           <Link
             href="/login"
+            onClick={onMobileClose}
             className="w-full flex items-center justify-between p-2.5 rounded-xl bg-slate-50 hover:bg-emerald-50 border border-slate-200 hover:border-emerald-300 transition-all text-slate-700 hover:text-emerald-700 group"
           >
             <div className="flex items-center gap-2.5">
-              <span className="material-symbols-outlined text-lg text-emerald-600 group-hover:scale-110 transition-transform">login</span>
+              <LogOut className="w-4 h-4 text-emerald-600 group-hover:scale-110 transition-transform" />
               <span className="text-xs font-semibold">Sign In / Register</span>
             </div>
-            <span className="material-symbols-outlined text-sm text-slate-400 group-hover:text-emerald-600">arrow_forward</span>
+            <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-emerald-600" />
           </Link>
         )}
       </div>
-    </aside>
+    </>
+  );
+
+  return (
+    <>
+      {/* Desktop Sidebar */}
+      <aside className="hidden lg:flex fixed left-0 top-0 h-screen w-[280px] glass-surface border-r border-slate-200/90 shadow-sm flex-col p-5 z-50">
+        <SidebarContent />
+      </aside>
+
+      {/* Mobile Drawer */}
+      <AnimatePresence>
+        {mobileOpen && (
+          <>
+            <motion.div
+              className="fixed inset-0 bg-slate-950/30 backdrop-blur-sm z-40 lg:hidden"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: durations.fast }}
+              onClick={onMobileClose}
+            />
+            <motion.aside
+              className="fixed left-0 top-0 h-screen w-[280px] glass-surface border-r border-slate-200/90 shadow-2xl flex-col p-5 z-50 lg:hidden"
+              initial={{ x: "-100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "-100%" }}
+              transition={{ duration: durations.slow, ease: easings.easeOutExpo }}
+            >
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-emerald-600 via-teal-500 to-cyan-500 p-[1px]">
+                    <div className="w-full h-full bg-white rounded-md flex items-center justify-center">
+                      <Sparkles className="w-4 h-4 text-emerald-600" />
+                    </div>
+                  </div>
+                  <span className="font-bold text-sm text-slate-900">Company OS</span>
+                </div>
+                <button
+                  onClick={onMobileClose}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="flex-1 flex flex-col overflow-hidden">
+                <SidebarContent />
+              </div>
+            </motion.aside>
+          </>
+        )}
+      </AnimatePresence>
+    </>
   );
 }

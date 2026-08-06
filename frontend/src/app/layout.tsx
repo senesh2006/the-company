@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { AppProvider } from "@/providers/app-provider";
+import { FramerProvider } from "@/providers/framer-provider";
 import { AppShell } from "@/components/layout/AppShell";
 
 export const metadata: Metadata = {
@@ -22,9 +23,11 @@ export default function RootLayout({
       </head>
       <body className="bg-slate-50 text-slate-900 min-h-screen antialiased selection:bg-emerald-500/20 selection:text-emerald-900">
         <AppProvider attribute="class" defaultTheme="light" enableSystem={false}>
-          <AppShell>
-            {children}
-          </AppShell>
+          <FramerProvider>
+            <AppShell>
+              {children}
+            </AppShell>
+          </FramerProvider>
         </AppProvider>
       </body>
     </html>

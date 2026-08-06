@@ -9,6 +9,8 @@ class Settings(BaseSettings):
     API_V1_STR: str = "/api/v1"
     OPENAI_API_KEY: Optional[str] = None
     GROQ_API_KEY: Optional[str] = None
+    NVIDIA_API_KEY: Optional[str] = None
+    NVIDIA_BASE_URL: str = "https://integrate.api.nvidia.com/v1"
 
     # Security
     SECRET_KEY: str = "your-super-secret-key-change-in-production"
@@ -62,6 +64,7 @@ class Settings(BaseSettings):
 
     # LLM overrides
     GROQ_CUSTOM_MODEL: Optional[str] = None
+    NVIDIA_CUSTOM_MODEL: Optional[str] = None
 
     ENVIRONMENT: str = "local"
 
@@ -86,3 +89,7 @@ if not settings.SUPABASE_JWT_SECRET:
     settings.SUPABASE_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET")
 if not settings.GROQ_API_KEY:
     settings.GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+if not settings.NVIDIA_API_KEY:
+    settings.NVIDIA_API_KEY = os.getenv("NVIDIA_API_KEY")
+if not settings.OPENAI_API_KEY:
+    settings.OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
