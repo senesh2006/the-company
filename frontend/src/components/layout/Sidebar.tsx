@@ -40,7 +40,15 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
   const userEmail = user?.email || "";
   const userInitials = userName ? userName.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2) : "U";
 
-  const mainNavItems = [
+  interface NavItem {
+    name: string;
+    href: string;
+    icon: React.ComponentType<{ className?: string }>;
+    badge?: string;
+    badgeColor?: string;
+  }
+
+  const mainNavItems: NavItem[] = [
     { name: 'Dashboard', href: '/', icon: LayoutDashboard },
     { name: 'AI Workers', href: '/agents', icon: Bot, badge: activeWorkerCount > 0 ? `${activeWorkerCount}` : undefined },
     { name: 'Tasks & Operations', href: '/tasks', icon: ClipboardList },
@@ -48,13 +56,13 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
     { name: 'Cost & Analytics', href: '/analytics', icon: BarChart3 },
   ];
 
-  const opsNavItems = [
+  const opsNavItems: NavItem[] = [
     { name: 'Recruit Worker', href: '/hire', icon: UserPlus },
     { name: 'Approvals & Attention', href: '/approvals', icon: ShieldCheck, badge: pendingAttentionCount > 0 ? `${pendingAttentionCount}` : undefined, badgeColor: 'bg-amber-100 text-amber-800 border-amber-300' },
     { name: 'Worker Hierarchy', href: '/hierarchy', icon: Network },
   ];
 
-  const NavGroup = ({ items, label }: { items: typeof mainNavItems, label: string }) => (
+  const NavGroup = ({ items, label }: { items: NavItem[], label: string }) => (
     <div className="mb-6">
       <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">
         {label}

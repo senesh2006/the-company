@@ -134,7 +134,7 @@ export function SpringButton({
   className?: string;
   variant?: "primary" | "secondary" | "outline" | "ghost" | "danger";
   size?: "sm" | "md" | "lg";
-} & React.ButtonHTMLAttributes<HTMLButtonElement>) {
+} & HTMLMotionProps<"button">) {
   const variantStyles = {
     primary: "bg-primary text-on-primary hover:bg-primary/90 shadow-sm shadow-primary/20",
     secondary: "bg-surface-container text-on-surface hover:bg-surface-container-high border border-outline",
