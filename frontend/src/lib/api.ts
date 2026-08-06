@@ -54,6 +54,9 @@ export interface Agent {
   clean_cycles_count?: number;
   authority_limit_usd?: number;
   currentTask?: string;
+  current_task_title?: string;
+  task_progress?: number;
+  cost_today_usd?: number;
   system_prompt?: string;
   model?: string;
   capabilities?: string[];
