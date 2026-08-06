@@ -22,12 +22,8 @@ class SupervisorDecision(BaseModel):
 def get_supervisor_agent(roles: list[str], business_id: str, model_id: str = None):
     llm = get_llm(model_id=model_id, role="default", temperature=0.0)
 
-    # Fetch shared memory context for cross-agent coordination
-    memory_items = memory_service.list_by_business(business_id)
-    shared_context_summary = "\n".join([f"- {m['key']}: {m['value']}" for m in memory_items[:10]]) if memory_items else "No shared memory entries."
-
     prompt = ChatPromptTemplate.from_messages([
-        ("system", f"""You are Robin, the Coordinating Agent (PRD v6.0 §4.1).
+        ("system", """You are Robin, the Coordinating Agent (PRD v6.0 §4.1).
 You are an internal-only coordinator who reads every in-house worker's state and shared memory.
 You never touch customer-facing or money-facing tools directly.
 Your mandate:
@@ -38,13 +34,13 @@ Your mandate:
 4. Ensure cross-worker alignment (e.g., if cash flow is flagged as tight in memory, ensure marketing plans do not spend budget on paid promotion).
 5. Surface items requiring founder decisions to the Governance Gateway.
 
-Available specialist roles on staff: {{roles}}
+Available specialist roles on staff: {roles}
 
 Analyze the current state of tasks:
-{{current_tasks}}
+{current_tasks}
 
 If tasks are pending, output action="dispatch". 
-If you need to break down objectives into specialist mandates, output action="replan" and provide new_tasks.
+If you need to break down objectives into structured mandates, output action="replan" and provide new_tasks.
 If all tasks are completed, output action="finish".
 """),
         ("human", "Founder instruction / Objective: {messages}")
@@ -71,6 +67,10 @@ def global_supervisor_node(state: OrchestratorState):
                 break
 
     supervisor = get_supervisor_agent(roles, business_id, model_id=model_id)
+
+    # Fetch shared memory context for cross-agent coordination
+    memory_items = memory_service.list_by_business(business_id)
+    shared_context_summary = "\n".join([f"- {m['key']}: {m['value']}" for m in memory_items[:10]]) if memory_items else "No shared memory entries."
     
     current_tasks = state.get("task_graph", {})
     last_message = state["messages"][-1].content if state.get("messages") else ""
@@ -78,6 +78,7 @@ def global_supervisor_node(state: OrchestratorState):
     decision = supervisor.invoke({
         "roles": ", ".join(roles),
         "current_tasks": str([t.model_dump() for t in current_tasks.values()]) if current_tasks else "No tasks currently exist.",
+        "shared_context_summary": shared_context_summary,
         "messages": last_message
     })
     

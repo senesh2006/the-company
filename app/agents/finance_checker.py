@@ -286,13 +286,13 @@ Evaluate:
 4. Is there any unauthorized attempt to move money, create payouts, or issue refunds?
 
 Output JSON only:
-{
+{{
   "passed": true/false,
   "confidence": 0.0 to 1.0,
   "risk_level": "low" | "medium" | "high" | "critical",
   "audit_findings": ["finding 1", "finding 2"],
   "suggested_revisions": "revisions if needed, else null"
-}"""),
+}}"""),
             ("human", "Task: {task}\nContext: {context}\nProposed Output to Audit:\n{maker_output}")
         ])
 
