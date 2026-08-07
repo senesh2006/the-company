@@ -1,10 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 
 from app.api.deps import get_current_user
 from app.services.department_service import DepartmentService
 from app.services.task_service import TaskService
+from app.api.routes.tasks import run_team_task_bg
 
 router = APIRouter()
 dept_service = DepartmentService()
@@ -94,10 +95,14 @@ def toggle_checklist(dept_id: str, task_id: int, user = Depends(get_current_user
     return {"checklist": checklist}
 
 @router.post("/{dept_id}/dispatch")
-def dispatch_department_directive(dept_id: str, payload: DispatchDirective, user = Depends(get_current_user)):
+def dispatch_department_directive(
+    dept_id: str,
+    payload: DispatchDirective,
+    background_tasks: BackgroundTasks,
+    user = Depends(get_current_user)
+):
     """
-    Dispatches a prompt/objective to department AI agents. Also logs the activity
-    and updates department state autonomously.
+    Dispatches a prompt/objective to department AI agents and triggers immediate background execution.
     """
     biz_id = user.business_id or "default-business-id"
     
@@ -107,10 +112,14 @@ def dispatch_department_directive(dept_id: str, payload: DispatchDirective, user
         description=f"[{dept_id.upper()} DIRECTIVE] {payload.directive}",
         mandate=payload.directive,
         priority=payload.priority,
-        assignee_role=f"{dept_id.capitalize()} Specialist"
+        assignee_role=f"{dept_id.capitalize()} Specialist",
+        status="queued"
     )
 
-    # 2. Autonomously log activity & update department telemetry
+    # 2. Add background execution runner so AI workers pick it up immediately
+    background_tasks.add_task(run_team_task_bg, biz_id, task["id"], payload.directive)
+
+    # 3. Autonomously log activity & update department telemetry
     dept_service.log_department_activity(
         business_id=biz_id,
         dept_id=dept_id,
