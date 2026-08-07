@@ -3,6 +3,7 @@ from typing import Optional, List, Dict, Any
 from langchain_openai import ChatOpenAI
 from langchain_core.language_models.chat_models import SimpleChatModel
 from langchain_core.messages import BaseMessage, AIMessage
+from langchain_core.runnables import RunnableLambda
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -40,23 +41,22 @@ class MissingApiKeyFallbackLLM(SimpleChatModel):
 
     def with_structured_output(self, schema: Any, **kwargs):
         """Allow structured output calls (e.g. SupervisorDecision) to return a safe fallback object."""
-        class MockStructuredOutputRunnable:
-            def invoke(self, input_data, config=None):
-                try:
-                    if hasattr(schema, "model_construct"):
-                        return schema.model_construct(
-                            thoughts="⚠️ Invalid or Missing LLM API Key. Please add GROQ_API_KEY, OPENAI_API_KEY, NVIDIA_API_KEY, or GEMINI_API_KEY to your environment variables.",
-                            action="finish",
-                            new_tasks=[],
-                            executive_brief="Operational Warning: No valid LLM API key configured in environment variables."
-                        )
-                except Exception:
-                    pass
-                try:
-                    return schema()
-                except Exception:
-                    return None
-        return MockStructuredOutputRunnable()
+        def _mock_structured(input_data, config=None):
+            try:
+                if hasattr(schema, "model_construct"):
+                    return schema.model_construct(
+                        thoughts="⚠️ Invalid or Missing LLM API Key. Please add GROQ_API_KEY, OPENAI_API_KEY, NVIDIA_API_KEY, or GEMINI_API_KEY to your environment variables.",
+                        action="finish",
+                        new_tasks=[],
+                        executive_brief="Operational Warning: No valid LLM API key configured in environment variables."
+                    )
+            except Exception:
+                pass
+            try:
+                return schema()
+            except Exception:
+                return None
+        return RunnableLambda(_mock_structured)
 
 
 # Model registry: public display id -> (provider_model_id, provider)
