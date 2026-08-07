@@ -156,11 +156,13 @@ def get_llm(model_id: Optional[str] = None, role: Optional[str] = None, temperat
             "Please configure GROQ_API_KEY, OPENAI_API_KEY, NVIDIA_API_KEY, or GEMINI_API_KEY in your environment."
         )
 
+    effective_api_key = api_key if _is_valid_key(api_key) else "sk-no-key-configured"
+
     logger.info(f"Initializing LLM: requested={model_id!r}, role={role!r}, resolved_provider={provider}, resolved_model={model_name}")
 
     llm = ChatOpenAI(
         model=model_name,
-        api_key=api_key,
+        api_key=effective_api_key,
         base_url=base_url,
         temperature=temperature,
     )
