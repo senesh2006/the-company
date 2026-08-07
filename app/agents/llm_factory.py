@@ -1,13 +1,15 @@
 import logging
 from typing import Optional, List, Dict, Any
 from langchain_openai import ChatOpenAI
+from langchain_core.language_models.chat_models import SimpleChatModel
+from langchain_core.messages import BaseMessage, AIMessage
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
 
 def _is_valid_key(key: Optional[str]) -> bool:
-    """Check if an API key is non-empty and not a placeholder."""
+    """Check if an API key is non-empty, not None, and not a placeholder string."""
     if not key or not isinstance(key, str):
         return False
     k = key.strip()
@@ -15,11 +17,46 @@ def _is_valid_key(key: Optional[str]) -> bool:
         return False
     placeholders = (
         "sk-...", "gsk_...", "nvapi-...", "your-", "replace-",
-        "sk-dummy", "gsk-dummy", "nvapi-dummy", "AIzaSy..."
+        "sk-dummy", "gsk-dummy", "nvapi-dummy", "AIzaSy...",
+        "sk-no-key-configured"
     )
-    if any(k.startswith(p) for p in placeholders) or k in {"sk-...", "gsk_...", "nvapi-...", "AIzaSy..."}:
+    if any(k.startswith(p) for p in placeholders) or k in {"sk-...", "gsk_...", "nvapi-...", "AIzaSy...", "sk-no-key-configured"}:
         return False
     return True
+
+
+class MissingApiKeyFallbackLLM(SimpleChatModel):
+    """Fallback LLM returned when no valid API key is present or when all API keys fail authentication."""
+    
+    def _call(self, messages: List[BaseMessage], stop: Optional[List[str]] = None, **kwargs) -> str:
+        return (
+            "⚠️ Configuration Required: No valid LLM API Key was found in your deployment environment variables. "
+            "Please configure GROQ_API_KEY, OPENAI_API_KEY, NVIDIA_API_KEY, or GEMINI_API_KEY."
+        )
+
+    @property
+    def _llm_type(self) -> str:
+        return "missing_key_fallback"
+
+    def with_structured_output(self, schema: Any, **kwargs):
+        """Allow structured output calls (e.g. SupervisorDecision) to return a safe fallback object."""
+        class MockStructuredOutputRunnable:
+            def invoke(self, input_data, config=None):
+                try:
+                    if hasattr(schema, "model_construct"):
+                        return schema.model_construct(
+                            thoughts="⚠️ Invalid or Missing LLM API Key. Please add GROQ_API_KEY, OPENAI_API_KEY, NVIDIA_API_KEY, or GEMINI_API_KEY to your environment variables.",
+                            action="finish",
+                            new_tasks=[],
+                            executive_brief="Operational Warning: No valid LLM API key configured in environment variables."
+                        )
+                except Exception:
+                    pass
+                try:
+                    return schema()
+                except Exception:
+                    return None
+        return MockStructuredOutputRunnable()
 
 
 # Model registry: public display id -> (provider_model_id, provider)
@@ -34,7 +71,6 @@ MODEL_REGISTRY = {
     "mistral-small-24b": ("mixtral-8x7b-32768", "groq"),
 }
 
-# NVIDIA NIM model mappings for open-weights models
 NVIDIA_MODEL_MAP = {
     "kimi-k3": "meta/llama-3.3-70b-instruct",
     "llama-3.1-70b": "meta/llama-3.3-70b-instruct",
@@ -85,24 +121,25 @@ def _nvidia_model_name(model_id: str) -> str:
     return NVIDIA_MODEL_MAP.get(model_id, "meta/llama-3.3-70b-instruct")
 
 
-def resolve_model(model_id: Optional[str], role: Optional[str] = None) -> tuple[str, str]:
+def resolve_model(model_id: Optional[str], role: Optional[str] = None) -> tuple[str, Optional[str]]:
     """
-    Resolve a requested model id to a known model and provider, prioritizing high-reliability providers (Groq -> OpenAI -> NVIDIA -> Gemini).
+    Resolve requested model to known provider with valid API keys.
+    Returns (model_name, provider_name). If no valid key is found for any provider, provider is None.
     """
     has_groq = _is_valid_key(settings.GROQ_API_KEY)
     has_openai = _is_valid_key(settings.OPENAI_API_KEY)
     has_nvidia = _is_valid_key(settings.NVIDIA_API_KEY)
     has_gemini = _is_valid_key(settings.GEMINI_API_KEY) or _is_valid_key(settings.GOOGLE_API_KEY)
 
-    # Allow explicit provider override via LLM_PROVIDER env var
-    forced_provider = (getattr(settings, "LLM_PROVIDER", None) or "").strip().lower()
-    if forced_provider == "groq" and has_groq:
+    # Forced provider override
+    forced = (getattr(settings, "LLM_PROVIDER", None) or "").strip().lower()
+    if forced == "groq" and has_groq:
         return _groq_model_name(model_id or "kimi-k3"), "groq"
-    elif forced_provider == "openai" and has_openai:
+    elif forced == "openai" and has_openai:
         return "gpt-4o-mini", "openai"
-    elif forced_provider == "nvidia" and has_nvidia:
+    elif forced == "nvidia" and has_nvidia:
         return _nvidia_model_name(model_id or "kimi-k3"), "nvidia"
-    elif forced_provider == "gemini" and has_gemini:
+    elif forced == "gemini" and has_gemini:
         return "gemini-2.0-flash", "gemini"
 
     if not model_id or model_id not in MODEL_REGISTRY or model_id in BROKEN_MODEL_IDS:
@@ -110,89 +147,75 @@ def resolve_model(model_id: Optional[str], role: Optional[str] = None) -> tuple[
 
     model_name, default_provider = MODEL_REGISTRY[model_id]
 
-    # Priority 1: Groq (Primary high-velocity provider)
+    # Priority 1: Groq
     if has_groq:
         return _groq_model_name(model_id), "groq"
-
     # Priority 2: OpenAI
     if has_openai:
         fallback_model = MODEL_REGISTRY["gpt-4o-mini"][0] if "gpt-4o-mini" in MODEL_REGISTRY else "gpt-4o"
         return fallback_model, "openai"
-
     # Priority 3: NVIDIA NIM
     if has_nvidia:
         return _nvidia_model_name(model_id), "nvidia"
-
-    # Priority 4: Gemini (Fallback if explicitly configured)
+    # Priority 4: Gemini
     if has_gemini:
         return "gemini-2.0-flash", "gemini"
 
-    # Default fallback if no keys configured
-    return model_name, default_provider
+    # No valid API keys found in environment
+    return model_name, None
 
 
 def get_llm(model_id: Optional[str] = None, role: Optional[str] = None, temperature: float = 0.0):
     """
-    Build a ChatOpenAI instance for the requested model with automatic fallback.
+    Build a resilient ChatOpenAI model instance with automated fallback across available API providers.
+    If no valid API keys are configured, returns MissingApiKeyFallbackLLM to prevent crash.
     """
     model_name, provider = resolve_model(model_id, role)
 
-    if provider == "nvidia":
-        api_key = settings.NVIDIA_API_KEY
-        base_url = settings.NVIDIA_BASE_URL
-    elif provider == "groq":
-        api_key = settings.GROQ_API_KEY
-        base_url = "https://api.groq.com/openai/v1"
+    candidates = []
+
+    # Helper to append candidate ChatOpenAI instance
+    def add_candidate(m_name, p_name, key, base):
+        if _is_valid_key(key):
+            try:
+                candidates.append(ChatOpenAI(
+                    model=m_name,
+                    api_key=key,
+                    base_url=base,
+                    temperature=temperature
+                ))
+            except Exception as e:
+                logger.warning(f"Failed to create ChatOpenAI for provider {p_name}: {e}")
+
+    if provider == "groq":
+        add_candidate(model_name, "groq", settings.GROQ_API_KEY, "https://api.groq.com/openai/v1")
+    elif provider == "openai":
+        add_candidate(model_name, "openai", settings.OPENAI_API_KEY, None)
+    elif provider == "nvidia":
+        add_candidate(model_name, "nvidia", settings.NVIDIA_API_KEY, settings.NVIDIA_BASE_URL)
     elif provider == "gemini":
-        api_key = settings.GEMINI_API_KEY or settings.GOOGLE_API_KEY
-        base_url = settings.GEMINI_BASE_URL
-    else:
-        api_key = settings.OPENAI_API_KEY
-        base_url = None
+        add_candidate("gemini-2.0-flash", "gemini", settings.GEMINI_API_KEY or settings.GOOGLE_API_KEY, settings.GEMINI_BASE_URL)
 
-    if not _is_valid_key(api_key):
-        logger.warning(
-            f"No valid API key configured for provider '{provider}'. "
-            "Please configure GROQ_API_KEY, OPENAI_API_KEY, NVIDIA_API_KEY, or GEMINI_API_KEY in your environment."
-        )
-
-    effective_api_key = api_key if _is_valid_key(api_key) else "sk-no-key-configured"
-
-    logger.info(f"Initializing LLM: requested={model_id!r}, role={role!r}, resolved_provider={provider}, resolved_model={model_name}")
-
-    llm = ChatOpenAI(
-        model=model_name,
-        api_key=effective_api_key,
-        base_url=base_url,
-        temperature=temperature,
-    )
-
-    # Build fallbacks if secondary valid keys exist
-    fallbacks = []
+    # Add remaining valid API keys as secondary fallbacks
     if provider != "groq" and _is_valid_key(settings.GROQ_API_KEY):
-        fallbacks.append(ChatOpenAI(
-            model=_groq_model_name(model_id or "kimi-k3"),
-            api_key=settings.GROQ_API_KEY,
-            base_url="https://api.groq.com/openai/v1",
-            temperature=temperature
-        ))
+        add_candidate(_groq_model_name(model_id or "kimi-k3"), "groq", settings.GROQ_API_KEY, "https://api.groq.com/openai/v1")
     if provider != "openai" and _is_valid_key(settings.OPENAI_API_KEY):
-        fallbacks.append(ChatOpenAI(
-            model="gpt-4o-mini",
-            api_key=settings.OPENAI_API_KEY,
-            temperature=temperature
-        ))
+        add_candidate("gpt-4o-mini", "openai", settings.OPENAI_API_KEY, None)
     if provider != "nvidia" and _is_valid_key(settings.NVIDIA_API_KEY):
-        fallbacks.append(ChatOpenAI(
-            model=_nvidia_model_name(model_id or "kimi-k3"),
-            api_key=settings.NVIDIA_API_KEY,
-            base_url=settings.NVIDIA_BASE_URL,
-            temperature=temperature
-        ))
+        add_candidate(_nvidia_model_name(model_id or "kimi-k3"), "nvidia", settings.NVIDIA_API_KEY, settings.NVIDIA_BASE_URL)
+    if provider != "gemini" and (_is_valid_key(settings.GEMINI_API_KEY) or _is_valid_key(settings.GOOGLE_API_KEY)):
+        add_candidate("gemini-2.0-flash", "gemini", settings.GEMINI_API_KEY or settings.GOOGLE_API_KEY, settings.GEMINI_BASE_URL)
 
-    if fallbacks:
-        return llm.with_fallbacks(fallbacks)
-    return llm
+    fallback_msg_llm = MissingApiKeyFallbackLLM()
+
+    if not candidates:
+        logger.warning("No valid LLM API keys found in environment. Using MissingApiKeyFallbackLLM.")
+        return fallback_msg_llm
+
+    primary = candidates[0]
+    fallbacks = candidates[1:] + [fallback_msg_llm]
+
+    return primary.with_fallbacks(fallbacks, exceptions_to_handle=(Exception,))
 
 
 def list_available_models() -> list[dict]:
