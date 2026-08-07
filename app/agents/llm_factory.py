@@ -147,16 +147,19 @@ def resolve_model(model_id: Optional[str], role: Optional[str] = None) -> tuple[
 
     model_name, default_provider = MODEL_REGISTRY[model_id]
 
-    # Priority 1: Groq
+    # Priority 1: NVIDIA NIM (Primary provider when NVIDIA_API_KEY is configured)
+    if has_nvidia:
+        return _nvidia_model_name(model_id), "nvidia"
+
+    # Priority 2: Groq
     if has_groq:
         return _groq_model_name(model_id), "groq"
-    # Priority 2: OpenAI
+
+    # Priority 3: OpenAI
     if has_openai:
         fallback_model = MODEL_REGISTRY["gpt-4o-mini"][0] if "gpt-4o-mini" in MODEL_REGISTRY else "gpt-4o"
         return fallback_model, "openai"
-    # Priority 3: NVIDIA NIM
-    if has_nvidia:
-        return _nvidia_model_name(model_id), "nvidia"
+
     # Priority 4: Gemini
     if has_gemini:
         return "gemini-2.0-flash", "gemini"
@@ -187,22 +190,22 @@ def get_llm(model_id: Optional[str] = None, role: Optional[str] = None, temperat
             except Exception as e:
                 logger.warning(f"Failed to create ChatOpenAI for provider {p_name}: {e}")
 
-    if provider == "groq":
+    if provider == "nvidia":
+        add_candidate(model_name, "nvidia", settings.NVIDIA_API_KEY, settings.NVIDIA_BASE_URL)
+    elif provider == "groq":
         add_candidate(model_name, "groq", settings.GROQ_API_KEY, "https://api.groq.com/openai/v1")
     elif provider == "openai":
         add_candidate(model_name, "openai", settings.OPENAI_API_KEY, None)
-    elif provider == "nvidia":
-        add_candidate(model_name, "nvidia", settings.NVIDIA_API_KEY, settings.NVIDIA_BASE_URL)
     elif provider == "gemini":
         add_candidate("gemini-2.0-flash", "gemini", settings.GEMINI_API_KEY or settings.GOOGLE_API_KEY, settings.GEMINI_BASE_URL)
 
     # Add remaining valid API keys as secondary fallbacks
+    if provider != "nvidia" and _is_valid_key(settings.NVIDIA_API_KEY):
+        add_candidate(_nvidia_model_name(model_id or "kimi-k3"), "nvidia", settings.NVIDIA_API_KEY, settings.NVIDIA_BASE_URL)
     if provider != "groq" and _is_valid_key(settings.GROQ_API_KEY):
         add_candidate(_groq_model_name(model_id or "kimi-k3"), "groq", settings.GROQ_API_KEY, "https://api.groq.com/openai/v1")
     if provider != "openai" and _is_valid_key(settings.OPENAI_API_KEY):
         add_candidate("gpt-4o-mini", "openai", settings.OPENAI_API_KEY, None)
-    if provider != "nvidia" and _is_valid_key(settings.NVIDIA_API_KEY):
-        add_candidate(_nvidia_model_name(model_id or "kimi-k3"), "nvidia", settings.NVIDIA_API_KEY, settings.NVIDIA_BASE_URL)
     if provider != "gemini" and (_is_valid_key(settings.GEMINI_API_KEY) or _is_valid_key(settings.GOOGLE_API_KEY)):
         add_candidate("gemini-2.0-flash", "gemini", settings.GEMINI_API_KEY or settings.GOOGLE_API_KEY, settings.GEMINI_BASE_URL)
 
@@ -230,20 +233,17 @@ def list_available_models() -> list[dict]:
             continue
         model_name, default_provider = MODEL_REGISTRY[model_id]
 
-        if default_provider == "openai":
-            if not has_openai:
-                continue
+        if has_nvidia:
+            provider_display = "NVIDIA NIM"
+            actual_model = _nvidia_model_name(model_id)
+        elif has_groq:
+            provider_display = "Groq"
+            actual_model = _groq_model_name(model_id)
+        elif has_openai:
             provider_display = "OpenAI"
             actual_model = model_name
         else:
-            if has_groq:
-                provider_display = "Groq"
-                actual_model = _groq_model_name(model_id)
-            elif has_nvidia:
-                provider_display = "NVIDIA NIM"
-                actual_model = _nvidia_model_name(model_id)
-            else:
-                continue
+            continue
 
         models.append({
             "id": model_id,
