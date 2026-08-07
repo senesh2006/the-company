@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Topbar } from "@/components/layout/Topbar";
@@ -13,6 +13,26 @@ import { easings, durations } from "@/lib/motion";
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // Catch ChunkLoadError (404 on old build JS chunks) after new deployment and auto-reload page once
+  useEffect(() => {
+    const handleChunkError = (event: ErrorEvent) => {
+      const errorMsg = event.message || "";
+      const filename = event.filename || "";
+      const isChunkError = 
+        errorMsg.includes("Loading chunk") || 
+        errorMsg.includes("ChunkLoadError") || 
+        filename.includes("_next/static/chunks");
+
+      if (isChunkError) {
+        console.warn("New deployment build detected. Reloading to fetch fresh static JS assets...");
+        window.location.reload();
+      }
+    };
+
+    window.addEventListener("error", handleChunkError);
+    return () => window.removeEventListener("error", handleChunkError);
+  }, []);
   
   const isAuthOrOnboardingPage = 
     pathname === "/login" || 
