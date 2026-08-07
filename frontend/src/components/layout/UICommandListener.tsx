@@ -25,10 +25,17 @@ export function UICommandListener() {
     
     let eventSource: EventSource | null = null;
     let isSubscribed = true;
+    let reconnectTimer: NodeJS.Timeout | null = null;
 
     const connectSSE = () => {
       if (!isSubscribed) return;
+      if (typeof window !== "undefined" && !navigator.onLine) return; // Don't attempt connection if browser is offline
       
+      if (eventSource) {
+        eventSource.close();
+        eventSource = null;
+      }
+
       try {
         eventSource = new EventSource(streamUrl);
 
@@ -73,25 +80,49 @@ export function UICommandListener() {
         };
 
         eventSource.onerror = () => {
-          // EventSource automatically reconnects; close current instance to prevent duplicate handlers
           if (eventSource) {
             eventSource.close();
             eventSource = null;
           }
-          // Silent reconnect after 3 seconds
-          setTimeout(() => {
-            if (isSubscribed) connectSSE();
-          }, 3000);
+          if (reconnectTimer) clearTimeout(reconnectTimer);
+          // Reconnect silently after 5s if online
+          reconnectTimer = setTimeout(() => {
+            if (isSubscribed && typeof window !== "undefined" && navigator.onLine) {
+              connectSSE();
+            }
+          }, 5000);
         };
       } catch (e) {
         // Quiet fallback
       }
     };
 
+    const handleOnline = () => {
+      connectSSE();
+    };
+
+    const handleOffline = () => {
+      if (eventSource) {
+        eventSource.close();
+        eventSource = null;
+      }
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+    };
+
+    if (typeof window !== "undefined") {
+      window.addEventListener("online", handleOnline);
+      window.addEventListener("offline", handleOffline);
+    }
+
     connectSSE();
 
     return () => {
       isSubscribed = false;
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      if (typeof window !== "undefined") {
+        window.removeEventListener("online", handleOnline);
+        window.removeEventListener("offline", handleOffline);
+      }
       if (eventSource) {
         eventSource.close();
       }
