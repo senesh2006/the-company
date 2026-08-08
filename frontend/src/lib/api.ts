@@ -634,4 +634,58 @@ export const api = {
     if (!res.ok) throw new Error(`Failed to dispatch directive (${res.status})`);
     return res.json();
   },
+
+  // --- WhatsApp (WAHA) Methods ---
+  getWhatsAppStatus: async (session?: string): Promise<any> => {
+    const baseUrl = getBaseUrl();
+    const url = session 
+      ? `${baseUrl}/api/v1/whatsapp/status?session=${encodeURIComponent(session)}`
+      : `${baseUrl}/api/v1/whatsapp/status`;
+    const res = await authFetch(url);
+    if (!res.ok) throw new Error(`Failed to fetch WhatsApp status (${res.status})`);
+    return res.json();
+  },
+
+  startWhatsAppSession: async (session: string = "default"): Promise<any> => {
+    const baseUrl = getBaseUrl();
+    const res = await authFetch(`${baseUrl}/api/v1/whatsapp/session/start`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ session }),
+    });
+    if (!res.ok) throw new Error(`Failed to start WhatsApp session (${res.status})`);
+    return res.json();
+  },
+
+  stopWhatsAppSession: async (session: string = "default"): Promise<any> => {
+    const baseUrl = getBaseUrl();
+    const res = await authFetch(`${baseUrl}/api/v1/whatsapp/session/stop`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ session }),
+    });
+    if (!res.ok) throw new Error(`Failed to stop WhatsApp session (${res.status})`);
+    return res.json();
+  },
+
+  getWhatsAppQR: async (session?: string): Promise<any> => {
+    const baseUrl = getBaseUrl();
+    const url = session
+      ? `${baseUrl}/api/v1/whatsapp/qr?session=${encodeURIComponent(session)}`
+      : `${baseUrl}/api/v1/whatsapp/qr`;
+    const res = await authFetch(url);
+    if (!res.ok) throw new Error(`Failed to fetch WhatsApp QR (${res.status})`);
+    return res.json();
+  },
+
+  sendWhatsAppMessage: async (chatId: string, text: string, session?: string): Promise<any> => {
+    const baseUrl = getBaseUrl();
+    const res = await authFetch(`${baseUrl}/api/v1/whatsapp/send`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: chatId, text, session }),
+    });
+    if (!res.ok) throw new Error(`Failed to send WhatsApp message (${res.status})`);
+    return res.json();
+  },
 };

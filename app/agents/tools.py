@@ -287,6 +287,8 @@ def register_default_tools(business_id: str, role: str = "assistant", agent_id: 
     """
     Registers the default tools for the specified agent role.
     """
+    from app.agents.whatsapp_tool import WhatsAppSendMessageTool, WhatsAppCheckStatusTool
+    
     base_tools = [
         ReadSharedMemoryTool(business_id=business_id),
         WriteSharedMemoryTool(business_id=business_id),
@@ -296,7 +298,9 @@ def register_default_tools(business_id: str, role: str = "assistant", agent_id: 
         SendEmailTool(),
         CreateCalendarEventTool(),
         RequestCollaborationTool(business_id=business_id, main_task_id=task_id),
-        SpawnSubtaskTool(business_id=business_id, main_task_id=task_id)
+        SpawnSubtaskTool(business_id=business_id, main_task_id=task_id),
+        WhatsAppSendMessageTool(),
+        WhatsAppCheckStatusTool()
     ]
     
     if role in ["Accountant", "Finance Specialist", "finance"]:

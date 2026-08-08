@@ -66,6 +66,13 @@ class Settings(BaseSettings):
     # Direct API integrations
     STRIPE_API_KEY: Optional[str] = None
 
+    # WhatsApp API (WAHA - WhatsApp HTTP API)
+    WAHA_BASE_URL: Optional[str] = None
+    WAHA_API_KEY: Optional[str] = None
+    WAHA_SESSION: str = "default"
+    WAHA_FOUNDER_PHONE: Optional[str] = None
+    WAHA_AUTO_DISPATCH_MANDATE: bool = True
+
     # LLM overrides
     GROQ_CUSTOM_MODEL: Optional[str] = None
     NVIDIA_CUSTOM_MODEL: Optional[str] = None

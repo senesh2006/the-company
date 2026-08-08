@@ -370,4 +370,55 @@ export const useDispatchDepartmentDirective = () => {
     });
 };
 
+// --- WhatsApp (WAHA) Hooks ---
+
+export const useWhatsAppStatus = (session?: string) => {
+    return useQuery({
+        queryKey: ['whatsapp-status', session || 'default'],
+        queryFn: () => api.getWhatsAppStatus(session),
+        refetchInterval: 5000,
+    });
+};
+
+export const useWhatsAppQR = (session?: string) => {
+    return useQuery({
+        queryKey: ['whatsapp-qr', session || 'default'],
+        queryFn: () => api.getWhatsAppQR(session),
+        refetchInterval: 3000,
+    });
+};
+
+export const useStartWhatsAppSession = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (session?: string) => api.startWhatsAppSession(session),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['whatsapp-status'] });
+            queryClient.invalidateQueries({ queryKey: ['whatsapp-qr'] });
+        },
+    });
+};
+
+export const useStopWhatsAppSession = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (session?: string) => api.stopWhatsAppSession(session),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['whatsapp-status'] });
+            queryClient.invalidateQueries({ queryKey: ['whatsapp-qr'] });
+        },
+    });
+};
+
+export const useSendWhatsAppMessage = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ chatId, text, session }: { chatId: string; text: string; session?: string }) =>
+            api.sendWhatsAppMessage(chatId, text, session),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['whatsapp-status'] });
+        },
+    });
+};
+
 

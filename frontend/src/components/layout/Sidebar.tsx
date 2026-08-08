@@ -17,6 +17,7 @@ import {
   UserPlus, 
   ShieldCheck, 
   Network,
+  MessageSquare,
   LogOut,
   Menu,
   X,
@@ -55,6 +56,7 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
     { name: 'Departments', href: '/departments', icon: Building2 },
     { name: 'AI Workers', href: '/agents', icon: Bot, badge: activeWorkerCount > 0 ? `${activeWorkerCount}` : undefined },
     { name: 'Tasks & Operations', href: '/tasks', icon: ClipboardList },
+    { name: 'WhatsApp Gateway', href: '/whatsapp', icon: MessageSquare },
     { name: 'Shared Memory', href: '/memory', icon: Database },
     { name: 'Cost & Analytics', href: '/analytics', icon: BarChart3 },
   ];
