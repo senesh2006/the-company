@@ -7,6 +7,7 @@ import { Topbar } from "@/components/layout/Topbar";
 import { AgentDetailPanel } from "@/components/AgentDetailPanel";
 import { UICommandListener } from "@/components/layout/UICommandListener";
 import { AICommandPalette } from "@/components/layout/AICommandPalette";
+import { PersonalAssistantBlob } from "@/components/layout/PersonalAssistantBlob";
 import { AnimatePresence, motion } from "framer-motion";
 import { easings, durations } from "@/lib/motion";
 
@@ -80,6 +81,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <AgentDetailPanel />
       <UICommandListener />
       <AICommandPalette />
+      <PersonalAssistantBlob />
     </div>
   );
 }

@@ -1,0 +1,234 @@
+"use client";
+
+import React, { useState, useRef, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Bot, Send, X, Sparkles, Loader2, ChevronDown } from "lucide-react";
+import { useCreateTask } from "@/lib/queries";
+
+interface Message {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  timestamp: Date;
+}
+
+export function PersonalAssistantBlob() {
+  const [isOpen, setIsOpen] = useState(false);
+  const [input, setInput] = useState("");
+  const [messages, setMessages] = useState<Message[]>([
+    {
+      id: "welcome",
+      role: "assistant",
+      content: "Hey! I'm your Personal Assistant. Tell me what you need and I'll delegate it to the right team members.",
+      timestamp: new Date(),
+    },
+  ]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [pulseActive, setPulseActive] = useState(true);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const createTask = useCreateTask();
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  useEffect(() => {
+    if (isOpen && inputRef.current) {
+      inputRef.current.focus();
+    }
+    if (isOpen) setPulseActive(false);
+  }, [isOpen]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!input.trim() || isLoading) return;
+
+    const userMessage: Message = {
+      id: `user-${Date.now()}`,
+      role: "user",
+      content: input.trim(),
+      timestamp: new Date(),
+    };
+
+    setMessages((prev) => [...prev, userMessage]);
+    const taskText = input.trim();
+    setInput("");
+    setIsLoading(true);
+
+    try {
+      await createTask.mutateAsync({
+        title: taskText,
+        description: taskText,
+        priority: "P1",
+      });
+
+      const assistantMessage: Message = {
+        id: `assistant-${Date.now()}`,
+        role: "assistant",
+        content: `Got it! I've dispatched that to the team. I'll coordinate the workers and make sure it gets done. You can track progress on the Tasks page.`,
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, assistantMessage]);
+    } catch (err: any) {
+      const errorMessage: Message = {
+        id: `error-${Date.now()}`,
+        role: "assistant",
+        content: `Something went wrong while dispatching: ${err.message}. Please try again.`,
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, errorMessage]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit(e);
+    }
+  };
+
+  return (
+    <>
+      {/* Chat Panel */}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: 20, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.9 }}
+            transition={{ type: "spring", stiffness: 400, damping: 30 }}
+            className="fixed bottom-24 right-6 z-[60] w-[380px] max-w-[calc(100vw-2rem)] bg-white rounded-3xl shadow-2xl border border-slate-200/80 overflow-hidden flex flex-col"
+            style={{ maxHeight: "min(560px, calc(100vh - 160px))" }}
+          >
+            {/* Header */}
+            <div className="px-5 py-4 bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-500 text-white flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center border border-white/30">
+                  <Sparkles className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold tracking-tight">Personal Assistant</h3>
+                  <p className="text-[10px] text-emerald-100 font-medium">
+                    Online • Ready to coordinate
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsOpen(false)}
+                className="p-1.5 rounded-xl hover:bg-white/20 transition-colors cursor-pointer"
+              >
+                <ChevronDown className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Messages */}
+            <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3 bg-slate-50/50" style={{ minHeight: 200 }}>
+              {messages.map((msg) => (
+                <div
+                  key={msg.id}
+                  className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+                >
+                  <div
+                    className={`max-w-[85%] px-3.5 py-2.5 rounded-2xl text-xs leading-relaxed ${
+                      msg.role === "user"
+                        ? "bg-emerald-600 text-white rounded-br-lg"
+                        : "bg-white text-slate-800 border border-slate-200 rounded-bl-lg shadow-sm"
+                    }`}
+                  >
+                    {msg.content}
+                  </div>
+                </div>
+              ))}
+
+              {isLoading && (
+                <div className="flex justify-start">
+                  <div className="bg-white text-slate-500 border border-slate-200 rounded-2xl rounded-bl-lg px-4 py-3 shadow-sm flex items-center gap-2">
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-600" />
+                    <span className="text-xs font-medium">Dispatching to team...</span>
+                  </div>
+                </div>
+              )}
+              <div ref={messagesEndRef} />
+            </div>
+
+            {/* Input */}
+            <form
+              onSubmit={handleSubmit}
+              className="px-4 py-3 bg-white border-t border-slate-100 flex items-end gap-2 shrink-0"
+            >
+              <textarea
+                ref={inputRef}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Tell me what you need..."
+                rows={1}
+                className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-300 resize-none font-medium max-h-20"
+                style={{ minHeight: 38 }}
+              />
+              <button
+                type="submit"
+                disabled={!input.trim() || isLoading}
+                className="shrink-0 w-9 h-9 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-200 disabled:text-slate-400 text-white flex items-center justify-center transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer disabled:cursor-not-allowed shadow-sm"
+              >
+                <Send className="w-4 h-4" />
+              </button>
+            </form>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Floating Blob Button */}
+      <motion.button
+        onClick={() => setIsOpen(!isOpen)}
+        className="fixed bottom-6 right-6 z-[60] cursor-pointer group"
+        whileHover={{ scale: 1.08 }}
+        whileTap={{ scale: 0.92 }}
+      >
+        {/* Pulse rings */}
+        {pulseActive && !isOpen && (
+          <>
+            <span className="absolute inset-0 rounded-full bg-emerald-400 animate-ping opacity-20" />
+            <span className="absolute -inset-1 rounded-full bg-emerald-500/20 animate-pulse" />
+          </>
+        )}
+
+        {/* Main blob */}
+        <div
+          className={`relative w-14 h-14 rounded-full flex items-center justify-center shadow-lg transition-all duration-300 ${
+            isOpen
+              ? "bg-slate-800 shadow-slate-300"
+              : "bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-600 shadow-emerald-300/50 hover:shadow-emerald-400/60 hover:shadow-xl"
+          }`}
+        >
+          <AnimatePresence mode="wait">
+            {isOpen ? (
+              <motion.div
+                key="close"
+                initial={{ rotate: -90, opacity: 0 }}
+                animate={{ rotate: 0, opacity: 1 }}
+                exit={{ rotate: 90, opacity: 0 }}
+                transition={{ duration: 0.2 }}
+              >
+                <X className="w-5 h-5 text-white" />
+              </motion.div>
+            ) : (
+              <motion.div
+                key="bot"
+                initial={{ rotate: 90, opacity: 0 }}
+                animate={{ rotate: 0, opacity: 1 }}
+                exit={{ rotate: -90, opacity: 0 }}
+                transition={{ duration: 0.2 }}
+              >
+                <Bot className="w-6 h-6 text-white" />
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </motion.button>
+    </>
+  );
+}
