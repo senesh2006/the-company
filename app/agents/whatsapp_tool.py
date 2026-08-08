@@ -108,11 +108,75 @@ class WhatsAppCheckStatusTool(BaseTool):
             return f"Failed to check WhatsApp status: {str(e)}"
 
 
+class TextUserInput(BaseModel):
+    message: str = Field(
+        description="The message, answer, update, question, or report to text directly to the user on WhatsApp."
+    )
+
+
+class TextUserWhatsAppTool(BaseTool):
+    """
+    Direct tool for any agent to text the user/founder on WhatsApp.
+    """
+    name = "text_user_whatsapp"
+    description = (
+        "Text the user / founder directly on WhatsApp. "
+        "Use this tool to send updates, ask clarifying questions, send deliverables, or give summaries directly to the user's phone."
+    )
+    args_schema = TextUserInput
+    cost_estimate = 0.005
+
+    def _run(self, message: str) -> str:
+        target_id = settings.WAHA_FOUNDER_PHONE
+        if not target_id:
+            # Check shared memory for last active WhatsApp chatter
+            try:
+                from app.services.shared_memory import SharedMemoryService
+                mem = SharedMemoryService()
+                last_chat = mem.get(getattr(self, "business_id", "default-business-id"), "whatsapp_last_active_user")
+                if last_chat and isinstance(last_chat.get("value"), dict):
+                    target_id = last_chat["value"].get("chat_id")
+            except Exception:
+                pass
+
+        if not target_id:
+            return (
+                "Could not text user: WAHA_FOUNDER_PHONE is not configured in settings, "
+                "and no incoming WhatsApp user has been recorded yet."
+            )
+
+        try:
+            try:
+                loop = asyncio.get_event_loop()
+            except RuntimeError:
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+
+            if loop.is_running():
+                import concurrent.futures
+                with concurrent.futures.ThreadPoolExecutor() as pool:
+                    result = pool.submit(
+                        asyncio.run,
+                        waha_service.send_text(chat_id=target_id, text=message)
+                    ).result()
+            else:
+                result = loop.run_until_complete(
+                    waha_service.send_text(chat_id=target_id, text=message)
+                )
+
+            formatted = format_whatsapp_chat_id(target_id)
+            return f"Successfully texted user on WhatsApp ({formatted}): '{message[:60]}...'"
+        except Exception as e:
+            logger.error(f"Text user WhatsApp error: {str(e)}")
+            return f"Failed to text user on WhatsApp: {str(e)}"
+
+
 # Register WhatsApp tools to global registry for key worker roles
 whatsapp_send_tool = WhatsAppSendMessageTool()
+whatsapp_text_user_tool = TextUserWhatsAppTool()
 whatsapp_status_tool = WhatsAppCheckStatusTool()
 
-# Register to Personal Assistant, Admin/Ops, Marketing, and Customer Support
+# Register to Personal Assistant, Admin/Ops, Marketing, Finance, and Customer Support
 for role in [
     "Personal Assistant",
     "Admin/Ops",
@@ -122,6 +186,9 @@ for role in [
     "Accountant",
     "Accountant & Controller",
     "Customer Support",
+    "Coder",
+    "Researcher",
     "default"
 ]:
-    registry.register_tools(role, [whatsapp_send_tool, whatsapp_status_tool])
+    registry.register_tools(role, [whatsapp_send_tool, whatsapp_text_user_tool, whatsapp_status_tool])
+

@@ -352,16 +352,23 @@ class WAHAService:
             try:
                 from app.services.shared_memory import SharedMemoryService
                 mem = SharedMemoryService()
+                msg_val = {
+                    "chat_id": chat_id,
+                    "sender": sender_name,
+                    "text": body,
+                    "timestamp": data.get("timestamp")
+                }
                 mem.set(
                     business_id="default-business-id",
                     key=f"whatsapp_last_msg_{chat_id}",
-                    value={
-                        "chat_id": chat_id,
-                        "sender": sender_name,
-                        "text": body,
-                        "timestamp": data.get("timestamp")
-                    },
+                    value=msg_val,
                     tags=["whatsapp", "inbound", "communication"]
+                )
+                mem.set(
+                    business_id="default-business-id",
+                    key="whatsapp_last_active_user",
+                    value=msg_val,
+                    tags=["whatsapp", "user", "active"]
                 )
             except Exception as e:
                 logger.error(f"Error saving WhatsApp to memory: {e}")

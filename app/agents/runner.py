@@ -83,6 +83,39 @@ class TeamRunner:
                 elif result.get("status") == "failed":
                     self.task_service.fail_task(self.task_id)
                 
+                # If mandate was from WhatsApp or founder notifications enabled, send result back to WhatsApp
+                try:
+                    if self.prompt and "[WhatsApp from" in self.prompt:
+                        from app.services.shared_memory import SharedMemoryService
+                        from app.services.waha_service import waha_service
+                        mem = SharedMemoryService()
+                        last_active = mem.get(self.business_id, "whatsapp_last_active_user")
+                        target_chat = None
+                        if last_active and isinstance(last_active.get("value"), dict):
+                            target_chat = last_active["value"].get("chat_id")
+                        
+                        if target_chat:
+                            worker_results = result.get("worker_results", [])
+                            summary_text = "\n\n".join([f"• *{r.get('agent_role', 'Agent')}*: {r.get('output', '')[:300]}" for r in worker_results[-3:]]) if worker_results else "Task successfully completed by your team."
+                            reply_msg = (
+                                f"✅ *Task Completed!*\n\n"
+                                f"📋 *Mandate*: {self.prompt.split(']:')[-1].strip()}\n\n"
+                                f"📝 *Results*:\n{summary_text}"
+                            )
+                            import asyncio
+                            try:
+                                loop = asyncio.get_event_loop()
+                                if loop.is_running():
+                                    import concurrent.futures
+                                    with concurrent.futures.ThreadPoolExecutor() as pool:
+                                        pool.submit(asyncio.run, waha_service.send_text(chat_id=target_chat, text=reply_msg)).result()
+                                else:
+                                    loop.run_until_complete(waha_service.send_text(chat_id=target_chat, text=reply_msg))
+                            except Exception:
+                                pass
+                except Exception as notify_err:
+                    self.logger.error(f"Failed to send WhatsApp result notification: {notify_err}")
+
                 # Mark all agents back to Idle after completion
                 for agent in agents:
                     self.task_service.update_agent_status(agent["id"], "Idle")
