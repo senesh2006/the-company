@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, ArrowRight, X, Bot, Zap, ExternalLink } from "lucide-react";
+import { Sparkles, ArrowRight, X } from "lucide-react";
 import { getBaseUrl } from "@/lib/api";
 
 interface AIToast {
@@ -15,98 +15,96 @@ interface AIToast {
   type?: "info" | "success" | "warning";
 }
 
+interface UICommand {
+  action: string;
+  payload: Record<string, any>;
+  business_id: string;
+  timestamp: string;
+}
+
+const POLL_INTERVAL_MS = 3000;
+
 export function UICommandListener() {
   const router = useRouter();
   const [toasts, setToasts] = useState<AIToast[]>([]);
+  const lastPollTimestamp = useRef<string | null>(null);
 
   useEffect(() => {
     const baseUrl = getBaseUrl();
-    const streamUrl = `${baseUrl}/api/v1/ui/stream`;
-    
-    let eventSource: EventSource | null = null;
-    let isSubscribed = true;
-    let reconnectTimer: NodeJS.Timeout | null = null;
+    const pollUrl = `${baseUrl}/api/v1/ui/poll`;
 
-    const connectSSE = () => {
+    let isSubscribed = true;
+    let pollTimer: NodeJS.Timeout | null = null;
+
+    const pollCommands = async () => {
       if (!isSubscribed) return;
-      if (typeof window !== "undefined" && !navigator.onLine) return; // Don't attempt connection if browser is offline
-      
-      if (eventSource) {
-        eventSource.close();
-        eventSource = null;
-      }
+      if (typeof window !== "undefined" && !navigator.onLine) return;
 
       try {
-        eventSource = new EventSource(streamUrl);
+        const params = new URLSearchParams();
+        if (lastPollTimestamp.current) {
+          params.set("since", lastPollTimestamp.current);
+        }
+        const res = await fetch(`${pollUrl}?${params.toString()}`);
+        if (!res.ok) return;
 
-        eventSource.onmessage = (event) => {
-          try {
-            const data = JSON.parse(event.data);
-            if (!data || data.type === "CONNECTED" || data.type === "PING") return;
+        const data = await res.json();
+        const commands: UICommand[] = data.commands || [];
 
-            const action = data.action;
-            const payload = data.payload || {};
+        for (const cmd of commands) {
+          // Track latest timestamp
+          lastPollTimestamp.current = cmd.timestamp;
 
-            if (action === "NAVIGATE") {
-              if (payload.path) {
-                const toastId = `toast-${Date.now()}`;
-                setToasts(prev => [
-                  {
-                    id: toastId,
-                    title: "AI Guided Navigation",
-                    message: payload.message || `AI Agent navigated you to ${payload.path}`,
-                    path: payload.path,
-                    type: "info"
-                  },
-                  ...prev.slice(0, 4)
-                ]);
-                router.push(payload.path);
-              }
-            } else if (action === "SHOW_TOAST") {
-              const toastId = `toast-${Date.now()}`;
+          const action = cmd.action;
+          const payload = cmd.payload || {};
+
+          if (action === "NAVIGATE") {
+            if (payload.path) {
+              const toastId = `toast-${Date.now()}-${Math.random()}`;
               setToasts(prev => [
                 {
                   id: toastId,
-                  title: payload.title || "AI Agent Activity",
-                  message: payload.message || "AI Agent executed an operational directive.",
-                  type: payload.type || "info"
+                  title: "AI Guided Navigation",
+                  message: payload.message || `AI Agent navigated you to ${payload.path}`,
+                  path: payload.path,
+                  type: "info"
                 },
                 ...prev.slice(0, 4)
               ]);
+              router.push(payload.path);
             }
-          } catch (err) {
-            // Ignore frame parse errors
+          } else if (action === "SHOW_TOAST") {
+            const toastId = `toast-${Date.now()}-${Math.random()}`;
+            setToasts(prev => [
+              {
+                id: toastId,
+                title: payload.title || "AI Agent Activity",
+                message: payload.message || "AI Agent executed an operational directive.",
+                type: payload.type || "info"
+              },
+              ...prev.slice(0, 4)
+            ]);
           }
-        };
-
-        eventSource.onerror = () => {
-          if (eventSource) {
-            eventSource.close();
-            eventSource = null;
-          }
-          if (reconnectTimer) clearTimeout(reconnectTimer);
-          // Reconnect silently after 5s if online
-          reconnectTimer = setTimeout(() => {
-            if (isSubscribed && typeof window !== "undefined" && navigator.onLine) {
-              connectSSE();
-            }
-          }, 5000);
-        };
-      } catch (e) {
-        // Quiet fallback
+        }
+      } catch (err) {
+        // Silently ignore network errors during polling
       }
+    };
+
+    // Start polling loop
+    const startPolling = () => {
+      pollCommands();
+      pollTimer = setInterval(pollCommands, POLL_INTERVAL_MS);
     };
 
     const handleOnline = () => {
-      connectSSE();
+      if (!pollTimer) startPolling();
     };
-
     const handleOffline = () => {
-      if (eventSource) {
-        eventSource.close();
-        eventSource = null;
+      if (pollTimer) {
+        clearInterval(pollTimer);
+        pollTimer = null;
       }
-      if (reconnectTimer) clearTimeout(reconnectTimer);
     };
 
     if (typeof window !== "undefined") {
@@ -114,17 +112,14 @@ export function UICommandListener() {
       window.addEventListener("offline", handleOffline);
     }
 
-    connectSSE();
+    startPolling();
 
     return () => {
       isSubscribed = false;
-      if (reconnectTimer) clearTimeout(reconnectTimer);
+      if (pollTimer) clearInterval(pollTimer);
       if (typeof window !== "undefined") {
         window.removeEventListener("online", handleOnline);
         window.removeEventListener("offline", handleOffline);
-      }
-      if (eventSource) {
-        eventSource.close();
       }
     };
   }, [router]);

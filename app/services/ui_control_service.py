@@ -1,7 +1,8 @@
-import asyncio
 import json
 import logging
-from typing import AsyncGenerator, Dict, Any, List
+import threading
+from collections import deque
+from typing import Dict, Any, List
 from datetime import datetime, timezone
 
 logger = logging.getLogger(__name__)
@@ -9,42 +10,14 @@ logger = logging.getLogger(__name__)
 class UIControlService:
     """
     Real-Time AI Web-App Command & Control Service.
-    Maintains subscriber queues for Server-Sent Events (SSE) streaming UI control directives
-    (navigation, modal triggers, toast notifications, component highlights, KPI customization)
-    directly to active user browser sessions. Includes automated 5s keepalive heartbeat pings
-    to prevent HTTP/2 proxy timeout drops (ERR_HTTP2_PROTOCOL_ERROR).
+    Uses a polling-based command buffer instead of SSE to avoid HTTP/2 proxy
+    connection drops (ERR_HTTP2_PROTOCOL_ERROR) on platforms like Railway.
+    AI agents push commands into a bounded deque; the browser polls /api/v1/ui/poll
+    every 3 seconds to collect pending directives.
     """
 
-    _subscribers: List[asyncio.Queue] = []
-
-    @classmethod
-    async def subscribe(cls) -> AsyncGenerator[str, None]:
-        """
-        Subscribe a client browser to the real-time SSE stream.
-        Emits keepalive frames every 5s so proxies (Railway, Cloudflare, Nginx HTTP/2)
-        do not prematurely close idle connection streams.
-        """
-        queue = asyncio.Queue()
-        cls._subscribers.append(queue)
-        logger.info(f"New browser session connected to UI Agent Control Bus. Total active: {len(cls._subscribers)}")
-        
-        try:
-            # Send initial connection event
-            yield f"data: {json.dumps({'type': 'CONNECTED', 'timestamp': datetime.now(timezone.utc).isoformat()})}\n\n"
-            
-            while True:
-                try:
-                    # Wait for message or timeout after 5 seconds to issue keepalive heartbeat
-                    data = await asyncio.wait_for(queue.get(), timeout=5.0)
-                    yield f"data: {json.dumps(data)}\n\n"
-                except asyncio.TimeoutError:
-                    # Send periodic keepalive heartbeat comment frame
-                    yield ": ping\n\n"
-        except asyncio.CancelledError:
-            logger.info("Browser session disconnected from UI Agent Control Bus.")
-        finally:
-            if queue in cls._subscribers:
-                cls._subscribers.remove(queue)
+    _command_buffer: deque = deque(maxlen=100)
+    _lock = threading.Lock()
 
     @classmethod
     def dispatch_ui_command(
@@ -54,7 +27,7 @@ class UIControlService:
         business_id: str = "default-business-id"
     ) -> Dict[str, Any]:
         """
-        Broadcasts a UI action directive from an AI agent to all active browser sessions.
+        Broadcasts a UI action directive from an AI agent into the command buffer.
         """
         event_data = {
             "action": action,
@@ -65,11 +38,31 @@ class UIControlService:
 
         logger.info(f"Broadcasting AI UI Directive: [{action}] -> {payload}")
 
-        # Put into all active queues
-        for queue in list(cls._subscribers):
-            try:
-                queue.put_nowait(event_data)
-            except Exception as e:
-                logger.warning(f"Failed to queue UI command: {e}")
+        with cls._lock:
+            cls._command_buffer.append(event_data)
 
         return event_data
+
+    @classmethod
+    def poll_commands(cls, since: str = None, business_id: str = None) -> List[Dict[str, Any]]:
+        """
+        Returns all pending commands since the given ISO timestamp.
+        If since is None, returns the last 10 commands.
+        """
+        with cls._lock:
+            commands = list(cls._command_buffer)
+
+        if since:
+            try:
+                since_dt = datetime.fromisoformat(since.replace("Z", "+00:00"))
+                commands = [
+                    c for c in commands
+                    if datetime.fromisoformat(c["timestamp"].replace("Z", "+00:00")) > since_dt
+                ]
+            except (ValueError, KeyError):
+                pass
+
+        if business_id:
+            commands = [c for c in commands if c.get("business_id") == business_id]
+
+        return commands

@@ -1,7 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException
-from fastapi.responses import StreamingResponse
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 
 from app.api.deps import get_current_user
 from app.services.ui_control_service import UIControlService
@@ -12,22 +11,15 @@ class UICommandRequest(BaseModel):
     action: str  # 'NAVIGATE', 'OPEN_MODAL', 'SHOW_TOAST', 'HIGHLIGHT', 'CUSTOMIZE_KPI'
     payload: Dict[str, Any]
 
-@router.get("/stream")
-async def stream_ui_commands():
+@router.get("/poll")
+def poll_ui_commands(since: Optional[str] = Query(None, description="ISO timestamp to fetch commands after")):
     """
-    Server-Sent Events (SSE) endpoint for live browser UI control by AI agents.
-    Includes proper streaming headers for proxy compatibility (Railway/Cloudflare/Nginx HTTP/2).
+    Polling endpoint for UI commands. The browser polls this every 3 seconds
+    to collect pending AI directives. Replaces SSE to avoid ERR_HTTP2_PROTOCOL_ERROR
+    on Railway's HTTP/2 proxy.
     """
-    return StreamingResponse(
-        UIControlService.subscribe(),
-        media_type="text/event-stream",
-        headers={
-            "Content-Type": "text/event-stream",
-            "Cache-Control": "no-cache, no-transform",
-            "Connection": "keep-alive",
-            "X-Accel-Buffering": "no"
-        }
-    )
+    commands = UIControlService.poll_commands(since=since)
+    return {"commands": commands}
 
 @router.post("/command")
 def trigger_ui_command(req: UICommandRequest, user = Depends(get_current_user)):
