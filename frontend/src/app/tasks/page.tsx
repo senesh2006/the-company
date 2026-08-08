@@ -79,7 +79,7 @@ export default function TasksPage() {
         ? `Needs Review • Retry: ${t.retry_count || 0}/2` 
         : `Dispatched ${new Date(t.created_at || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
       isBlocked: isBlocked,
-      agentName: assignedAgent?.name || (t.assignee_role ? `Specialist (${t.assignee_role})` : "Lead Orchestrator"),
+      agentName: assignedAgent?.name || (t.assignee_role ? `Specialist (${t.assignee_role})` : "Personal Assistant"),
       agentRole: assignedAgent?.role || t.assignee_role || "Autonomous Worker",
       agentAvatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${t.id}`,
       status: statusUpper,
@@ -105,7 +105,7 @@ export default function TasksPage() {
     try {
       await createTask.mutateAsync({
         title: newTaskTitle,
-        assigned_agent_id: newTaskAgentRole || (agents?.[0]?.role ?? "Lead Orchestrator"),
+        assigned_agent_id: newTaskAgentRole || (agents?.[0]?.role ?? "Personal Assistant"),
         priority: newTaskPriority,
         description: newTaskTitle
       });
@@ -377,7 +377,7 @@ export default function TasksPage() {
                     onChange={(e) => setNewTaskAgentRole(e.target.value)}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:bg-white focus:outline-none"
                   >
-                    <option value="">Lead Orchestrator (Auto-delegate)</option>
+                    <option value="">Personal Assistant (Auto-delegate)</option>
                     {(agents || []).map((a) => (
                       <option key={a.id} value={a.role}>
                         {a.name} ({a.role})

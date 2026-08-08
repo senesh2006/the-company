@@ -33,7 +33,7 @@ def get_needs_attention(user = Depends(get_current_user)):
                             "title": t.get("description") or t.get("mandate") or "Task Requires Review",
                             "description": f"Worker {t.get('assignee_role') or 'Agent'} requires review (Attempt: {t.get('retry_count', 0)}/2).",
                             "agentId": t.get("agent_id") or "agent-lead",
-                            "agentName": t.get("assignee_role") or "Lead Orchestrator",
+                            "agentName": t.get("assignee_role") or "Personal Assistant",
                             "timestamp": t.get("created_at") or ""
                         })
         except Exception:

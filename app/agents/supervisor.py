@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 # Roles that are coordination/system roles — never valid task assignees
 _INVALID_ASSIGNEE_ROLES = {
     "lead orchestrator", "orchestrator", "coordinator", "coordinating agent",
-    "robin", "supervisor", "system", "planner", "manager",
+    "personal assistant", "robin", "supervisor", "system", "planner", "manager",
 }
 
 class SupervisorDecision(BaseModel):
@@ -32,7 +32,7 @@ def get_supervisor_agent(roles: list[str], business_id: str, model_id: str = Non
     llm = get_llm(model_id=model_id, role="default", temperature=0.0)
 
     prompt = ChatPromptTemplate.from_messages([
-        ("system", """You are Robin, the Coordinating Agent (PRD v6.0 §4.1).
+        ("system", """You are the Founder's Personal Assistant & Coordinating Agent (PRD v6.0 §4.1).
 You are an internal-only coordinator who reads every in-house worker's state and shared memory.
 You never touch customer-facing or money-facing tools directly.
 Your mandate:
@@ -49,7 +49,7 @@ Your mandate:
 
 CRITICAL RULES FOR TASK ASSIGNMENT:
 - The "assignee_role" field in each new_task MUST be set to EXACTLY one of the roles listed above.
-- You are a COORDINATOR. You MUST NOT assign tasks to yourself. Never use "Lead Orchestrator", "Orchestrator", "Coordinator", "Robin", or "Supervisor" as an assignee_role.
+- You are a COORDINATOR. You MUST NOT assign tasks to yourself. Never use "Lead Orchestrator", "Personal Assistant", "Orchestrator", "Coordinator", "Robin", or "Supervisor" as an assignee_role.
 - For financial/accounting tasks: assign to the Accountant or Finance Manager role.
 - For marketing/social media tasks: assign to the Marketing Manager or Social Media role.
 - For admin/operations tasks: assign to the Admin/Ops role.
@@ -132,13 +132,13 @@ def global_supervisor_node(state: OrchestratorState):
             dependencies=t.dependencies
         )
     
-    # Log Robin's coordination pulse to Company Feed
+    # Log Personal Assistant coordination pulse to Company Feed
     task_service.log_audit_event(
         business_id=business_id,
-        role="Coordinating Agent",
-        agent_name="Robin",
+        role="Personal Assistant",
+        agent_name="Personal Assistant",
         trust_tier="operate",
-        action=f"Robin coordinated team: {decision.action.upper()}",
+        action=f"Personal Assistant coordinated team: {decision.action.upper()}",
         details={"thoughts": decision.thoughts[:120], "brief": decision.executive_brief}
     )
     

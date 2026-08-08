@@ -167,7 +167,7 @@ export function CompanyFeed() {
                 onChange={(e) => setSelectedRole(e.target.value)}
                 className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-emerald-500"
               >
-                <option value="all">Robin (Autonomous Orchestrator)</option>
+                <option value="all">Personal Assistant (All Agents)</option>
                 <option value="Accountant & Controller">Accountant & Controller</option>
                 <option value="Social Media & Growth Lead">Social Media & Growth Lead</option>
                 <option value="Admin & Operations Worker">Admin & Operations Worker</option>
