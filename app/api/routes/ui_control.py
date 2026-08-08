@@ -11,6 +11,15 @@ class UICommandRequest(BaseModel):
     action: str  # 'NAVIGATE', 'OPEN_MODAL', 'SHOW_TOAST', 'HIGHLIGHT', 'CUSTOMIZE_KPI'
     payload: Dict[str, Any]
 
+@router.get("/stream")
+def stream_ui_commands_deprecated():
+    """
+    DEPRECATED: Legacy SSE endpoint stub for backwards compatibility.
+    Old cached frontend builds still hit this route. Returns 200 with
+    empty body so it doesn't spam 404s in Railway logs.
+    """
+    return {"deprecated": True, "message": "Use /api/v1/ui/poll instead"}
+
 @router.get("/poll")
 def poll_ui_commands(since: Optional[str] = Query(None, description="ISO timestamp to fetch commands after")):
     """
