@@ -36,5 +36,15 @@ services:
     ports:
       - "6379:6379"
 
+  waha:
+    image: devlikeapro/waha
+    ports:
+      - "3000:3000"
+    volumes:
+      - waha_sessions:/app/.sessions
+    environment:
+      - WAHA_LOG_LEVEL=info
+
 volumes:
   postgres_data:
+  waha_sessions:
