@@ -22,11 +22,21 @@ interface UICommand {
   timestamp: string;
 }
 
+interface QuestionModalProps {
+  questionId: string;
+  question: string;
+  context?: string;
+  memoryKey: string;
+}
+
 const POLL_INTERVAL_MS = 3000;
 
 export function UICommandListener() {
   const router = useRouter();
   const [toasts, setToasts] = useState<AIToast[]>([]);
+  const [activeQuestion, setActiveQuestion] = useState<QuestionModalProps | null>(null);
+  const [questionAnswer, setQuestionAnswer] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const lastPollTimestamp = useRef<string | null>(null);
 
   useEffect(() => {
@@ -84,6 +94,13 @@ export function UICommandListener() {
               },
               ...prev.slice(0, 4)
             ]);
+          } else if (action === "ASK_QUESTION") {
+            setActiveQuestion({
+              questionId: payload.question_id,
+              question: payload.question,
+              context: payload.context,
+              memoryKey: payload.memory_key
+            });
           }
         }
       } catch (err) {
@@ -126,6 +143,34 @@ export function UICommandListener() {
 
   const removeToast = (id: string) => {
     setToasts(prev => prev.filter(t => t.id !== id));
+  };
+
+  const handleQuestionSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!activeQuestion || !questionAnswer.trim()) return;
+
+    setIsSubmitting(true);
+    try {
+      const token = localStorage.getItem("companyos_token") || "";
+      await fetch("/api/v1/memory", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          key: activeQuestion.memoryKey,
+          value: questionAnswer,
+          tags: ["user_response", "ask_question"]
+        })
+      });
+      setActiveQuestion(null);
+      setQuestionAnswer("");
+    } catch (err) {
+      console.error("Failed to submit answer:", err);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -173,6 +218,59 @@ export function UICommandListener() {
             </button>
           </motion.div>
         ))}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {activeQuestion && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm pointer-events-auto">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-6 rounded-2xl shadow-2xl max-w-lg w-full"
+            >
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-2 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400">
+                  <Sparkles className="w-5 h-5 animate-pulse" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-900 dark:text-white">AI Needs Clarification</h3>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">Waiting for your response to proceed</p>
+                </div>
+              </div>
+
+              <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-100 dark:border-slate-700/50 mb-5">
+                <p className="text-slate-800 dark:text-slate-200 font-medium">{activeQuestion.question}</p>
+                {activeQuestion.context && (
+                  <p className="text-sm text-slate-500 dark:text-slate-400 mt-2 italic">Context: {activeQuestion.context}</p>
+                )}
+              </div>
+
+              <form onSubmit={handleQuestionSubmit} className="space-y-4">
+                <input
+                  type="text"
+                  autoFocus
+                  placeholder="Type your answer here..."
+                  value={questionAnswer}
+                  onChange={(e) => setQuestionAnswer(e.target.value)}
+                  disabled={isSubmitting}
+                  className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-shadow disabled:opacity-50"
+                />
+                
+                <div className="flex justify-end gap-3">
+                  <button
+                    type="submit"
+                    disabled={isSubmitting || !questionAnswer.trim()}
+                    className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-600/50 text-white font-medium rounded-xl transition-colors flex items-center gap-2"
+                  >
+                    {isSubmitting ? "Submitting..." : "Submit Answer"}
+                    {!isSubmitting && <ArrowRight className="w-4 h-4" />}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
       </AnimatePresence>
     </div>
   );

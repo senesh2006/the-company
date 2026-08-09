@@ -128,3 +128,4 @@ def customize_dashboard_metrics(pinned_kpis: List[str], business_id: str = "defa
         return f"Updated dashboard layout with pinned metrics: {pinned_kpis}"
     except Exception as e:
         return f"Failed to customize metrics: {str(e)}"
+

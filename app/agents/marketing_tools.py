@@ -3,7 +3,7 @@ import logging
 from typing import Dict, List, Optional, Any
 from pydantic import BaseModel, Field
 from app.agents.tool_registry import BaseTool, registry
-from app.agents.tools import ReadSharedMemoryTool, WriteSharedMemoryTool, SpawnSubtaskTool
+from app.agents.tools import ReadSharedMemoryTool, WriteSharedMemoryTool, SpawnSubtaskTool, AskUserForInputTool
 from app.services.mcp_client import mcp_call_or_default
 
 logger = logging.getLogger(__name__)
@@ -232,7 +232,8 @@ def register_marketing_tools(business_id: str, agent_id: str = None, task_id: st
         Context7Tool(),
         ReadSharedMemoryTool(business_id=business_id),
         WriteSharedMemoryTool(business_id=business_id),
-        SpawnSubtaskTool(business_id=business_id, main_task_id=task_id)
+        SpawnSubtaskTool(business_id=business_id, main_task_id=task_id),
+        AskUserForInputTool(business_id=business_id)
     ]
     
     # Inject metadata for cost tracking

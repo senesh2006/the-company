@@ -281,6 +281,55 @@ class CalculateFinancialsTool(BaseTool):
         margin = (net_profit / revenue * 100) if revenue > 0 else 0
         return f"Financial Report: Gross Profit: ${gross_profit:,.2f} | Tax Liability: ${tax:,.2f} | Net Profit: ${net_profit:,.2f} | Profit Margin: {margin:.1f}%"
 
+class AskUserForInputSchema(BaseModel):
+    question: str = Field(description="The clear, concise question to ask the user.")
+    context: str = Field("", description="Optional background context for why you are asking.")
+
+class AskUserForInputTool(BaseTool):
+    name = "ask_user_for_input"
+    description = "Pause execution and ask the user a clarifying question via a UI modal. Blocks until the user answers."
+    args_schema = AskUserForInputSchema
+    cost_estimate = 0.05
+    
+    def __init__(self, business_id: str):
+        self.business_id = business_id
+
+    def _run(self, question: str, context: str = "") -> str:
+        import uuid
+        import time
+        from app.services.ui_control_service import UIControlService
+        from app.services.shared_memory import SharedMemoryService
+        
+        question_id = str(uuid.uuid4())
+        mem_key = f"user_reply_{question_id}"
+        
+        try:
+            # 1. Dispatch the question to the UI
+            UIControlService.dispatch_ui_command(
+                action="ASK_QUESTION",
+                payload={
+                    "question_id": question_id,
+                    "question": question,
+                    "context": context,
+                    "memory_key": mem_key
+                },
+                business_id=self.business_id
+            )
+            
+            # 2. Poll SharedMemory waiting for the answer (timeout after 5 minutes)
+            mem = SharedMemoryService()
+            max_attempts = 300  # 300 seconds = 5 mins
+            
+            for _ in range(max_attempts):
+                reply = mem.get(self.business_id, mem_key)
+                if reply and reply.get("value"):
+                    return f"USER RESPONSE: {reply['value']}"
+                time.sleep(1)
+                
+            return "ERROR: The user did not respond to the prompt within 5 minutes. Please proceed with your best guess or abort the task."
+        except Exception as e:
+            return f"Failed to ask user for input: {str(e)}"
+
 # --- Registration Helper ---
 
 def register_default_tools(business_id: str, role: str = "assistant", agent_id: str = None, task_id: str = None):
