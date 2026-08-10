@@ -221,6 +221,8 @@ def register_marketing_tools(business_id: str, agent_id: str = None, task_id: st
     """
     Registers the specific allowed MCP tools for the Marketing Manager role.
     """
+    from app.agents.whatsapp_tool import WhatsAppSendMessageTool, TextUserWhatsAppTool, WhatsAppCheckStatusTool
+    
     tools = [
         PlaywrightTool(),
         BraveSearchTool(),
@@ -233,7 +235,10 @@ def register_marketing_tools(business_id: str, agent_id: str = None, task_id: st
         ReadSharedMemoryTool(business_id=business_id),
         WriteSharedMemoryTool(business_id=business_id),
         SpawnSubtaskTool(business_id=business_id, main_task_id=task_id),
-        AskUserForInputTool(business_id=business_id)
+        AskUserForInputTool(business_id=business_id),
+        WhatsAppSendMessageTool(),
+        TextUserWhatsAppTool(),
+        WhatsAppCheckStatusTool()
     ]
     
     # Inject metadata for cost tracking

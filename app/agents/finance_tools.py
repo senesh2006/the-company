@@ -385,6 +385,8 @@ def register_finance_tools(business_id: str, agent_id: Optional[str] = None, tas
     """
     Registers the full suite of allowed MCP tools for the Finance Manager.
     """
+    from app.agents.whatsapp_tool import WhatsAppSendMessageTool, TextUserWhatsAppTool, WhatsAppCheckStatusTool
+    
     tools = [
         GoogleSheetsTool(),
         SupabaseLedgerTool(),
@@ -398,7 +400,11 @@ def register_finance_tools(business_id: str, agent_id: Optional[str] = None, tas
         CommTool(),
         ReadSharedMemoryTool(business_id=business_id),
         WriteSharedMemoryTool(business_id=business_id),
-        SpawnSubtaskTool(business_id=business_id, main_task_id=task_id)
+        SpawnSubtaskTool(business_id=business_id, main_task_id=task_id),
+        AskUserForInputTool(business_id=business_id),
+        WhatsAppSendMessageTool(),
+        TextUserWhatsAppTool(),
+        WhatsAppCheckStatusTool()
     ]
     
     for tool in tools:
