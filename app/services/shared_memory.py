@@ -173,6 +173,15 @@ class SharedMemoryService:
                     "tags": ["brand", "marketing"],
                     "updated_by": "Growth Marketer",
                     "created_at": datetime.now(timezone.utc).isoformat()
+                },
+                {
+                    "id": "mem-3",
+                    "business_id": business_id,
+                    "key": "brand guidelines",
+                    "value": "We are a fun, professional, and slightly sarcastic tech company. We use emojis and keep things brief. Brand Guidelines 2026: Always prioritize clarity over jargon. Target audience: Founders and Builders.",
+                    "tags": ["brand", "marketing", "guidelines"],
+                    "updated_by": "System",
+                    "created_at": datetime.now(timezone.utc).isoformat()
                 }
             ]
             results.extend(defaults)
