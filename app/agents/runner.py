@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from typing import Optional
 try:
     from psycopg_pool import ConnectionPool
@@ -15,8 +16,10 @@ from app.agents.state import AgentStatus
 
 class TeamRunner:
     def __init__(self, business_id: str, task_id: str):
+        self.logger = logging.getLogger(__name__)
         self.business_id = business_id
         self.task_id = task_id
+        self.prompt = None
         self.thread_id = f"team:{business_id}:{task_id}"
         
         self.graph = create_team_graph(self.business_id, self.task_id)
@@ -65,7 +68,10 @@ class TeamRunner:
             "status": "running",
             "active_sub_orchestrations": {}
         }
-        
+
+        # Store the prompt for later use (e.g. WhatsApp reply)
+        self.prompt = initial_instruction
+
         # Mark the main task as running in the DB
         self.task_service.update_task_status(self.task_id, "running")
         
