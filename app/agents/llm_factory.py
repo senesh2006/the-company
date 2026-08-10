@@ -135,42 +135,60 @@ def resolve_model(model_id: Optional[str], role: Optional[str] = None) -> tuple[
     has_gemini = _is_valid_key(settings.GEMINI_API_KEY) or _is_valid_key(settings.GOOGLE_API_KEY)
     has_fireworks = _is_valid_key(getattr(settings, "FIREWORKS_API_KEY", None))
 
-    # Forced provider override
+    logger.info(f"[LLM Resolve] Keys available: NVIDIA={has_nvidia}, Groq={has_groq}, Fireworks={has_fireworks}, OpenAI={has_openai}, Gemini={has_gemini}")
+
+    # Forced provider override (only if that provider's key is valid)
     forced = (getattr(settings, "LLM_PROVIDER", None) or "").strip().lower()
-    if forced == "groq" and has_groq:
-        return _groq_model_name(model_id or "kimi-k3"), "groq"
-    elif forced == "openai" and has_openai:
-        return "gpt-4o-mini", "openai"
-    elif forced == "nvidia" and has_nvidia:
-        return _nvidia_model_name(model_id or "kimi-k3"), "nvidia"
-    elif forced == "fireworks" and has_fireworks:
-        return "accounts/fireworks/models/llama-v3p3-70b-instruct", "fireworks"
-    elif forced == "gemini" and has_gemini:
-        return "gemini-2.0-flash", "gemini"
+    if forced:
+        logger.info(f"[LLM Resolve] LLM_PROVIDER forced to: '{forced}'")
+        if forced == "groq" and has_groq:
+            return _groq_model_name(model_id or "kimi-k3"), "groq"
+        elif forced == "openai" and has_openai:
+            return "gpt-4o-mini", "openai"
+        elif forced == "nvidia" and has_nvidia:
+            return _nvidia_model_name(model_id or "kimi-k3"), "nvidia"
+        elif forced == "fireworks" and has_fireworks:
+            return "accounts/fireworks/models/llama-v3p3-70b-instruct", "fireworks"
+        elif forced == "gemini" and has_gemini:
+            return "gemini-2.0-flash", "gemini"
+        else:
+            logger.warning(f"[LLM Resolve] Forced provider '{forced}' has no valid key! Falling through to auto-detection...")
 
     if not model_id or model_id not in MODEL_REGISTRY or model_id in BROKEN_MODEL_IDS:
         model_id = DEFAULT_MODEL_BY_ROLE.get(role or "default", DEFAULT_MODEL_BY_ROLE["default"])
 
     model_name, default_provider = MODEL_REGISTRY[model_id]
 
-    # Priority 1: NVIDIA NIM (Primary provider when NVIDIA_API_KEY is configured)
+    # Priority 1: NVIDIA NIM
     if has_nvidia:
-        return _nvidia_model_name(model_id), "nvidia"
+        chosen = _nvidia_model_name(model_id), "nvidia"
+        logger.info(f"[LLM Resolve] Selected NVIDIA: {chosen[0]}")
+        return chosen
 
     # Priority 2: Groq
     if has_groq:
-        return _groq_model_name(model_id), "groq"
+        chosen = _groq_model_name(model_id), "groq"
+        logger.info(f"[LLM Resolve] Selected Groq: {chosen[0]}")
+        return chosen
 
-    # Priority 3: OpenAI
+    # Priority 3: Fireworks AI
+    if has_fireworks:
+        logger.info("[LLM Resolve] Selected Fireworks AI")
+        return "accounts/fireworks/models/llama-v3p3-70b-instruct", "fireworks"
+
+    # Priority 4: OpenAI
     if has_openai:
         fallback_model = MODEL_REGISTRY["gpt-4o-mini"][0] if "gpt-4o-mini" in MODEL_REGISTRY else "gpt-4o"
+        logger.info(f"[LLM Resolve] Selected OpenAI: {fallback_model}")
         return fallback_model, "openai"
 
-    # Priority 4: Gemini
+    # Priority 5: Gemini
     if has_gemini:
+        logger.info("[LLM Resolve] Selected Gemini")
         return "gemini-2.0-flash", "gemini"
 
     # No valid API keys found in environment
+    logger.warning("[LLM Resolve] No valid API keys found!")
     return model_name, None
 
 
@@ -180,6 +198,7 @@ def get_llm(model_id: Optional[str] = None, role: Optional[str] = None, temperat
     If no valid API keys are configured, returns MissingApiKeyFallbackLLM to prevent crash.
     """
     model_name, provider = resolve_model(model_id, role)
+    logger.info(f"[LLM Factory] Building LLM: model={model_name}, provider={provider}, role={role}")
 
     candidates = []
 
@@ -193,6 +212,7 @@ def get_llm(model_id: Optional[str] = None, role: Optional[str] = None, temperat
                     base_url=base,
                     temperature=temperature
                 ))
+                logger.info(f"[LLM Factory] Added candidate: {p_name} ({m_name})")
             except Exception as e:
                 logger.warning(f"Failed to create ChatOpenAI for provider {p_name}: {e}")
 
