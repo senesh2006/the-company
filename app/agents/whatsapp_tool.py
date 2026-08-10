@@ -183,6 +183,7 @@ for role in [
     "Admin & Operations Worker",
     "Social Media Manager",
     "Social Media & Growth Lead",
+    "Marketing Manager",
     "Accountant",
     "Accountant & Controller",
     "Customer Support",
