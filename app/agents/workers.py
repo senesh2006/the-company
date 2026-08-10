@@ -123,7 +123,7 @@ def make_specialist_worker_node(agent_data: dict):
     agent_id = agent_data["id"]
     name = agent_data.get("name", "Specialist")
     trust_tier = agent_data.get("trust_tier", "observe")
-    business_id = agent_data.get("business_id", "default-business-id")
+    business_id = agent_data.get("business_id", "00000000-0000-0000-0000-000000000001")
     agent_model_id = agent_data.get("model")
     
     # Ensure role tools are registered

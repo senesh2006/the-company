@@ -83,7 +83,7 @@ def _get_or_create_business_for_user(user_id: str, email: Optional[str]) -> str:
     except Exception as e:
         logger.warning(f"Failed to resolve business for user {user_id}: {e}")
 
-    return "default-business-id"
+    return "00000000-0000-0000-0000-000000000001"
 
 
 def get_current_user(

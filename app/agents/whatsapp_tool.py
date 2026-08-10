@@ -133,7 +133,7 @@ class TextUserWhatsAppTool(BaseTool):
             try:
                 from app.services.shared_memory import SharedMemoryService
                 mem = SharedMemoryService()
-                last_chat = mem.get(getattr(self, "business_id", "default-business-id"), "whatsapp_last_active_user")
+                last_chat = mem.get(getattr(self, "business_id", "00000000-0000-0000-0000-000000000001"), "whatsapp_last_active_user")
                 if last_chat and isinstance(last_chat.get("value"), dict):
                     target_id = last_chat["value"].get("chat_id")
             except Exception:

@@ -487,7 +487,7 @@ def make_finance_worker_node(agent_data: dict):
         if not task:
             return {}
 
-        business_id = state.get("business_id", "default_business")
+        business_id = state.get("business_id") or "00000000-0000-0000-0000-000000000001"
 
         # Provision all base finance tools
         register_finance_tools(business_id=business_id, agent_id=agent_id, task_id=task.id)

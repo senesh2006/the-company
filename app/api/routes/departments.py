@@ -36,7 +36,7 @@ def get_department_details(dept_id: str, user = Depends(get_current_user)):
     Returns live department telemetry, alerts, activity stream, attention items,
     and setup guide checklist.
     """
-    biz_id = user.business_id or "default-business-id"
+    biz_id = user.business_id or "00000000-0000-0000-0000-000000000001"
     data = dept_service.get_department_data(biz_id, dept_id)
     return data
 
@@ -45,7 +45,7 @@ def create_department_alert(dept_id: str, payload: AlertCreate, user = Depends(g
     """
     Creates a new operational alert for a department.
     """
-    biz_id = user.business_id or "default-business-id"
+    biz_id = user.business_id or "00000000-0000-0000-0000-000000000001"
     alert = dept_service.create_department_alert(
         business_id=biz_id,
         dept_id=dept_id,
@@ -60,7 +60,7 @@ def log_department_activity(dept_id: str, payload: ActivityCreate, user = Depend
     """
     Logs an execution activity for a department.
     """
-    biz_id = user.business_id or "default-business-id"
+    biz_id = user.business_id or "00000000-0000-0000-0000-000000000001"
     activity = dept_service.log_department_activity(
         business_id=biz_id,
         dept_id=dept_id,
@@ -75,7 +75,7 @@ def push_department_attention(dept_id: str, payload: AttentionCreate, user = Dep
     """
     Pushes an item requiring founder/executive attention to the department queue.
     """
-    biz_id = user.business_id or "default-business-id"
+    biz_id = user.business_id or "00000000-0000-0000-0000-000000000001"
     item = dept_service.push_attention_item(
         business_id=biz_id,
         dept_id=dept_id,
@@ -90,7 +90,7 @@ def toggle_checklist(dept_id: str, task_id: int, user = Depends(get_current_user
     """
     Toggles a department checklist task's completed state.
     """
-    biz_id = user.business_id or "default-business-id"
+    biz_id = user.business_id or "00000000-0000-0000-0000-000000000001"
     checklist = dept_service.toggle_checklist_task(biz_id, dept_id, task_id)
     return {"checklist": checklist}
 
@@ -104,7 +104,7 @@ def dispatch_department_directive(
     """
     Dispatches a prompt/objective to department AI agents and triggers immediate background execution.
     """
-    biz_id = user.business_id or "default-business-id"
+    biz_id = user.business_id or "00000000-0000-0000-0000-000000000001"
     
     # 1. Dispatch task to workforce
     task = task_service.create_task(

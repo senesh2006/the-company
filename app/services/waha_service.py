@@ -359,13 +359,13 @@ class WAHAService:
                     "timestamp": data.get("timestamp")
                 }
                 mem.set(
-                    business_id="default-business-id",
+                    business_id="00000000-0000-0000-0000-000000000001",
                     key=f"whatsapp_last_msg_{chat_id}",
                     value=msg_val,
                     tags=["whatsapp", "inbound", "communication"]
                 )
                 mem.set(
-                    business_id="default-business-id",
+                    business_id="00000000-0000-0000-0000-000000000001",
                     key="whatsapp_last_active_user",
                     value=msg_val,
                     tags=["whatsapp", "user", "active"]
@@ -385,7 +385,7 @@ class WAHAService:
                     
                     # Create task in DB
                     task = task_service.create_task(
-                        business_id="default-business-id",
+                        business_id="00000000-0000-0000-0000-000000000001",
                         description=mandate_desc,
                         mandate=mandate_desc,
                         status="queued",
@@ -394,7 +394,7 @@ class WAHAService:
 
                     # Log to Company Feed
                     task_service.log_audit_event(
-                        business_id="default-business-id",
+                        business_id="00000000-0000-0000-0000-000000000001",
                         role="Personal Assistant",
                         agent_name="Personal Assistant",
                         trust_tier="operate",
@@ -403,7 +403,7 @@ class WAHAService:
                     )
 
                     # Trigger runner in background
-                    runner = AutonomousRunner(business_id="default-business-id", prompt=mandate_desc)
+                    runner = AutonomousRunner(business_id="00000000-0000-0000-0000-000000000001", prompt=mandate_desc)
                     asyncio.create_task(asyncio.to_thread(runner.start))
 
                     # 3. Acknowledge receipt via WhatsApp

@@ -12,7 +12,7 @@ def get_needs_attention(user = Depends(get_current_user)):
     """Fetches items that require human attention for the authenticated user's business."""
     try:
         items: List[Dict[str, Any]] = []
-        biz_id = user.business_id or "default-business-id"
+        biz_id = user.business_id or "00000000-0000-0000-0000-000000000001"
 
         # 1. Fetch tasks from DB requiring review or blocked
         try:

@@ -17,7 +17,7 @@ cost_service = CostService()
 def get_global_metrics(user = Depends(get_current_user)):
     """Returns aggregated metrics for the authenticated user's business dashboard."""
     try:
-        biz_id = user.business_id or "default-business-id"
+        biz_id = user.business_id or "00000000-0000-0000-0000-000000000001"
         agents = []
         try:
             response = metrics_service.client.table("agents").select("status").eq("business_id", biz_id).execute()

@@ -71,7 +71,7 @@ If all tasks are completed, output action="finish".
 def global_supervisor_node(state: OrchestratorState):
     agents = state.get("active_agents", {})
     roles = list({agent.role for agent in agents.values()})
-    business_id = state.get("business_id", "default-business-id")
+    business_id = state.get("business_id", "00000000-0000-0000-0000-000000000001")
 
     # Pick the model to use for the supervisor: prefer the model of the running agent,
     # then any agent that has a model configured, otherwise let get_supervisor_agent fall back.

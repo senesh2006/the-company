@@ -44,7 +44,7 @@ class GoogleSheetsTool(BaseTool):
         range_or_cell: Optional[str] = "A1:Z100", 
         payload_json: Optional[str] = None
     ) -> str:
-        biz_id = getattr(self, "business_id", "default-business-id") or "default-business-id"
+        biz_id = getattr(self, "business_id", "00000000-0000-0000-0000-000000000001") or "00000000-0000-0000-0000-000000000001"
         service = GoogleSheetsService(business_id=biz_id)
 
         try:

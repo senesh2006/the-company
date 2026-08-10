@@ -461,5 +461,5 @@ class TaskService:
 
     def list_audit_feed(self, business_id: str, limit: int = 50) -> List[Dict[str, Any]]:
         """Retrieves the chronological audit log for the Company Feed."""
-        filtered = [e for e in _IN_MEMORY_AUDIT_LOG if e.get("business_id") == str(business_id) or business_id == "default-business-id"]
+        filtered = [e for e in _IN_MEMORY_AUDIT_LOG if e.get("business_id") == str(business_id) or business_id == "00000000-0000-0000-0000-000000000001"]
         return filtered[:limit]

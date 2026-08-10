@@ -11,7 +11,7 @@ from app.services.department_service import DepartmentService
 dept_service = DepartmentService()
 
 @tool
-def create_department_alert(dept_id: str, alert_type: str, title: str, description: str, business_id: str = "default-business-id") -> str:
+def create_department_alert(dept_id: str, alert_type: str, title: str, description: str, business_id: str = "00000000-0000-0000-0000-000000000001") -> str:
     """
     AI Agent tool to trigger an operational alert (e.g. policy compliance, API status, budget warning) for a department.
     Args:
@@ -33,7 +33,7 @@ def create_department_alert(dept_id: str, alert_type: str, title: str, descripti
         return f"Failed to create alert: {str(e)}"
 
 @tool
-def flag_department_attention_required(dept_id: str, title: str, recommended_action: str, priority: str = "normal", business_id: str = "default-business-id") -> str:
+def flag_department_attention_required(dept_id: str, title: str, recommended_action: str, priority: str = "normal", business_id: str = "00000000-0000-0000-0000-000000000001") -> str:
     """
     AI Agent tool to flag an item requiring founder or executive decision/review in a department.
     Args:
@@ -55,7 +55,7 @@ def flag_department_attention_required(dept_id: str, title: str, recommended_act
         return f"Failed to flag attention item: {str(e)}"
 
 @tool
-def log_department_activity(dept_id: str, activity_text: str, status_badge: str = "EXEC", business_id: str = "default-business-id") -> str:
+def log_department_activity(dept_id: str, activity_text: str, status_badge: str = "EXEC", business_id: str = "00000000-0000-0000-0000-000000000001") -> str:
     """
     AI Agent tool to log an execution event or decision to the department activity stream.
     Args:
@@ -75,7 +75,7 @@ def log_department_activity(dept_id: str, activity_text: str, status_badge: str 
         return f"Failed to log activity: {str(e)}"
 
 @tool
-def update_department_checklist(dept_id: str, task_id: int, is_completed: bool, business_id: str = "default-business-id") -> str:
+def update_department_checklist(dept_id: str, task_id: int, is_completed: bool, business_id: str = "00000000-0000-0000-0000-000000000001") -> str:
     """
     AI Agent tool to mark department setup guide checklist tasks as completed or pending as directives are accomplished.
     Args:

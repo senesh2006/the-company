@@ -35,7 +35,7 @@ def trigger_ui_command(req: UICommandRequest, user = Depends(get_current_user)):
     """
     Allows backend services or AI agents to trigger UI commands.
     """
-    biz_id = user.business_id or "default-business-id"
+    biz_id = user.business_id or "00000000-0000-0000-0000-000000000001"
     event = UIControlService.dispatch_ui_command(
         action=req.action,
         payload=req.payload,

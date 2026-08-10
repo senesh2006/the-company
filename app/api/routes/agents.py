@@ -39,7 +39,7 @@ def hire_agent_default(payload: HireAgentPayload, background_tasks: BackgroundTa
     Hires a new worker for the authenticated user's business team (used by frontend dashboard).
     """
     try:
-        biz_id = user.business_id or "default-business-id"
+        biz_id = user.business_id or "00000000-0000-0000-0000-000000000001"
         return hire_agent(biz_id, payload, background_tasks, user)
     except HTTPException:
         raise
@@ -101,7 +101,7 @@ def promote_agent(agent_id: str, payload: PromoteDemotePayload = PromoteDemotePa
     """Promotes an AI Worker's trust tier (Observe -> Assist -> Operate)."""
     try:
         agent_resp = task_service.client.table("agents").select("business_id").eq("id", agent_id).execute()
-        biz_id = agent_resp.data[0]["business_id"] if agent_resp.data else "default-business-id"
+        biz_id = agent_resp.data[0]["business_id"] if agent_resp.data else "00000000-0000-0000-0000-000000000001"
         result = task_service.promote_agent(
             business_id=biz_id,
             agent_id=agent_id,
@@ -118,7 +118,7 @@ def demote_agent(agent_id: str, payload: PromoteDemotePayload = PromoteDemotePay
     """Demotes an AI Worker's trust tier upon flagged errors or founder override."""
     try:
         agent_resp = task_service.client.table("agents").select("business_id").eq("id", agent_id).execute()
-        biz_id = agent_resp.data[0]["business_id"] if agent_resp.data else "default-business-id"
+        biz_id = agent_resp.data[0]["business_id"] if agent_resp.data else "00000000-0000-0000-0000-000000000001"
         result = task_service.demote_agent(
             business_id=biz_id,
             agent_id=agent_id,
@@ -134,7 +134,7 @@ def demote_agent(agent_id: str, payload: PromoteDemotePayload = PromoteDemotePay
 def get_agents(user = Depends(get_current_user)):
     """Fetches all AI Workers with Trust Tier and governance metrics for the authenticated user's business."""
     try:
-        biz_id = user.business_id or "default-business-id"
+        biz_id = user.business_id or "00000000-0000-0000-0000-000000000001"
         return task_service.list_agents(biz_id)
     except Exception as e:
         logger.error(f"Failed to fetch agents: {e}")
@@ -159,7 +159,7 @@ def get_agent_details(agent_id: str, user = Depends(get_current_user)):
             raise HTTPException(status_code=404, detail="AI Worker not found")
         agent = response.data[0]
         # Attach in-memory extra fields
-        agents = task_service.list_agents(agent.get("business_id", "default-business-id"))
+        agents = task_service.list_agents(agent.get("business_id", "00000000-0000-0000-0000-000000000001"))
         for a in agents:
             if str(a.get("id")) == str(agent_id):
                 return a
@@ -200,7 +200,7 @@ def inject_instruction_by_agent(
         
         if not agent:
             # Check in-memory agents
-            for a in task_service.list_agents("default-business-id"):
+            for a in task_service.list_agents("00000000-0000-0000-0000-000000000001"):
                 if str(a.get("id")) == str(agent_id):
                     agent = a
                     break
@@ -208,7 +208,7 @@ def inject_instruction_by_agent(
         if not agent:
             raise HTTPException(status_code=404, detail="Agent not found")
             
-        business_id = agent.get("business_id", "default-business-id")
+        business_id = agent.get("business_id", "00000000-0000-0000-0000-000000000001")
         
         # 1. Check if there is an active running task to inject into
         task = task_service.get_active_task_for_business(business_id)

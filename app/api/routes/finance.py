@@ -30,7 +30,7 @@ class JournalEntryCreate(BaseModel):
 @router.get("/accounts", response_model=Dict[str, Any])
 def get_chart_of_accounts(user = Depends(get_current_user)):
     """Retrieve the full Chart of Accounts with balances and metadata."""
-    biz_id = getattr(user, "business_id", "default-business-id") or "default-business-id"
+    biz_id = getattr(user, "business_id", "00000000-0000-0000-0000-000000000001") or "00000000-0000-0000-0000-000000000001"
     service = GoogleSheetsService(business_id=biz_id)
     accounts = service.get_accounts()
     tb = service.get_trial_balance()
@@ -46,7 +46,7 @@ def get_chart_of_accounts(user = Depends(get_current_user)):
 @router.post("/accounts", response_model=Dict[str, Any])
 def create_or_update_account(payload: AccountCreateOrUpdate, user = Depends(get_current_user)):
     """Add a new account or update an existing account in the general ledger."""
-    biz_id = getattr(user, "business_id", "default-business-id") or "default-business-id"
+    biz_id = getattr(user, "business_id", "00000000-0000-0000-0000-000000000001") or "00000000-0000-0000-0000-000000000001"
     service = GoogleSheetsService(business_id=biz_id)
     account = service.add_or_update_account(payload.dict())
     return {"status": "success", "account": account}
@@ -54,7 +54,7 @@ def create_or_update_account(payload: AccountCreateOrUpdate, user = Depends(get_
 @router.get("/journal", response_model=Dict[str, Any])
 def get_journal_entries(user = Depends(get_current_user)):
     """Retrieve all double-entry general journal transactions."""
-    biz_id = getattr(user, "business_id", "default-business-id") or "default-business-id"
+    biz_id = getattr(user, "business_id", "00000000-0000-0000-0000-000000000001") or "00000000-0000-0000-0000-000000000001"
     service = GoogleSheetsService(business_id=biz_id)
     entries = service.get_journal_entries()
     return {
@@ -65,7 +65,7 @@ def get_journal_entries(user = Depends(get_current_user)):
 @router.post("/journal", response_model=Dict[str, Any])
 def post_journal_entry(payload: JournalEntryCreate, user = Depends(get_current_user)):
     """Record a new double-entry journal entry and update account balances."""
-    biz_id = getattr(user, "business_id", "default-business-id") or "default-business-id"
+    biz_id = getattr(user, "business_id", "00000000-0000-0000-0000-000000000001") or "00000000-0000-0000-0000-000000000001"
     service = GoogleSheetsService(business_id=biz_id)
     entry_dict = payload.dict()
     entry = service.post_journal_entry(entry_dict)
@@ -74,21 +74,21 @@ def post_journal_entry(payload: JournalEntryCreate, user = Depends(get_current_u
 @router.get("/trial-balance", response_model=Dict[str, Any])
 def get_trial_balance(user = Depends(get_current_user)):
     """Get the calculated trial balance and verification integrity."""
-    biz_id = getattr(user, "business_id", "default-business-id") or "default-business-id"
+    biz_id = getattr(user, "business_id", "00000000-0000-0000-0000-000000000001") or "00000000-0000-0000-0000-000000000001"
     service = GoogleSheetsService(business_id=biz_id)
     return service.get_trial_balance()
 
 @router.get("/sheets-config", response_model=Dict[str, Any])
 def get_sheets_config(user = Depends(get_current_user)):
     """Get the active Google Sheets connection configuration and sheet link."""
-    biz_id = getattr(user, "business_id", "default-business-id") or "default-business-id"
+    biz_id = getattr(user, "business_id", "00000000-0000-0000-0000-000000000001") or "00000000-0000-0000-0000-000000000001"
     service = GoogleSheetsService(business_id=biz_id)
     return service.get_config()
 
 @router.post("/sync-sheets", response_model=Dict[str, Any])
 def sync_with_google_sheets(user = Depends(get_current_user)):
     """Triggers real-time bi-directional synchronization with Google Sheets."""
-    biz_id = getattr(user, "business_id", "default-business-id") or "default-business-id"
+    biz_id = getattr(user, "business_id", "00000000-0000-0000-0000-000000000001") or "00000000-0000-0000-0000-000000000001"
     service = GoogleSheetsService(business_id=biz_id)
     result = service.sync_to_google_sheets()
     return result
@@ -96,14 +96,14 @@ def sync_with_google_sheets(user = Depends(get_current_user)):
 @router.post("/clear", response_model=Dict[str, Any])
 def clear_finance_data(user = Depends(get_current_user)):
     """Clear all accounts and journal entries in the ledger to empty."""
-    biz_id = getattr(user, "business_id", "default-business-id") or "default-business-id"
+    biz_id = getattr(user, "business_id", "00000000-0000-0000-0000-000000000001") or "00000000-0000-0000-0000-000000000001"
     service = GoogleSheetsService(business_id=biz_id)
     return service.clear_all_data()
 
 @router.post("/initialize-template", response_model=Dict[str, Any])
 def initialize_standard_template(user = Depends(get_current_user)):
     """Initialize a standard GAAP Chart of Accounts template with 0 initial balances."""
-    biz_id = getattr(user, "business_id", "default-business-id") or "default-business-id"
+    biz_id = getattr(user, "business_id", "00000000-0000-0000-0000-000000000001") or "00000000-0000-0000-0000-000000000001"
     service = GoogleSheetsService(business_id=biz_id)
     accounts = service.initialize_standard_template()
     return {"status": "success", "accounts": accounts, "total_count": len(accounts)}

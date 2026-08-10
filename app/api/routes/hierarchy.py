@@ -10,7 +10,7 @@ task_service = TaskService()
 def get_default_hierarchy(user = Depends(get_current_user)):
     """Fetches the agent hierarchy tree for the authenticated user's business."""
     try:
-        biz_id = user.business_id or "default-business-id"
+        biz_id = user.business_id or "00000000-0000-0000-0000-000000000001"
         response = task_service.client.table("agents").select("*").eq("business_id", biz_id).execute()
         agents = response.data or []
 

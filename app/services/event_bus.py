@@ -69,7 +69,7 @@ def process_queued_tasks_daemon():
                     tasks = resp.data or []
                     for t in tasks:
                         task_id = t["id"]
-                        biz_id = t.get("business_id", "default-business-id")
+                        biz_id = t.get("business_id", "00000000-0000-0000-0000-000000000001")
                         desc = t.get("description") or t.get("mandate") or "Execute mandate"
                         
                         logger.info(f"Task Queue Dispatcher: Found queued task '{task_id}'. Dispatching to TeamRunner...")

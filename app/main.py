@@ -49,7 +49,7 @@ def setup_test_environment(user = Depends(get_current_user)):
         sb_url = settings.SUPABASE_URL or os.getenv("SUPABASE_URL")
         sb_key = settings.SUPABASE_KEY or os.getenv("SUPABASE_KEY") or os.getenv("SUPABASE_SECRET_KEY")
 
-        biz_id = user.business_id or "default-business-id"
+        biz_id = user.business_id or "00000000-0000-0000-0000-000000000001"
         if not sb_url or not sb_key:
             return {"business_id": biz_id, "warning": "Supabase not configured"}
 
@@ -79,7 +79,7 @@ def setup_test_environment(user = Depends(get_current_user)):
         return {"business_id": biz_id}
     except Exception as e:
         logger.error(f"Setup error: {str(e)}")
-        return {"business_id": user.business_id or "default-business-id", "error": str(e)}
+        return {"business_id": user.business_id or "00000000-0000-0000-0000-000000000001", "error": str(e)}
 
 @app.get("/api/v1/config")
 def get_public_config():

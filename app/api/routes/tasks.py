@@ -36,7 +36,7 @@ class ReviewPayload(BaseModel):
 def get_company_feed(limit: int = 50, user = Depends(get_current_user)):
     """Retrieves the chronological audit log for the authenticated user's Company Feed."""
     try:
-        biz_id = user.business_id or "default-business-id"
+        biz_id = user.business_id or "00000000-0000-0000-0000-000000000001"
         return task_service.list_audit_feed(biz_id, limit=limit)
     except Exception as e:
         logger.error(f"Failed to fetch company feed: {e}")
@@ -51,7 +51,7 @@ def get_business_feed(business_id: str, limit: int = 50, user = Depends(get_curr
 def create_mandate_default(payload: MandatePayload, background_tasks: BackgroundTasks, user = Depends(get_current_user)):
     """Dispatches a structured Mandate Contract (PRD v6.0 §6.2) for the authenticated user's business."""
     try:
-        biz_id = user.business_id or "default-business-id"
+        biz_id = user.business_id or "00000000-0000-0000-0000-000000000001"
 
         task = task_service.create_task(
             business_id=biz_id,
@@ -84,7 +84,7 @@ def review_task_action(task_id: str, payload: ReviewPayload, user = Depends(get_
         if not task_resp.data:
             raise HTTPException(status_code=404, detail="Task not found")
         task = task_resp.data[0]
-        biz_id = task.get("business_id", "default-business-id")
+        biz_id = task.get("business_id", "00000000-0000-0000-0000-000000000001")
         agent_id = task.get("agent_id")
         
         verdict = payload.verdict.lower()
@@ -197,7 +197,7 @@ def requeue_task(business_id: str, task_id: str, user = Depends(get_current_user
 def create_default_task(payload: QueueTaskPayload, background_tasks: BackgroundTasks, user = Depends(get_current_user)):
     """Creates/queues a task for the authenticated user's business."""
     try:
-        biz_id = user.business_id or "default-business-id"
+        biz_id = user.business_id or "00000000-0000-0000-0000-000000000001"
         return queue_task(biz_id, payload, background_tasks, user)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -207,7 +207,7 @@ def create_default_task(payload: QueueTaskPayload, background_tasks: BackgroundT
 def list_all_tasks(user = Depends(get_current_user)):
     """Lists all tasks for the authenticated user's business."""
     try:
-        biz_id = user.business_id or "default-business-id"
+        biz_id = user.business_id or "00000000-0000-0000-0000-000000000001"
         response = task_service.client.table("tasks").select("*").eq("business_id", biz_id).order("created_at", desc=True).execute()
         return response.data or []
     except Exception as e:

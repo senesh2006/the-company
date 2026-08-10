@@ -72,7 +72,7 @@ class NotionTool(BaseTool):
     def _run(self, action: str, doc_id: str = None, content: str = None) -> str:
         from app.services.shared_memory import SharedMemoryService
         mem = SharedMemoryService()
-        biz_id = getattr(self, "business_id", "default_business")
+        biz_id = getattr(self, "business_id", "00000000-0000-0000-0000-000000000001")
         if action == "read_calendar":
             calendar_data = mem.get(biz_id, "content_calendar")
             if calendar_data:
@@ -203,7 +203,7 @@ class Context7Tool(BaseTool):
     def _run(self, query: str) -> str:
         from app.services.shared_memory import SharedMemoryService
         mem = SharedMemoryService()
-        biz_id = getattr(self, "business_id", "default_business")
+        biz_id = getattr(self, "business_id", "00000000-0000-0000-0000-000000000001")
         results = mem.list_by_tags(biz_id, ["context7", "knowledge"])
         if results:
             default = json.dumps(results)

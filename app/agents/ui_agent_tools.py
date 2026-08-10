@@ -12,7 +12,7 @@ from app.services.task_service import TaskService
 task_service = TaskService()
 
 @tool
-def navigate_user_ui(route_path: str, reason: str, business_id: str = "default-business-id") -> str:
+def navigate_user_ui(route_path: str, reason: str, business_id: str = "00000000-0000-0000-0000-000000000001") -> str:
     """
     AI Agent tool to steer the user's browser screen to a specific route or department.
     Args:
@@ -33,7 +33,7 @@ def navigate_user_ui(route_path: str, reason: str, business_id: str = "default-b
         return f"Failed to dispatch navigation: {str(e)}"
 
 @tool
-def open_ui_approval_modal(modal_type: str, item_id: str, message: str = "", business_id: str = "default-business-id") -> str:
+def open_ui_approval_modal(modal_type: str, item_id: str, message: str = "", business_id: str = "00000000-0000-0000-0000-000000000001") -> str:
     """
     AI Agent tool to pop open an approval drawer or review modal on the user's browser screen.
     Args:
@@ -56,7 +56,7 @@ def open_ui_approval_modal(modal_type: str, item_id: str, message: str = "", bus
         return f"Failed to open modal: {str(e)}"
 
 @tool
-def hire_autonomous_worker(role: str, department: str, name: Optional[str] = None, business_id: str = "default-business-id") -> str:
+def hire_autonomous_worker(role: str, department: str, name: Optional[str] = None, business_id: str = "00000000-0000-0000-0000-000000000001") -> str:
     """
     AI Agent tool allowing the Orchestrator/Supervisor AI to autonomously hire a new specialized worker agent into the fleet.
     Args:
@@ -88,7 +88,7 @@ def hire_autonomous_worker(role: str, department: str, name: Optional[str] = Non
         return f"Failed to hire worker: {str(e)}"
 
 @tool
-def reassign_worker_department(agent_id: str, target_department: str, business_id: str = "default-business-id") -> str:
+def reassign_worker_department(agent_id: str, target_department: str, business_id: str = "00000000-0000-0000-0000-000000000001") -> str:
     """
     AI Agent tool to shift a worker between departments to handle operational demand spikes.
     Args:
@@ -111,7 +111,7 @@ def reassign_worker_department(agent_id: str, target_department: str, business_i
         return f"Failed to reassign worker: {str(e)}"
 
 @tool
-def customize_dashboard_metrics(pinned_kpis: List[str], business_id: str = "default-business-id") -> str:
+def customize_dashboard_metrics(pinned_kpis: List[str], business_id: str = "00000000-0000-0000-0000-000000000001") -> str:
     """
     AI Agent tool to dynamically adapt the dashboard layout to highlight key performance indicators for the founder.
     Args:

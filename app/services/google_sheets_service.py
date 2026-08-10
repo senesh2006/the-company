@@ -47,7 +47,7 @@ class GoogleSheetsService:
     Supports live Google Sheets API & MCP with durable memory fallback.
     """
 
-    def __init__(self, business_id: str = "default-business-id"):
+    def __init__(self, business_id: str = "00000000-0000-0000-0000-000000000001"):
         self.business_id = business_id
         self.memory = SharedMemoryService()
         self.spreadsheet_id = os.getenv("GOOGLE_SHEETS_SPREADSHEET_ID") or "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"

@@ -24,7 +24,7 @@ class UIControlService:
         cls,
         action: str,  # 'NAVIGATE', 'OPEN_MODAL', 'SHOW_TOAST', 'HIGHLIGHT', 'CUSTOMIZE_KPI'
         payload: Dict[str, Any],
-        business_id: str = "default-business-id"
+        business_id: str = "00000000-0000-0000-0000-000000000001"
     ) -> Dict[str, Any]:
         """
         Broadcasts a UI action directive from an AI agent into the command buffer.
