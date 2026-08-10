@@ -361,19 +361,19 @@ class FetchTool(BaseTool):
         )
 
 class CommInput(BaseModel):
-    platform: str = Field(description="'slack' or 'whatsapp'")
-    channel_or_user: str = Field(description="Target channel or user (e.g. '#finance-audit', '+15550192837')")
+    platform: str = Field(description="'slack'")
+    channel_or_user: str = Field(description="Target channel or user (e.g. '#finance-audit')")
     message: str = Field(description="Message text regarding approval requests or audit alerts")
 
 class CommTool(BaseTool):
     name = "internal_communication"
-    description = "Sends urgent notifications and human-approval requests over Slack or WhatsApp."
+    description = "Sends urgent notifications and human-approval requests over Slack."
     args_schema = CommInput
     cost_estimate = 0.01
 
     def _run(self, platform: str, channel_or_user: str, message: str) -> str:
         default = f"Notification successfully dispatched via {platform.upper()} to {channel_or_user}: '{message}'"
-        mcp_name = "slack" if platform.lower() == "slack" else "whatsapp"
+        mcp_name = "slack"
         return _finance_mcp_call(
             mcp_name,
             "send_message",

@@ -124,19 +124,19 @@ class FilesystemTool(BaseTool):
         return f"Unsupported filesystem action: '{action}'"
 
 class CommInput(BaseModel):
-    platform: str = Field(description="'slack' or 'whatsapp'")
+    platform: str = Field(description="'slack'")
     channel_or_user: str = Field(description="Target channel or user")
     message: str = Field(description="Message content")
 
 class CommTool(BaseTool):
     name = "internal_communication"
-    description = "Sends messages via WhatsApp or Slack for internal communication."
+    description = "Sends messages via Slack for internal communication."
     args_schema = CommInput
     cost_estimate = 0.01
 
     def _run(self, platform: str, channel_or_user: str, message: str) -> str:
         default = f"Communication sent on {platform} to {channel_or_user}: '{message}'"
-        mcp_name = "slack" if platform.lower() == "slack" else "whatsapp"
+        mcp_name = "slack"
         return _marketing_mcp_call(
             mcp_name,
             "send_message",
