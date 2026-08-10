@@ -129,7 +129,7 @@ def update_memory(state: MarketingWorkerState):
         "confidence": state["confidence"],
         "side_effects": state["side_effects"]
     }, tags=["marketing", "result"])
-    return {}
+    return {"status": state.get("status", "success")}
 
 def decide(state: MarketingWorkerState) -> Literal["spawn_subworkers", "END"]:
     if state["needs_sub_workers"]:
