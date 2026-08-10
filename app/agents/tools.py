@@ -323,7 +323,7 @@ class AskUserForInputTool(BaseTool):
             for _ in range(max_attempts):
                 reply = mem.get(self.business_id, mem_key)
                 if reply and reply.get("value"):
-                    return f"USER RESPONSE: {reply['value']}"
+                    return f"SUCCESS: The user answered your question. Their response is: '{reply['value']}'. You must now use this information to proceed with the next step of your plan. DO NOT ask the same question again."
                 time.sleep(1)
                 
             return "ERROR: The user did not respond to the prompt within 5 minutes. Please proceed with your best guess or abort the task."
