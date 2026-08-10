@@ -39,6 +39,10 @@ class MissingApiKeyFallbackLLM(SimpleChatModel):
     def _llm_type(self) -> str:
         return "missing_key_fallback"
 
+    def bind_tools(self, tools: Any, **kwargs: Any) -> Any:
+        """Mock bind_tools so that create_react_agent does not crash on initialization."""
+        return self
+
     def with_structured_output(self, schema: Any, **kwargs):
         """Allow structured output calls (e.g. SupervisorDecision) to return a safe fallback object."""
         def _mock_structured(input_data, config=None):

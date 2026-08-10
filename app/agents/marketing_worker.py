@@ -237,16 +237,19 @@ def make_marketing_worker_node(agent_data: dict):
             import traceback
             err_msg = traceback.format_exc()
             task_service.update_task_status(task.id, "failed")
-            task_service.update_task_result(task.id, f"Marketing Worker crashed: {str(e)}")
+            
+            # Use repr(e) for short summary and err_msg for full context
+            short_err = repr(e)
+            task_service.update_task_result(task.id, f"Marketing Worker crashed: {short_err}\n\nTraceback:\n{err_msg}")
             
             updated_task = task.copy()
             updated_task.status = "failed"
-            updated_task.result = f"Worker crashed: {str(e)}"
+            updated_task.result = f"Worker crashed: {short_err}"
             final_output = updated_task.result
             status = "failed"
             confidence = 0.0
             side_effects = []
-            reasoning_summary = f"Worker crashed: {str(e)}"
+            reasoning_summary = f"Worker crashed: {short_err}"
             
         # Return structured WorkerResult as requested
         worker_result = WorkerResult(
