@@ -8,7 +8,6 @@ from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
-
 def _is_valid_key(key: Optional[str]) -> bool:
     """Check if an API key is non-empty, not None, and not a placeholder string."""
     if not key or not isinstance(key, str):
@@ -32,7 +31,7 @@ class MissingApiKeyFallbackLLM(SimpleChatModel):
     def _call(self, messages: List[BaseMessage], stop: Optional[List[str]] = None, **kwargs) -> str:
         return (
             "⚠️ Configuration Required: No valid LLM API Key was found in your deployment environment variables. "
-            "Please configure GROQ_API_KEY, OPENAI_API_KEY, NVIDIA_API_KEY, or GEMINI_API_KEY."
+            "Please configure GROQ_API_KEY, OPENAI_API_KEY, NVIDIA_API_KEY, FIREWORKS_API_KEY, or GEMINI_API_KEY."
         )
 
     @property
@@ -134,6 +133,7 @@ def resolve_model(model_id: Optional[str], role: Optional[str] = None) -> tuple[
     has_openai = _is_valid_key(settings.OPENAI_API_KEY)
     has_nvidia = _is_valid_key(settings.NVIDIA_API_KEY)
     has_gemini = _is_valid_key(settings.GEMINI_API_KEY) or _is_valid_key(settings.GOOGLE_API_KEY)
+    has_fireworks = _is_valid_key(getattr(settings, "FIREWORKS_API_KEY", None))
 
     # Forced provider override
     forced = (getattr(settings, "LLM_PROVIDER", None) or "").strip().lower()
@@ -143,6 +143,8 @@ def resolve_model(model_id: Optional[str], role: Optional[str] = None) -> tuple[
         return "gpt-4o-mini", "openai"
     elif forced == "nvidia" and has_nvidia:
         return _nvidia_model_name(model_id or "kimi-k3"), "nvidia"
+    elif forced == "fireworks" and has_fireworks:
+        return "accounts/fireworks/models/llama-v3p3-70b-instruct", "fireworks"
     elif forced == "gemini" and has_gemini:
         return "gemini-2.0-flash", "gemini"
 
@@ -198,6 +200,8 @@ def get_llm(model_id: Optional[str] = None, role: Optional[str] = None, temperat
         add_candidate(model_name, "nvidia", settings.NVIDIA_API_KEY, settings.NVIDIA_BASE_URL)
     elif provider == "groq":
         add_candidate(model_name, "groq", settings.GROQ_API_KEY, "https://api.groq.com/openai/v1")
+    elif provider == "fireworks":
+        add_candidate(model_name, "fireworks", getattr(settings, "FIREWORKS_API_KEY", None), "https://api.fireworks.ai/inference/v1")
     elif provider == "openai":
         add_candidate(model_name, "openai", settings.OPENAI_API_KEY, None)
     elif provider == "gemini":
@@ -208,6 +212,8 @@ def get_llm(model_id: Optional[str] = None, role: Optional[str] = None, temperat
         add_candidate(_nvidia_model_name(model_id or "kimi-k3"), "nvidia", settings.NVIDIA_API_KEY, settings.NVIDIA_BASE_URL)
     if provider != "groq" and _is_valid_key(settings.GROQ_API_KEY):
         add_candidate(_groq_model_name(model_id or "kimi-k3"), "groq", settings.GROQ_API_KEY, "https://api.groq.com/openai/v1")
+    if provider != "fireworks" and _is_valid_key(getattr(settings, "FIREWORKS_API_KEY", None)):
+        add_candidate("accounts/fireworks/models/llama-v3p3-70b-instruct", "fireworks", getattr(settings, "FIREWORKS_API_KEY", None), "https://api.fireworks.ai/inference/v1")
     if provider != "openai" and _is_valid_key(settings.OPENAI_API_KEY):
         add_candidate("gpt-4o-mini", "openai", settings.OPENAI_API_KEY, None)
     if provider != "gemini" and (_is_valid_key(settings.GEMINI_API_KEY) or _is_valid_key(settings.GOOGLE_API_KEY)):
