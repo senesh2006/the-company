@@ -89,7 +89,7 @@ def act(state: EngineeringWorkerState):
     if not tools:
         tools = registry.get_langchain_tools("assistant")
     
-    react_agent = create_react_agent(llm, tools, state_modifier=SYSTEM_PROMPT)
+    react_agent = create_react_agent(llm, tools, prompt=SYSTEM_PROMPT)
     
     messages = [HumanMessage(content=f"Execute this technical plan:\n{state['plan']}")]
     res = react_agent.invoke({"messages": messages}, config={"recursion_limit": 50})

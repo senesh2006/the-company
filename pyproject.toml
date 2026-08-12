@@ -3,6 +3,7 @@ name = "the-company"
 version = "0.1.0"
 description = "Backend for The Company - an AI multi-agent system"
 authors = ["Senesh <senesh@example.com>"]
+packages = [{include = "app"}]
 
 [tool.poetry.dependencies]
 python = "^3.11"

@@ -99,7 +99,7 @@ def act(state: MarketingWorkerState):
     llm = get_marketing_llm(model_id=state.get("model_id"))
     tools = registry.get_langchain_tools("Marketing Manager")
     
-    react_agent = create_react_agent(llm, tools, state_modifier=SYSTEM_PROMPT)
+    react_agent = create_react_agent(llm, tools, prompt=SYSTEM_PROMPT)
     
     messages = [HumanMessage(content=f"Execute this plan:\n{state['plan']}")]
     res = react_agent.invoke({"messages": messages}, config={"recursion_limit": 50})
