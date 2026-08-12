@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import List, Optional, Any, Dict
 from pydantic import BaseModel, Field
 from app.agents.tool_registry import BaseTool, registry
-from app.agents.tools import ReadSharedMemoryTool, WriteSharedMemoryTool, SpawnSubtaskTool
+from app.agents.tools import ReadSharedMemoryTool, WriteSharedMemoryTool, SpawnSubtaskTool, AskUserForInputTool
 from app.agents.google_sheets_tool import GoogleSheetsTool
 from app.core.config import settings
 from app.services.mcp_client import mcp_call_or_default
