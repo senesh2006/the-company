@@ -59,13 +59,13 @@ class BraveSearchTool(BaseTool):
         )
 
 class NotionInput(BaseModel):
-    action: str = Field(description="'read_calendar' or 'update_calendar'")
+    action: str = Field(description="'read_calendar', 'update_calendar', or 'draft_nurture'")
     doc_id: Optional[str] = Field(None, description="ID of the Notion document")
-    content: Optional[str] = Field(None, description="Content to write")
+    content: Optional[str] = Field(None, description="Content to write or draft")
 
 class NotionTool(BaseTool):
     name = "notion_workspace"
-    description = "Interacts with Notion to manage the content calendar and documents."
+    description = "Interacts with Notion to manage the content calendar, documents, and draft nurture sequences for Community Operations."
     args_schema = NotionInput
     cost_estimate = 0.01
 
@@ -82,6 +82,9 @@ class NotionTool(BaseTool):
         elif action == "update_calendar" and content:
             mem.set(biz_id, "content_calendar", content, tags=["calendar", "notion"])
             default = f"Content Calendar updated successfully in Notion workspace ({doc_id or 'main'})."
+        elif action == "draft_nurture" and content:
+            mem.set(biz_id, f"nurture_draft_{doc_id or 'latest'}", content, tags=["nurture", "community", "draft"])
+            default = f"Nurture sequence drafted successfully in Notion for review."
         else:
             default = f"Notion workspace action '{action}' on document '{doc_id or 'main'}' completed."
 
@@ -217,11 +220,145 @@ class Context7Tool(BaseTool):
             default,
         )
 
+class ReadGoogleSheetInput(BaseModel):
+    sheet_name: str = Field(description="Name of the Google Sheet tab (e.g. 'Ambassador Applications')")
+    range: str = Field(description="The cell range to read, e.g. 'A1:E50'")
+
+class ReadGoogleSheetTool(BaseTool):
+    name = "read_google_sheet"
+    description = "Reads data from a Google Sheet. Useful for checking ambassador application forms."
+    args_schema = ReadGoogleSheetInput
+    cost_estimate = 0.01
+
+    def _run(self, sheet_name: str, range: str) -> str:
+        biz_id = getattr(self, "business_id", "00000000-0000-0000-0000-000000000001")
+        try:
+            from app.services.google_sheets_service import GoogleSheetsService
+            service = GoogleSheetsService(business_id=biz_id)
+            rows = service.read_sheet_range(sheet_name, range)
+            return json.dumps({"sheet": sheet_name, "range": range, "data": rows}, indent=2)
+        except Exception as e:
+            logger.error(f"Error reading Google Sheet {sheet_name}: {e}")
+            return f"Failed to read Google Sheet '{sheet_name}': {str(e)}"
+
+class SocialMonitorInput(BaseModel):
+    platform: str = Field(description="The platform to monitor, e.g., 'linkedin' or 'twitter'")
+    target_profiles: List[str] = Field(description="List of profile URLs or handles to scan")
+
+class SocialMonitorTool(BaseTool):
+    name = "social_monitor"
+    description = "Scans leadership social media feeds (LinkedIn, Twitter) for compelling events like awards, product launches, or hiring signals."
+    args_schema = SocialMonitorInput
+    cost_estimate = 0.02
+
+    def _run(self, platform: str, target_profiles: List[str]) -> str:
+        # We use a mock default if MCP isn't hooked up yet
+        default_res = json.dumps({
+            "platform": platform,
+            "profiles_scanned": target_profiles,
+            "events_detected": [
+                {
+                    "profile": target_profiles[0] if target_profiles else "unknown",
+                    "type": "award",
+                    "content": "Thrilled to announce that our company just won the Best Innovator Award 2026! Big thanks to the team.",
+                    "engagement_opportunity": "High - Congratulate them on the award and mention our shared value of innovation."
+                },
+                {
+                    "profile": target_profiles[-1] if target_profiles else "unknown",
+                    "type": "hiring",
+                    "content": "We are expanding our engineering team. Looking for senior devs who love solving hard problems.",
+                    "engagement_opportunity": "Medium - Quote repost and tag relevant engineers in our network."
+                }
+            ]
+        }, indent=2)
+
+        return _marketing_mcp_call(
+            "social_monitor",
+            "scan_feeds",
+            {"platform": platform, "profiles": target_profiles},
+            default_res
+        )
+
+class SEOTrackerInput(BaseModel):
+    action: str = Field(description="'audit_keywords' or 'technical_audit'")
+    target_url: Optional[str] = Field(None, description="The domain or path to audit")
+
+class SEOTrackerTool(BaseTool):
+    name = "seo_tracker"
+    description = "Tracks keyword rankings, technical SEO issues, and AI-prompt visibility."
+    args_schema = SEOTrackerInput
+    cost_estimate = 0.02
+
+    def _run(self, action: str, target_url: str = None) -> str:
+        default_res = json.dumps({
+            "action": action,
+            "target": target_url or "global",
+            "keyword_movement": {"top_3": "+5", "top_10": "-2"},
+            "ai_prompt_visibility": "Medium - 45% share of voice",
+            "technical_issues": ["Missing H1 on /about", "Slow LCP on /pricing"],
+            "recommendation": "Fix LCP on pricing page immediately and update H1 tags to capture AI-prompt semantic intent."
+        }, indent=2)
+        return _marketing_mcp_call("seo", action, {"target": target_url}, default_res)
+
+class PaidMediaInput(BaseModel):
+    action: str = Field(description="'pull_metrics' or 'reallocate_budget'")
+    campaign_id: Optional[str] = Field(None, description="Target campaign")
+
+class PaidMediaTool(BaseTool):
+    name = "paid_media"
+    description = "Pulls live channel data for LinkedIn/Google Ads and suggests reallocation."
+    args_schema = PaidMediaInput
+    cost_estimate = 0.03
+
+    def _run(self, action: str, campaign_id: str = None) -> str:
+        default_res = json.dumps({
+            "action": action,
+            "metrics": {"LinkedIn_CPA": "$45", "Google_CPA": "$12", "ROAS": "2.4x"},
+            "creative_winners": ["Video_Testimonial_v2"],
+            "recommendation": "Shift 20% budget from LinkedIn to Google Ads where CPA is highly efficient. Double down on Video_Testimonial_v2."
+        }, indent=2)
+        return _marketing_mcp_call("paid_media", action, {"campaign": campaign_id}, default_res)
+
+class EventScreenerInput(BaseModel):
+    event_id: str = Field(description="ID of the event to screen")
+
+class EventScreenerTool(BaseTool):
+    name = "event_screener"
+    description = "Scores event applicants against ICP and batch-approves strong fits."
+    args_schema = EventScreenerInput
+    cost_estimate = 0.015
+
+    def _run(self, event_id: str) -> str:
+        default_res = json.dumps({
+            "event_id": event_id,
+            "applicants_screened": 42,
+            "strong_fits": 12,
+            "action_taken": "Batch approved 12 strong fits in the invite tool."
+        }, indent=2)
+        return _marketing_mcp_call("events", "screen_applicants", {"event": event_id}, default_res)
+
+class MerchFulfillmentInput(BaseModel):
+    action: str = Field(description="'check_redemptions' or 'send_vendor_order'")
+
+class MerchFulfillmentTool(BaseTool):
+    name = "merch_fulfillment"
+    description = "Checks merch redemption forms and compiles orders for the swag vendor."
+    args_schema = MerchFulfillmentInput
+    cost_estimate = 0.01
+
+    def _run(self, action: str) -> str:
+        default_res = json.dumps({
+            "action": action,
+            "new_redemptions": 5,
+            "status": "Pending Human Approval via WhatsApp before dispatching to vendor."
+        }, indent=2)
+        return _marketing_mcp_call("merch", action, {}, default_res)
+
 def register_marketing_tools(business_id: str, agent_id: str = None, task_id: str = None):
     """
     Registers the specific allowed MCP tools for the Marketing Manager role.
     """
-    from app.agents.whatsapp_tool import WhatsAppSendMessageTool, TextUserWhatsAppTool, WhatsAppCheckStatusTool
+    from app.agents.whatsapp_tool import WhatsAppSendMessageTool, TextUserWhatsAppTool, WhatsAppCheckStatusTool, WhatsAppReadDMsTool
     
     tools = [
         PlaywrightTool(),
@@ -238,7 +375,14 @@ def register_marketing_tools(business_id: str, agent_id: str = None, task_id: st
         AskUserForInputTool(business_id=business_id),
         WhatsAppSendMessageTool(),
         TextUserWhatsAppTool(),
-        WhatsAppCheckStatusTool()
+        WhatsAppCheckStatusTool(),
+        WhatsAppReadDMsTool(),
+        ReadGoogleSheetTool(),
+        SocialMonitorTool(),
+        SEOTrackerTool(),
+        PaidMediaTool(),
+        EventScreenerTool(),
+        MerchFulfillmentTool()
     ]
     
     # Inject metadata for cost tracking

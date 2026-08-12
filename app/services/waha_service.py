@@ -318,6 +318,32 @@ class WAHAService:
                 return resp.json()
             return []
 
+    async def get_chat_history(self, chat_id: str, session: Optional[str] = None, limit: int = 20) -> List[Dict[str, Any]]:
+        """
+        Retrieves recent messages from a specific WhatsApp chat.
+        """
+        if not self.is_configured():
+            return []
+
+        formatted_id = format_whatsapp_chat_id(chat_id)
+        sess_name = session or self.default_session
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            # Try /api/messages endpoint which is standard in WAHA
+            resp = await client.get(
+                f"{self.base_url}/api/messages?session={sess_name}&chatId={formatted_id}&limit={limit}",
+                headers=self._get_headers()
+            )
+            if resp.status_code == 200:
+                return resp.json()
+            # Try alternate WAHA endpoint format just in case
+            resp = await client.get(
+                f"{self.base_url}/api/chats/{formatted_id}/messages?session={sess_name}&limit={limit}",
+                headers=self._get_headers()
+            )
+            if resp.status_code == 200:
+                return resp.json()
+            return []
+
     async def handle_webhook_event(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
         Handles inbound WhatsApp webhook events from WAHA.

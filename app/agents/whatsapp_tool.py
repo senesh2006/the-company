@@ -171,10 +171,63 @@ class TextUserWhatsAppTool(BaseTool):
             return f"Failed to text user on WhatsApp: {str(e)}"
 
 
+class WhatsAppReadDMsInput(BaseModel):
+    chat_id: str = Field(description="The WhatsApp chat ID or phone number to read messages from.")
+    limit: Optional[int] = Field(20, description="The maximum number of recent messages to retrieve.")
+
+
+class WhatsAppReadDMsTool(BaseTool):
+    """
+    Allows agents to read recent direct messages (DMs) from a WhatsApp chat to triage or respond to them.
+    """
+    name = "read_whatsapp_dms"
+    description = "Read recent messages from a specific WhatsApp chat or user to triage DMs or view chat history."
+    args_schema = WhatsAppReadDMsInput
+    cost_estimate = 0.005
+
+    def _run(self, chat_id: str, limit: int = 20) -> str:
+        try:
+            try:
+                loop = asyncio.get_event_loop()
+            except RuntimeError:
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+
+            if loop.is_running():
+                import concurrent.futures
+                with concurrent.futures.ThreadPoolExecutor() as pool:
+                    messages = pool.submit(
+                        asyncio.run,
+                        waha_service.get_chat_history(chat_id=chat_id, limit=limit)
+                    ).result()
+            else:
+                messages = loop.run_until_complete(
+                    waha_service.get_chat_history(chat_id=chat_id, limit=limit)
+                )
+
+            if not messages:
+                return f"No messages found or failed to fetch chat history for {chat_id}."
+            
+            # Format nicely for the LLM
+            formatted_msgs = []
+            for m in messages:
+                sender = m.get("from", "Unknown")
+                text = m.get("body") or m.get("text") or "[No Text/Media]"
+                from_me = m.get("fromMe", False)
+                direction = "OUTBOUND (Me)" if from_me else f"INBOUND ({sender})"
+                formatted_msgs.append(f"{direction}: {text}")
+
+            return "Recent Messages:\n" + "\n".join(formatted_msgs)
+        except Exception as e:
+            logger.error(f"Read WhatsApp DMs error: {str(e)}")
+            return f"Failed to read WhatsApp DMs: {str(e)}"
+
+
 # Register WhatsApp tools to global registry for key worker roles
 whatsapp_send_tool = WhatsAppSendMessageTool()
 whatsapp_text_user_tool = TextUserWhatsAppTool()
 whatsapp_status_tool = WhatsAppCheckStatusTool()
+whatsapp_read_dms_tool = WhatsAppReadDMsTool()
 
 # Register to Personal Assistant, Admin/Ops, Marketing, Finance, and Customer Support
 for role in [
@@ -191,5 +244,5 @@ for role in [
     "Researcher",
     "default"
 ]:
-    registry.register_tools(role, [whatsapp_send_tool, whatsapp_text_user_tool, whatsapp_status_tool])
+    registry.register_tools(role, [whatsapp_send_tool, whatsapp_text_user_tool, whatsapp_status_tool, whatsapp_read_dms_tool])
 
