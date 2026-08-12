@@ -4,6 +4,7 @@ from langchain_core.messages import AnyMessage, HumanMessage, AIMessage, SystemM
 from langchain_core.prompts import ChatPromptTemplate
 from langgraph.graph import StateGraph, START, END
 from langgraph.prebuilt import create_react_agent
+import inspect
 import operator
 
 from app.agents.llm_factory import get_llm
@@ -89,7 +90,20 @@ def act(state: EngineeringWorkerState):
     if not tools:
         tools = registry.get_langchain_tools("assistant")
     
-    react_agent = create_react_agent(llm, tools, prompt=SYSTEM_PROMPT)
+    sig = inspect.signature(create_react_agent)
+    kwargs = {}
+    if 'state_modifier' in sig.parameters:
+        kwargs['state_modifier'] = SYSTEM_PROMPT
+    elif 'messages_modifier' in sig.parameters:
+        kwargs['messages_modifier'] = SYSTEM_PROMPT
+    elif 'prompt' in sig.parameters:
+        kwargs['prompt'] = SYSTEM_PROMPT
+    elif 'system_message' in sig.parameters:
+        kwargs['system_message'] = SYSTEM_PROMPT
+    else:
+        kwargs['state_modifier'] = SYSTEM_PROMPT
+        
+    react_agent = create_react_agent(llm, tools, **kwargs)
     
     messages = [HumanMessage(content=f"Execute this technical plan:\n{state['plan']}")]
     res = react_agent.invoke({"messages": messages}, config={"recursion_limit": 50})
