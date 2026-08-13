@@ -5,6 +5,7 @@ import { useAgents, useMetrics } from "@/lib/queries";
 import { useAppStore } from "@/lib/store";
 import { useAuth } from "@/lib/auth-context";
 import { MarketingAvatar } from "@/components/ui/MarketingAvatar";
+import { FinanceAvatar } from "@/components/ui/FinanceAvatar";
 import { 
   Plus, 
   SlidersHorizontal, 
@@ -287,6 +288,8 @@ export default function AgentsPage() {
                           <div className={`w-10 h-10 rounded-xl overflow-hidden ${worker.avatarBg} border flex items-center justify-center shrink-0 shadow-xs group-hover:scale-105 transition-transform`}>
                             {worker.name === "Growth & Marketing Lead" ? (
                               <MarketingAvatar className="w-full h-full rounded-none" />
+                            ) : worker.name === "Financial Controller & Auditor" ? (
+                              <FinanceAvatar className="w-full h-full rounded-none" />
                             ) : (
                               <Icon className="w-5 h-5" />
                             )}
@@ -391,6 +394,8 @@ export default function AgentsPage() {
                     <div className={`w-10 h-10 rounded-xl overflow-hidden ${worker.avatarBg} border flex items-center justify-center shrink-0`}>
                       {worker.name === "Growth & Marketing Lead" ? (
                         <MarketingAvatar className="w-full h-full rounded-none" />
+                      ) : worker.name === "Financial Controller & Auditor" ? (
+                        <FinanceAvatar className="w-full h-full rounded-none" />
                       ) : (
                         <Icon className="w-5 h-5" />
                       )}

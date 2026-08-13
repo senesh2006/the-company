@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { MarketingAvatar } from "@/components/ui/MarketingAvatar";
+import { FinanceAvatar } from "@/components/ui/FinanceAvatar";
 import { MarkdownRenderer } from '@/components/MarkdownRenderer';
 import { ThinkingProcess } from '@/components/ThinkingProcess';
 import { useTasks, useAgents, useCreateTask } from "@/lib/queries";
@@ -275,6 +276,8 @@ export default function TasksPage() {
                     <div className="w-7 h-7 rounded-lg overflow-hidden bg-slate-100 border border-slate-200 shrink-0">
                       {(task.agentName === "Growth & Marketing Lead" || task.agentRole === "Marketing Manager") ? (
                         <MarketingAvatar className="w-full h-full rounded-none" />
+                      ) : (task.agentName === "Financial Controller & Auditor" || task.agentRole === "Finance Manager") ? (
+                        <FinanceAvatar className="w-full h-full rounded-none" />
                       ) : (
                         <img src={task.agentAvatar} alt={task.agentName} className="w-full h-full object-cover" />
                       )}
