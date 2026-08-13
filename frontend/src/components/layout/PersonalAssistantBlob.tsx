@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Bot, Send, X, Sparkles, Loader2, ChevronDown } from "lucide-react";
 import { useCreateTask } from "@/lib/queries";
+import { AssistantAvatar } from "@/components/ui/AssistantAvatar";
 
 interface Message {
   id: string;
@@ -106,8 +107,8 @@ export function PersonalAssistantBlob() {
             {/* Header */}
             <div className="px-5 py-4 bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-500 text-white flex items-center justify-between shrink-0">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-2xl bg-white dark:bg-slate-900/20 backdrop-blur-sm flex items-center justify-center border border-white/30">
-                  <Sparkles className="w-5 h-5 text-white" />
+                <div className="w-10 h-10 rounded-2xl bg-white/20 dark:bg-slate-900/40 backdrop-blur-sm flex items-center justify-center border border-white/30 overflow-hidden shrink-0">
+                  <AssistantAvatar className="w-full h-full scale-[1.35]" />
                 </div>
                 <div>
                   <h3 className="text-sm font-bold tracking-tight">Personal Assistant</h3>
@@ -222,8 +223,11 @@ export function PersonalAssistantBlob() {
                 animate={{ rotate: 0, opacity: 1 }}
                 exit={{ rotate: -90, opacity: 0 }}
                 transition={{ duration: 0.2 }}
+                className="w-full h-full p-1"
               >
-                <Bot className="w-6 h-6 text-white" />
+                <div className="w-full h-full rounded-full overflow-hidden bg-white/10 flex items-center justify-center">
+                   <AssistantAvatar className="w-full h-full scale-[1.25]" />
+                </div>
               </motion.div>
             )}
           </AnimatePresence>
