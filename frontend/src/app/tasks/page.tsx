@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { useAuth } from "@/lib/auth-context";
+import { MarketingAvatar } from "@/components/ui/MarketingAvatar";
 import { MarkdownRenderer } from '@/components/MarkdownRenderer';
 import { ThinkingProcess } from '@/components/ThinkingProcess';
 import { useTasks, useAgents, useCreateTask } from "@/lib/queries";
@@ -271,7 +273,11 @@ export default function TasksPage() {
                   {/* Agent badge */}
                   <div className="flex items-center gap-2">
                     <div className="w-7 h-7 rounded-lg overflow-hidden bg-slate-100 border border-slate-200 shrink-0">
-                      <img src={task.agentAvatar} alt={task.agentName} className="w-full h-full object-cover" />
+                      {(task.agentName === "Growth & Marketing Lead" || task.agentRole === "Marketing Manager") ? (
+                        <MarketingAvatar className="w-full h-full rounded-none" />
+                      ) : (
+                        <img src={task.agentAvatar} alt={task.agentName} className="w-full h-full object-cover" />
+                      )}
                     </div>
                     <div className="flex flex-col">
                       <span className="text-xs font-semibold text-slate-800 leading-tight">

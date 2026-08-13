@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { useAgents, useMetrics } from "@/lib/queries";
 import { useAppStore } from "@/lib/store";
+import { useAuth } from "@/lib/auth-context";
+import { MarketingAvatar } from "@/components/ui/MarketingAvatar";
 import { 
   Plus, 
   SlidersHorizontal, 
@@ -282,8 +284,12 @@ export default function AgentsPage() {
                       {/* Worker Identity */}
                       <td className="py-4 px-6">
                         <div className="flex items-center gap-3.5">
-                          <div className={`w-10 h-10 rounded-xl ${worker.avatarBg} border flex items-center justify-center shrink-0 shadow-xs group-hover:scale-105 transition-transform`}>
-                            <Icon className="w-5 h-5" />
+                          <div className={`w-10 h-10 rounded-xl overflow-hidden ${worker.avatarBg} border flex items-center justify-center shrink-0 shadow-xs group-hover:scale-105 transition-transform`}>
+                            {worker.name === "Growth & Marketing Lead" ? (
+                              <MarketingAvatar className="w-full h-full rounded-none" />
+                            ) : (
+                              <Icon className="w-5 h-5" />
+                            )}
                           </div>
                           <div>
                             <div className="text-sm font-bold text-slate-900 group-hover:text-emerald-800 transition-colors">
@@ -382,8 +388,12 @@ export default function AgentsPage() {
               >
                 <div>
                   <div className="flex items-start justify-between gap-2">
-                    <div className={`w-10 h-10 rounded-xl ${worker.avatarBg} border flex items-center justify-center shrink-0`}>
-                      <Icon className="w-5 h-5" />
+                    <div className={`w-10 h-10 rounded-xl overflow-hidden ${worker.avatarBg} border flex items-center justify-center shrink-0`}>
+                      {worker.name === "Growth & Marketing Lead" ? (
+                        <MarketingAvatar className="w-full h-full rounded-none" />
+                      ) : (
+                        <Icon className="w-5 h-5" />
+                      )}
                     </div>
                     <span
                       className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${
