@@ -285,11 +285,15 @@ export default function AgentsPage() {
                       {/* Worker Identity */}
                       <td className="py-4 px-6">
                         <div className="flex items-center gap-3.5">
-                          <div className={`w-10 h-10 rounded-xl overflow-hidden ${worker.avatarBg} border flex items-center justify-center shrink-0 shadow-xs group-hover:scale-105 transition-transform`}>
+                          <div className={`w-10 h-10 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform ${
+                            (worker.name === "Growth & Marketing Lead" || worker.name === "Financial Controller & Auditor") 
+                              ? "" 
+                              : `rounded-xl overflow-hidden ${worker.avatarBg} border shadow-xs`
+                          }`}>
                             {worker.name === "Growth & Marketing Lead" ? (
-                              <MarketingAvatar className="w-full h-full rounded-none" />
+                              <MarketingAvatar className="w-full h-full" />
                             ) : worker.name === "Financial Controller & Auditor" ? (
-                              <FinanceAvatar className="w-full h-full rounded-none" />
+                              <FinanceAvatar className="w-full h-full" />
                             ) : (
                               <Icon className="w-5 h-5" />
                             )}
@@ -391,11 +395,15 @@ export default function AgentsPage() {
               >
                 <div>
                   <div className="flex items-start justify-between gap-2">
-                    <div className={`w-10 h-10 rounded-xl overflow-hidden ${worker.avatarBg} border flex items-center justify-center shrink-0`}>
+                    <div className={`w-10 h-10 flex items-center justify-center shrink-0 ${
+                      (worker.name === "Growth & Marketing Lead" || worker.name === "Financial Controller & Auditor")
+                        ? ""
+                        : `rounded-xl overflow-hidden ${worker.avatarBg} border`
+                    }`}>
                       {worker.name === "Growth & Marketing Lead" ? (
-                        <MarketingAvatar className="w-full h-full rounded-none" />
+                        <MarketingAvatar className="w-full h-full" />
                       ) : worker.name === "Financial Controller & Auditor" ? (
-                        <FinanceAvatar className="w-full h-full rounded-none" />
+                        <FinanceAvatar className="w-full h-full" />
                       ) : (
                         <Icon className="w-5 h-5" />
                       )}

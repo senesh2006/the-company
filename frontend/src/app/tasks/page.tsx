@@ -273,11 +273,15 @@ export default function TasksPage() {
                 <div className="flex items-center gap-6 shrink-0">
                   {/* Agent badge */}
                   <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 rounded-lg overflow-hidden bg-slate-100 border border-slate-200 shrink-0">
+                    <div className={`w-7 h-7 shrink-0 ${
+                      ((task.agentName === "Growth & Marketing Lead" || task.agentRole === "Marketing Manager") || (task.agentName === "Financial Controller & Auditor" || task.agentRole === "Finance Manager"))
+                        ? ""
+                        : "rounded-lg overflow-hidden bg-slate-100 border border-slate-200"
+                    }`}>
                       {(task.agentName === "Growth & Marketing Lead" || task.agentRole === "Marketing Manager") ? (
-                        <MarketingAvatar className="w-full h-full rounded-none" />
+                        <MarketingAvatar className="w-full h-full" />
                       ) : (task.agentName === "Financial Controller & Auditor" || task.agentRole === "Finance Manager") ? (
-                        <FinanceAvatar className="w-full h-full rounded-none" />
+                        <FinanceAvatar className="w-full h-full" />
                       ) : (
                         <img src={task.agentAvatar} alt={task.agentName} className="w-full h-full object-cover" />
                       )}
