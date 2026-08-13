@@ -2,7 +2,15 @@
 
 import React, { useRef, useEffect, useState } from 'react';
 
-export function MarketingAvatar({ className = "" }: { className?: string }) {
+export function MarketingAvatar({ 
+  className = "",
+  faceColor = "#DBEAFE", // Blue 100
+  featureColor = "#1E3A8A" // Blue 900
+}: { 
+  className?: string;
+  faceColor?: string;
+  featureColor?: string;
+}) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
   const [delayStyle, setDelayStyle] = useState<React.CSSProperties>({});
@@ -11,7 +19,11 @@ export function MarketingAvatar({ className = "" }: { className?: string }) {
     // Generate a random delay offset between 0 and -20s for each component instance
     // so they are all completely out of sync with each other
     const randomDelay = `-${Math.random() * 20}s`;
-    setDelayStyle({ '--anim-delay': randomDelay } as React.CSSProperties);
+    setDelayStyle({ 
+      '--anim-delay': randomDelay,
+      '--face-color': faceColor,
+      '--feature-color': featureColor
+    } as React.CSSProperties);
 
     if (!containerRef.current) return;
     
@@ -40,7 +52,7 @@ export function MarketingAvatar({ className = "" }: { className?: string }) {
         .face-25d {
           width: 240px;
           height: 240px;
-          background-color: #ffffff;
+          background-color: var(--face-color, #ffffff);
           border-radius: 50%;
           position: relative;
           overflow: hidden; 
@@ -75,7 +87,7 @@ export function MarketingAvatar({ className = "" }: { className?: string }) {
         .eye-25d {
           width: 100%;
           height: 100%;
-          background-color: #0c0c0c;
+          background-color: var(--feature-color, #0c0c0c);
           border-radius: 50%;
           transform-origin: center center;
           animation: eye-blink 9s infinite ease-in-out var(--anim-delay, 0s);
@@ -94,7 +106,7 @@ export function MarketingAvatar({ className = "" }: { className?: string }) {
         .mouth-25d {
           width: 100%;
           height: 100%;
-          background-color: #0c0c0c;
+          background-color: var(--feature-color, #0c0c0c);
           border-radius: 10px 10px 25px 25px;
           transform-origin: center top;
           animation: mouth-express 7s infinite ease-in-out var(--anim-delay, 0s);
