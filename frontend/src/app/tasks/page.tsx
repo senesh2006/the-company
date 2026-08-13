@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { MarketingAvatar } from "@/components/ui/MarketingAvatar";
 import { FinanceAvatar } from "@/components/ui/FinanceAvatar";
+import { AssistantAvatar } from "@/components/ui/AssistantAvatar";
 import { MarkdownRenderer } from '@/components/MarkdownRenderer';
 import { ThinkingProcess } from '@/components/ThinkingProcess';
 import { useTasks, useAgents, useCreateTask } from "@/lib/queries";
@@ -274,7 +275,7 @@ export default function TasksPage() {
                   {/* Agent badge */}
                   <div className="flex items-center gap-2">
                     <div className={`w-7 h-7 shrink-0 ${
-                      ((task.agentName === "Growth & Marketing Lead" || task.agentRole === "Marketing Manager") || (task.agentName === "Financial Controller & Auditor" || task.agentRole === "Finance Manager"))
+                      ((task.agentName === "Growth & Marketing Lead" || task.agentRole === "Marketing Manager") || (task.agentName === "Financial Controller & Auditor" || task.agentRole === "Finance Manager") || (task.agentName === "Personal Assistant" || task.agentName === "Supervisor" || task.agentRole === "Personal Assistant" || task.agentRole === "Supervisor"))
                         ? ""
                         : "rounded-lg overflow-hidden bg-slate-100 border border-slate-200"
                     }`}>
@@ -282,6 +283,8 @@ export default function TasksPage() {
                         <MarketingAvatar className="w-full h-full" />
                       ) : (task.agentName === "Financial Controller & Auditor" || task.agentRole === "Finance Manager") ? (
                         <FinanceAvatar className="w-full h-full" />
+                      ) : (task.agentName === "Personal Assistant" || task.agentName === "Supervisor" || task.agentRole === "Personal Assistant" || task.agentRole === "Supervisor") ? (
+                        <AssistantAvatar className="w-full h-full" faceColor="#ffffff" featureColor="#0c0c0c" />
                       ) : (
                         <img src={task.agentAvatar} alt={task.agentName} className="w-full h-full object-cover" />
                       )}
