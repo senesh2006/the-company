@@ -52,7 +52,7 @@ export function Topbar({ onMenuClick }: TopbarProps) {
   const userInitials = userName ? userName.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2) : "U";
 
   return (
-    <header className="fixed top-0 right-0 w-full lg:w-[calc(100%-280px)] h-16 glass-header flex items-center justify-between px-4 lg:px-8 z-40">
+    <header className="fixed top-0 right-0 w-full lg:w-[calc(100%-280px)] h-16 glass-header dark:bg-slate-900/80 dark:border-slate-800 flex items-center justify-between px-4 lg:px-8 z-40">
       <div className="flex items-center gap-3">
         {/* Mobile menu button */}
         <button
@@ -66,21 +66,21 @@ export function Topbar({ onMenuClick }: TopbarProps) {
         {/* Search Console */}
         <motion.div 
           className={cn(
-            "hidden sm:flex items-center gap-2.5 bg-slate-100/90 border rounded-xl px-4 py-2 w-72 lg:w-96 transition-all duration-200",
-            searchFocused ? "bg-white border-primary/50 ring-2 ring-primary/10 shadow-sm" : "border-slate-200/90 hover:border-slate-300"
+            "hidden sm:flex items-center gap-2.5 bg-slate-100/90 dark:bg-slate-800/90 border rounded-xl px-4 py-2 w-72 lg:w-96 transition-all duration-200",
+            searchFocused ? "bg-white dark:bg-slate-800 border-primary/50 ring-2 ring-primary/10 shadow-sm" : "border-slate-200/90 dark:border-slate-700/90 hover:border-slate-300 dark:hover:border-slate-600"
           )}
           animate={searchFocused ? { scale: 1.01 } : { scale: 1 }}
           transition={{ type: "spring", stiffness: 400, damping: 30 }}
         >
           <Search className="w-4 h-4 text-slate-400" />
           <input 
-            className="bg-transparent border-none text-xs text-slate-800 w-full placeholder:text-slate-400 outline-none font-medium" 
+            className="bg-transparent border-none text-xs text-slate-800 dark:text-slate-200 w-full placeholder:text-slate-400 outline-none font-medium" 
             placeholder="Search workers, tasks, memory or operations..." 
             type="text"
             onFocus={() => setSearchFocused(true)}
             onBlur={() => setSearchFocused(false)}
           />
-          <kbd className="hidden sm:inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-mono text-slate-500 bg-white border border-slate-200 rounded shadow-2xs">
+          <kbd className="hidden sm:inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-mono text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded shadow-2xs">
             ⌘K
           </kbd>
         </motion.div>
@@ -112,13 +112,13 @@ export function Topbar({ onMenuClick }: TopbarProps) {
           </motion.div>
         </Link>
 
-        <div className="h-5 w-[1px] bg-slate-200 hidden sm:block"></div>
+        <div className="h-5 w-[1px] bg-slate-200 dark:bg-slate-700 hidden sm:block"></div>
 
         {/* Theme Toggle Button */}
         {mounted && (
           <motion.button
             onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-            className="p-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
+            className="p-2 rounded-xl text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
             title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} theme`}
             aria-label="Toggle Theme"
             whileHover={{ scale: 1.05 }}
@@ -178,7 +178,7 @@ export function Topbar({ onMenuClick }: TopbarProps) {
             <AnimatePresence>
               {menuOpen && (
                 <motion.div
-                  className="absolute right-0 mt-2 w-64 bg-white rounded-2xl border border-slate-200/90 shadow-xl shadow-slate-200/50 py-2 px-1 z-50"
+                  className="absolute right-0 mt-2 w-64 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-xl shadow-slate-200/50 dark:shadow-black/50 py-2 px-1 z-50"
                   initial={{ opacity: 0, y: 8, scale: 0.96 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 6, scale: 0.98 }}

@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
   /* Primitive palette */
@@ -84,6 +85,25 @@
 }
 
 @layer base {
+  .dark {
+    --color-background: #0f172a;
+    --color-surface: #1e293b;
+    --color-surface-container: #334155;
+    --color-surface-container-low: #0f172a;
+    --color-surface-container-high: #475569;
+    --color-surface-container-highest: #64748b;
+    --color-surface-container-lowest: #020617;
+    --color-surface-variant: #334155;
+
+    --color-on-background: #f8fafc;
+    --color-on-surface: #f8fafc;
+    --color-on-surface-variant: #cbd5e1;
+    --color-secondary: #94a3b8;
+    --color-secondary-container: #334155;
+    --color-outline: #334155;
+    --color-outline-variant: #0f172a;
+  }
+
   * {
     @apply border-outline;
   }

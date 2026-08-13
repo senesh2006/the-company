@@ -70,7 +70,7 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
 
   const NavGroup = ({ items, label }: { items: NavItem[], label: string }) => (
     <div className="mb-6">
-      <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">
+      <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-2">
         {label}
       </p>
       <nav className="space-y-1">
@@ -85,14 +85,14 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
               className={cn(
                 "relative flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-colors duration-200 group outline-none focus-visible:ring-2 focus-visible:ring-primary/30",
                 isActive
-                  ? "text-slate-900"
-                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
+                  ? "text-slate-900 dark:text-white"
+                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-800/80"
               )}
             >
               {isActive && (
                 <motion.div
                   layoutId="activeNav"
-                  className="absolute inset-0 bg-slate-900 rounded-xl"
+                  className="absolute inset-0 bg-slate-900 dark:bg-slate-800 rounded-xl"
                   transition={{ type: "spring", stiffness: 320, damping: 30 }}
                 />
               )}
@@ -142,7 +142,7 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
             </div>
           </motion.div>
           <div>
-            <h1 className="font-bold text-sm tracking-tight text-slate-900 flex items-center gap-1.5">
+            <h1 className="font-bold text-sm tracking-tight text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
               Company OS
               <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 font-semibold border border-emerald-200/60">
                 v6.0
@@ -160,19 +160,19 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
       </div>
 
       {/* Trust & Autonomy Telemetry */}
-      <div className="my-3 px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-between">
+      <div className="my-3 px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-emerald-500 pulse-emerald"></span>
           <div>
-            <p className="text-[10px] font-semibold text-slate-700">Governance Active</p>
-            <p className="text-[9px] text-slate-500">Tier Guardrails Online</p>
+            <p className="text-[10px] font-semibold text-slate-700 dark:text-slate-200">Governance Active</p>
+            <p className="text-[9px] text-slate-500 dark:text-slate-400">Tier Guardrails Online</p>
           </div>
         </div>
         <span className="text-[10px] font-mono text-emerald-700 font-semibold">99.9%</span>
       </div>
 
       {/* User Profile Footer */}
-      <div className="border-t border-slate-200 pt-4 px-2">
+      <div className="border-t border-slate-200 dark:border-slate-800 pt-4 px-2">
         {user ? (
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3 min-w-0">
@@ -185,8 +185,8 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
                 <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-white"></span>
               </div>
               <div className="min-w-0 text-left">
-                <p className="text-xs font-semibold text-slate-900 truncate">{userName}</p>
-                <p className="text-[10px] text-slate-500 truncate">{userEmail}</p>
+                <p className="text-xs font-semibold text-slate-900 dark:text-slate-100 truncate">{userName}</p>
+                <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">{userEmail}</p>
               </div>
             </div>
             <motion.button 
@@ -203,7 +203,7 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
           <Link
             href="/login"
             onClick={onMobileClose}
-            className="w-full flex items-center justify-between p-2.5 rounded-xl bg-slate-50 hover:bg-emerald-50 border border-slate-200 hover:border-emerald-300 transition-all text-slate-700 hover:text-emerald-700 group"
+            className="w-full flex items-center justify-between p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 border border-slate-200 dark:border-slate-700 hover:border-emerald-300 dark:hover:border-emerald-700 transition-all text-slate-700 dark:text-slate-300 hover:text-emerald-700 dark:hover:text-emerald-400 group"
           >
             <div className="flex items-center gap-2.5">
               <LogOut className="w-4 h-4 text-emerald-600 group-hover:scale-110 transition-transform" />
@@ -219,7 +219,7 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
   return (
     <>
       {/* Desktop Sidebar */}
-      <aside className="hidden lg:flex fixed left-0 top-0 h-screen w-[280px] glass-surface border-r border-slate-200/90 shadow-sm flex-col p-5 z-50">
+      <aside className="hidden lg:flex fixed left-0 top-0 h-screen w-[280px] glass-surface dark:bg-slate-900/90 border-r border-slate-200/90 dark:border-slate-800 shadow-sm flex-col p-5 z-50">
         <SidebarContent />
       </aside>
 
@@ -236,7 +236,7 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
               onClick={onMobileClose}
             />
             <motion.aside
-              className="fixed left-0 top-0 h-screen w-[280px] glass-surface border-r border-slate-200/90 shadow-2xl flex-col p-5 z-50 lg:hidden"
+              className="fixed left-0 top-0 h-screen w-[280px] glass-surface dark:bg-slate-900/90 border-r border-slate-200/90 dark:border-slate-800 shadow-2xl flex-col p-5 z-50 lg:hidden"
               initial={{ x: "-100%" }}
               animate={{ x: 0 }}
               exit={{ x: "-100%" }}
@@ -249,7 +249,7 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
                       <Sparkles className="w-4 h-4 text-emerald-600" />
                     </div>
                   </div>
-                  <span className="font-bold text-sm text-slate-900">Company OS</span>
+                  <span className="font-bold text-sm text-slate-900 dark:text-slate-100">Company OS</span>
                 </div>
                 <button
                   onClick={onMobileClose}

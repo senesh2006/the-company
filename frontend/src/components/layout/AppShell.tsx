@@ -42,7 +42,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   if (isAuthOrOnboardingPage) {
     return (
-      <main className="min-h-screen w-full flex items-center justify-center bg-slate-50 p-4">
+      <main className="min-h-screen w-full flex items-center justify-center bg-slate-50 dark:bg-slate-950 p-4">
         <AnimatePresence mode="wait">
           <motion.div
             key={pathname}
@@ -60,7 +60,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
       <Sidebar mobileOpen={mobileMenuOpen} onMobileClose={() => setMobileMenuOpen(false)} />
       <Topbar onMenuClick={() => setMobileMenuOpen(true)} />
       <main className="lg:ml-[280px] pt-20 px-4 md:px-6 lg:px-10 pb-16 min-h-screen">
