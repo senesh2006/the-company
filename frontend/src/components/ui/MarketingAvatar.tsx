@@ -5,8 +5,14 @@ import React, { useRef, useEffect, useState } from 'react';
 export function MarketingAvatar({ className = "" }: { className?: string }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
+  const [delayStyle, setDelayStyle] = useState<React.CSSProperties>({});
 
   useEffect(() => {
+    // Generate a random delay offset between 0 and -20s for each component instance
+    // so they are all completely out of sync with each other
+    const randomDelay = `-${Math.random() * 20}s`;
+    setDelayStyle({ '--anim-delay': randomDelay } as React.CSSProperties);
+
     if (!containerRef.current) return;
     
     // Initial scale calculation
@@ -27,7 +33,8 @@ export function MarketingAvatar({ className = "" }: { className?: string }) {
   return (
     <div 
       ref={containerRef} 
-      className={`relative flex items-center justify-center overflow-hidden bg-[#0c0c0c] rounded-full shrink-0 ${className}`}
+      className={`relative flex items-center justify-center overflow-hidden bg-transparent rounded-full shrink-0 ${className}`}
+      style={delayStyle}
     >
       <style>{`
         .face-25d {
@@ -45,7 +52,7 @@ export function MarketingAvatar({ className = "" }: { className?: string }) {
           height: 100%;
           position: absolute;
           transform-style: preserve-3d;
-          animation: head-turn 9s infinite ease-in-out;
+          animation: head-turn 9s infinite ease-in-out var(--anim-delay, 0s);
         }
 
         .eye-wrapper-25d {
@@ -71,7 +78,7 @@ export function MarketingAvatar({ className = "" }: { className?: string }) {
           background-color: #0c0c0c;
           border-radius: 50%;
           transform-origin: center center;
-          animation: eye-blink 9s infinite ease-in-out;
+          animation: eye-blink 9s infinite ease-in-out var(--anim-delay, 0s);
         }
 
 
@@ -81,7 +88,7 @@ export function MarketingAvatar({ className = "" }: { className?: string }) {
           height: 20px;
           top: 165px;
           left: 104px; 
-          animation: mouth-idle 3s infinite ease-in-out;
+          animation: mouth-idle 3s infinite ease-in-out var(--anim-delay, 0s);
         }
 
         .mouth-25d {
@@ -90,7 +97,7 @@ export function MarketingAvatar({ className = "" }: { className?: string }) {
           background-color: #0c0c0c;
           border-radius: 10px 10px 25px 25px;
           transform-origin: center top;
-          animation: mouth-express 7s infinite ease-in-out;
+          animation: mouth-express 7s infinite ease-in-out var(--anim-delay, 0s);
         }
 
         @keyframes head-turn {
