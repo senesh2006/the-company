@@ -74,15 +74,6 @@ export function MarketingAvatar({ className = "" }: { className?: string }) {
           animation: eye-blink 9s infinite ease-in-out;
         }
 
-        .brow-25d {
-          position: absolute;
-          width: 50px;
-          height: 30px;
-          top: -32px; 
-          left: -2px; 
-          transform-origin: center center;
-          animation: brow-move 9s infinite ease-in-out;
-        }
 
         .mouth-wrapper-25d {
           position: absolute;
@@ -126,17 +117,6 @@ export function MarketingAvatar({ className = "" }: { className?: string }) {
           100%     { transform: scaleY(1); }
         }
 
-        @keyframes brow-move {
-          0%, 15%  { transform: translateY(0px) scaleY(1); }
-          22%      { transform: translateY(10px) scaleY(0.4); } 
-          33%, 55% { transform: translateY(0px) scaleY(1); }
-          65%      { transform: translateY(0px); }
-          67%      { transform: translateY(3px) scaleY(0.8); }  
-          69%      { transform: translateY(0px) scaleY(1); }
-          77%      { transform: translateY(-8px) scaleY(1.4); } 
-          88%      { transform: translateY(3px) scaleY(0.8); }  
-          100%     { transform: translateY(0px) scaleY(1); }
-        }
 
         @keyframes mouth-idle {
           0%, 100% { transform: translateZ(100px) rotateX(-15deg) translateY(0px); }
@@ -185,20 +165,10 @@ export function MarketingAvatar({ className = "" }: { className?: string }) {
           <div className="head-25d">
             
             <div className="eye-wrapper-25d left-25d">
-              <div className="brow-25d">
-                <svg viewBox="0 0 50 30" width="100%" height="100%">
-                  <path d="M 6 24 Q 25 -4 44 24" fill="none" stroke="#0c0c0c" strokeWidth="12" strokeLinecap="round" />
-                </svg>
-              </div>
               <div className="eye-25d"></div>
             </div>
             
             <div className="eye-wrapper-25d right-25d">
-              <div className="brow-25d">
-                <svg viewBox="0 0 50 30" width="100%" height="100%">
-                  <path d="M 6 24 Q 25 -4 44 24" fill="none" stroke="#0c0c0c" strokeWidth="12" strokeLinecap="round" />
-                </svg>
-              </div>
               <div className="eye-25d"></div>
             </div>
             
