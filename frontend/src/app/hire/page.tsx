@@ -47,6 +47,7 @@ export default function HirePage() {
   const [specialistModels, setSpecialistModels] = useState<Record<string, ModelId>>({
     specialist_marketing: defaultModel,
     specialist_finance: "gpt-4o",
+    specialist_assistant: "gpt-4o",
   });
 
   useEffect(() => {
@@ -94,6 +95,26 @@ export default function HirePage() {
       architecture: "Dual-Node Maker-Checker LangGraph with Circuit Breaker",
       defaultTier: "observe" as const,
       defaultModel: "gpt-4o" as ModelId
+    },
+    {
+      id: "specialist-assistant",
+      name: "Personal Assistant",
+      role: "Personal Assistant",
+      department: "Administration",
+      icon: Sparkles,
+      accentColor: "cyan",
+      badgeColor: "bg-cyan-50 text-cyan-800 border-cyan-200",
+      description: "Executive coordination and system orchestration. Manages scheduling, triaging, and acts as the central router for delegating tasks to other specialized workers.",
+      capabilities: [
+        "Cross-Worker Coordination",
+        "Executive Briefing & Summarization",
+        "Priority Triage & Task Routing",
+        "Shared Context Synchronization",
+        "Founder's Proxy Decision Making"
+      ],
+      architecture: "Supervisor Node with Shared Memory Access",
+      defaultTier: "assist" as const,
+      defaultModel: "gpt-4o" as ModelId
     }
   ];
 
@@ -110,7 +131,7 @@ export default function HirePage() {
 
   const isAlreadyHired = (role: string) => {
     return (agents || []).some(
-      (a) => a.role?.toLowerCase() === role.toLowerCase() || (a.role?.toLowerCase().includes("marketing") && role.toLowerCase().includes("marketing")) || (a.role?.toLowerCase().includes("finance") && role.toLowerCase().includes("finance"))
+      (a) => a.role?.toLowerCase() === role.toLowerCase() || (a.role?.toLowerCase().includes("marketing") && role.toLowerCase().includes("marketing")) || (a.role?.toLowerCase().includes("finance") && role.toLowerCase().includes("finance")) || (a.role?.toLowerCase().includes("assistant") && role.toLowerCase().includes("assistant"))
     );
   };
 
