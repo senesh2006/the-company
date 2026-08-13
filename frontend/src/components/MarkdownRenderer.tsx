@@ -65,7 +65,7 @@ function formatMarkdown(content: string): string {
   });
 
   // Inline code.
-  processed = processed.replace(/`([^`]+)`/g, "<code class=\"px-1 py-0.5 rounded bg-slate-100 text-slate-800 text-[11px] font-mono\">$1</code>");
+  processed = processed.replace(/`([^`]+)`/g, "<code class=\"px-1 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-[11px] font-mono\">$1</code>");
 
   // Bold / italic.
   processed = processed
@@ -90,12 +90,12 @@ function formatMarkdown(content: string): string {
 
   // Headings.
   processed = processed
-    .replace(/^######\s*(.+)$/gm, "<h6 class=\"text-[11px] font-bold text-slate-800 mt-3 mb-1\">$1</h6>")
-    .replace(/^#####\s*(.+)$/gm, "<h5 class=\"text-xs font-bold text-slate-800 mt-3 mb-1\">$1</h5>")
-    .replace(/^####\s*(.+)$/gm, "<h4 class=\"text-xs font-bold text-slate-800 mt-3 mb-1\">$1</h4>")
-    .replace(/^###\s*(.+)$/gm, "<h3 class=\"text-sm font-bold text-slate-800 mt-4 mb-2\">$1</h3>")
-    .replace(/^##\s*(.+)$/gm, "<h2 class=\"text-sm font-bold text-slate-800 mt-4 mb-2\">$1</h2>")
-    .replace(/^#\s*(.+)$/gm, "<h1 class=\"text-base font-bold text-slate-800 mt-4 mb-2\">$1</h1>");
+    .replace(/^######\s*(.+)$/gm, "<h6 class=\"text-[11px] font-bold text-slate-800 dark:text-slate-200 mt-3 mb-1\">$1</h6>")
+    .replace(/^#####\s*(.+)$/gm, "<h5 class=\"text-xs font-bold text-slate-800 dark:text-slate-200 mt-3 mb-1\">$1</h5>")
+    .replace(/^####\s*(.+)$/gm, "<h4 class=\"text-xs font-bold text-slate-800 dark:text-slate-200 mt-3 mb-1\">$1</h4>")
+    .replace(/^###\s*(.+)$/gm, "<h3 class=\"text-sm font-bold text-slate-800 dark:text-slate-200 mt-4 mb-2\">$1</h3>")
+    .replace(/^##\s*(.+)$/gm, "<h2 class=\"text-sm font-bold text-slate-800 dark:text-slate-200 mt-4 mb-2\">$1</h2>")
+    .replace(/^#\s*(.+)$/gm, "<h1 class=\"text-base font-bold text-slate-800 dark:text-slate-200 mt-4 mb-2\">$1</h1>");
 
   // Bullet lists.
   processed = processed.replace(/(?:^\s*[-*]\s+.+\n?)+/gm, (listBlock: string) => {
@@ -103,7 +103,7 @@ function formatMarkdown(content: string): string {
       .trim()
       .split("\n")
       .map((line) => line.replace(/^\s*[-*]\s+/, ""))
-      .map((line) => `<li class="ml-4 text-[11px] text-slate-700 leading-relaxed">${line}</li>`)
+      .map((line) => `<li class="ml-4 text-[11px] text-slate-700 dark:text-slate-300 leading-relaxed">${line}</li>`)
       .join("");
     return `<ul class="list-disc space-y-1 my-2">${items}</ul>`;
   });
@@ -114,23 +114,23 @@ function formatMarkdown(content: string): string {
       .trim()
       .split("\n")
       .map((line) => line.replace(/^\s*\d+\.\s+/, ""))
-      .map((line) => `<li class="ml-4 text-[11px] text-slate-700 leading-relaxed">${line}</li>`)
+      .map((line) => `<li class="ml-4 text-[11px] text-slate-700 dark:text-slate-300 leading-relaxed">${line}</li>`)
       .join("");
     return `<ol class="list-decimal space-y-1 my-2">${items}</ol>`;
   });
 
   // Blockquotes.
-  processed = processed.replace(/^>\s*(.+)$/gm, "<blockquote class=\"border-l-2 border-emerald-400 pl-3 italic text-[11px] text-slate-600 my-2\">$1</blockquote>");
+  processed = processed.replace(/^>\s*(.+)$/gm, "<blockquote class=\"border-l-2 border-emerald-400 pl-3 italic text-[11px] text-slate-600 dark:text-slate-400 my-2\">$1</blockquote>");
 
   // Horizontal rules.
-  processed = processed.replace(/^---+$/gm, "<hr class=\"border-slate-200 my-3\" />");
+  processed = processed.replace(/^---+$/gm, "<hr class=\"border-slate-200 dark:border-slate-700 my-3\" />");
 
   // Paragraphs - split by double newlines.
   const paragraphs = processed.split(/\n\n+/).map((p) => {
     const trimmed = p.trim();
     if (!trimmed) return "";
     if (trimmed.startsWith("<")) return trimmed;
-    return `<p class="text-[11px] text-slate-700 leading-relaxed mb-2">${trimmed.replace(/\n/g, "<br />")}</p>`;
+    return `<p class="text-[11px] text-slate-700 dark:text-slate-300 leading-relaxed mb-2">${trimmed.replace(/\n/g, "<br />")}</p>`;
   });
 
   processed = paragraphs.join("");
@@ -258,10 +258,10 @@ function convertAsciiTable(block: string): string {
 }
 
 function buildTableHtml(headers: string[], body: string[][]): string {
-  const cellClass = "px-2 py-1.5 text-[11px] text-slate-700 border-b border-slate-100 align-top whitespace-normal break-all min-w-0";
-  const headerClass = "px-2 py-1.5 text-left text-[10px] font-bold text-slate-600 border-b border-slate-200 align-top whitespace-normal break-all min-w-0";
+  const cellClass = "px-2 py-1.5 text-[11px] text-slate-700 dark:text-slate-300 border-b border-slate-100 dark:border-slate-800 align-top whitespace-normal break-all min-w-0";
+  const headerClass = "px-2 py-1.5 text-left text-[10px] font-bold text-slate-600 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700 align-top whitespace-normal break-all min-w-0";
 
-  const headerHtml = `<thead class="bg-slate-50"><tr>${headers
+  const headerHtml = `<thead class="bg-slate-50 dark:bg-slate-950"><tr>${headers
     .map((h) => `<th class="${headerClass}">${h}</th>`)
     .join("")}</tr></thead>`;
 
@@ -275,7 +275,7 @@ function buildTableHtml(headers: string[], body: string[][]): string {
     .join("")}</tbody>`;
 
   return `
-    <div class="overflow-x-auto rounded-xl border border-slate-200 my-3">
+    <div class="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700 my-3">
       <table class="w-full text-left border-collapse table-auto">
         ${headerHtml}
         ${bodyHtml}

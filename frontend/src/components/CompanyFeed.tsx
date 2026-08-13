@@ -90,35 +90,35 @@ export function CompanyFeed() {
   };
 
   return (
-    <div className="bento-card p-6 bg-white border border-slate-200 rounded-3xl shadow-xs space-y-6">
+    <div className="bento-card p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-3xl shadow-xs space-y-6">
       
       {/* Header & Mode Switcher */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100 dark:border-slate-800">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-700">
             <Layers className="w-5 h-5" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-base font-bold text-slate-900">Company Feed</h2>
+              <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">Company Feed</h2>
               <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 uppercase font-semibold">
                 Live Audit Stream
               </span>
             </div>
-            <p className="text-xs text-slate-500 mt-0.5">
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
               Real-time multi-agent execution trail with founder review gates
             </p>
           </div>
         </div>
 
         {/* Tab Buttons */}
-        <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl border border-slate-200">
+        <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
           <button
             onClick={() => setActiveTab("feed")}
             className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
               activeTab === "feed"
-                ? "bg-white text-slate-900 shadow-xs"
-                : "text-slate-600 hover:text-slate-900"
+                ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-xs"
+                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:text-slate-100"
             }`}
           >
             Audit Trail
@@ -127,8 +127,8 @@ export function CompanyFeed() {
             onClick={() => setActiveTab("dispatch")}
             className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
               activeTab === "dispatch"
-                ? "bg-white text-slate-900 shadow-xs"
-                : "text-slate-600 hover:text-slate-900"
+                ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-xs"
+                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:text-slate-100"
             }`}
           >
             <Sparkles className="w-3.5 h-3.5 text-emerald-700" />
@@ -139,14 +139,14 @@ export function CompanyFeed() {
 
       {/* Tab: Dispatch Mandate */}
       {activeTab === "dispatch" && (
-        <form onSubmit={handleDispatch} className="p-5 rounded-2xl bg-slate-50 border border-emerald-200 space-y-4">
+        <form onSubmit={handleDispatch} className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-emerald-200 space-y-4">
           <div className="flex items-center gap-2 text-emerald-800 text-xs font-bold uppercase tracking-wider">
             <Terminal className="w-4 h-4" />
             <span>Mandate Contract Schema (PRD v6.0 §6.2)</span>
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1.5">
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
               Mandate Directive / Output Requirement
             </label>
             <textarea
@@ -154,18 +154,18 @@ export function CompanyFeed() {
               value={mandateText}
               onChange={(e) => setMandateText(e.target.value)}
               placeholder="e.g. Conduct a comprehensive cash runway audit for Q3 and draft 3 marketing copy variants in Notion."
-              className="w-full bg-white border border-slate-300 rounded-xl p-3 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 font-mono resize-none"
+              className="w-full bg-white dark:bg-slate-900 border border-slate-300 rounded-xl p-3 text-xs text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 font-mono resize-none"
             />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {/* Assignee / Role */}
             <div>
-              <label className="block text-xs font-bold text-slate-600 mb-1">Target Specialist / Router</label>
+              <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">Target Specialist / Router</label>
               <select
                 value={selectedRole}
                 onChange={(e) => setSelectedRole(e.target.value)}
-                className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-emerald-500"
+                className="w-full bg-white dark:bg-slate-900 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:border-emerald-500"
               >
                 <option value="all">Personal Assistant (All Agents)</option>
                 <option value="Accountant & Controller">Accountant & Controller</option>
@@ -178,11 +178,11 @@ export function CompanyFeed() {
 
             {/* Cadence */}
             <div>
-              <label className="block text-xs font-bold text-slate-600 mb-1">Execution Cadence</label>
+              <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">Execution Cadence</label>
               <select
                 value={selectedCadence}
                 onChange={(e) => setSelectedCadence(e.target.value as any)}
-                className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-emerald-500"
+                className="w-full bg-white dark:bg-slate-900 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:border-emerald-500"
               >
                 <option value="once">Run Once</option>
                 <option value="daily">Daily Cron Loop</option>
@@ -192,11 +192,11 @@ export function CompanyFeed() {
 
             {/* Priority */}
             <div>
-              <label className="block text-xs font-bold text-slate-600 mb-1">Priority Level</label>
+              <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">Priority Level</label>
               <select
                 value={selectedPriority}
                 onChange={(e) => setSelectedPriority(e.target.value as any)}
-                className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-emerald-500"
+                className="w-full bg-white dark:bg-slate-900 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:border-emerald-500"
               >
                 <option value="low">Low Priority</option>
                 <option value="normal">Normal</option>
@@ -234,10 +234,10 @@ export function CompanyFeed() {
               <p className="text-xs font-mono">Syncing live company audit trail...</p>
             </div>
           ) : feedItems.length === 0 ? (
-            <div className="p-10 rounded-2xl bg-slate-50 border border-slate-200 text-center text-slate-500">
+            <div className="p-10 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-center text-slate-500 dark:text-slate-400">
               <Clock className="w-8 h-8 mx-auto mb-2 text-slate-400" />
-              <p className="text-sm font-bold text-slate-800">No feed items recorded yet</p>
-              <p className="text-xs text-slate-500 mt-1">Dispatch a mandate to initiate autonomous worker actions.</p>
+              <p className="text-sm font-bold text-slate-800 dark:text-slate-200">No feed items recorded yet</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Dispatch a mandate to initiate autonomous worker actions.</p>
             </div>
           ) : (
             feedItems.map((item) => {
@@ -248,7 +248,7 @@ export function CompanyFeed() {
               return (
                 <div
                   key={item.id}
-                  className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 hover:border-slate-300 transition-all space-y-3 shadow-2xs"
+                  className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200/80 hover:border-slate-300 transition-all space-y-3 shadow-2xs"
                 >
                   {/* Top line: Worker + Tier + Time */}
                   <div className="flex items-center justify-between text-xs">
@@ -256,23 +256,23 @@ export function CompanyFeed() {
                       <div className="w-6 h-6 rounded-lg bg-emerald-100 border border-emerald-200 flex items-center justify-center text-emerald-800">
                         <Cpu className="w-3.5 h-3.5" />
                       </div>
-                      <span className="font-bold text-slate-900">{item.agent_name || item.role || "Autonomous Worker"}</span>
+                      <span className="font-bold text-slate-900 dark:text-slate-100">{item.agent_name || item.role || "Autonomous Worker"}</span>
                       <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full uppercase border ${getTierColor(tier)}`}>
                         {tier}
                       </span>
                     </div>
-                    <span className="text-[11px] font-mono text-slate-500">
+                    <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400">
                       {formatTimestamp(item.created_at)}
                     </span>
                   </div>
 
                   {/* Mandate & Action Details */}
                   <div>
-                    <p className="text-xs text-slate-800 font-medium leading-relaxed">
+                    <p className="text-xs text-slate-800 dark:text-slate-200 font-medium leading-relaxed">
                       {item.action}
                     </p>
                     {item.mandate && (
-                      <p className="text-[11px] text-slate-600 font-mono mt-1 bg-white p-2 rounded-lg border border-slate-200">
+                      <p className="text-[11px] text-slate-600 dark:text-slate-400 font-mono mt-1 bg-white dark:bg-slate-900 p-2 rounded-lg border border-slate-200 dark:border-slate-700">
                         Mandate: &quot;{item.mandate}&quot;
                       </p>
                     )}
@@ -281,9 +281,9 @@ export function CompanyFeed() {
                   {/* Shared Memory References */}
                   {item.shared_memory_refs && item.shared_memory_refs.length > 0 && (
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="text-[10px] text-slate-500 font-mono">Memory Context:</span>
+                      <span className="text-[10px] text-slate-500 dark:text-slate-400 font-mono">Memory Context:</span>
                       {item.shared_memory_refs.map((ref) => (
-                        <span key={ref} className="text-[10px] font-mono px-2 py-0.5 rounded bg-white text-emerald-800 border border-slate-200 font-medium">
+                        <span key={ref} className="text-[10px] font-mono px-2 py-0.5 rounded bg-white dark:bg-slate-900 text-emerald-800 border border-slate-200 dark:border-slate-700 font-medium">
                           #{ref}
                         </span>
                       ))}
@@ -308,7 +308,7 @@ export function CompanyFeed() {
                             value={revisionFeedback}
                             onChange={(e) => setRevisionFeedback(e.target.value)}
                             placeholder="Provide specific feedback for revision..."
-                            className="w-full bg-white border border-amber-300 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-amber-500"
+                            className="w-full bg-white dark:bg-slate-900 border border-amber-300 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:border-amber-500"
                           />
                           <div className="flex gap-2">
                             <button
@@ -320,7 +320,7 @@ export function CompanyFeed() {
                             </button>
                             <button
                               onClick={() => setReviewingId(null)}
-                              className="px-2.5 py-1 bg-slate-200 text-slate-700 rounded-lg text-xs font-medium"
+                              className="px-2.5 py-1 bg-slate-200 text-slate-700 dark:text-slate-300 rounded-lg text-xs font-medium"
                             >
                               Cancel
                             </button>

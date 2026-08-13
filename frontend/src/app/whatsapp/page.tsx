@@ -156,11 +156,11 @@ export default function WhatsAppPage() {
               {statusData?.me && (
                 <div className="p-3.5 rounded-xl bg-slate-950/80 border border-slate-800 font-mono text-xs text-slate-300 flex items-center justify-between">
                   <div>
-                    <span className="text-slate-500">Phone ID: </span>
+                    <span className="text-slate-500 dark:text-slate-400">Phone ID: </span>
                     <span className="text-emerald-400 font-semibold">{statusData.me.id || statusData.me.user}</span>
                   </div>
                   <div>
-                    <span className="text-slate-500">Pushname: </span>
+                    <span className="text-slate-500 dark:text-slate-400">Pushname: </span>
                     <span className="text-slate-200">{statusData.me.pushName || "Active"}</span>
                   </div>
                 </div>
@@ -208,7 +208,7 @@ export default function WhatsAppPage() {
               </div>
             ) : qrData?.data_url ? (
               <div className="space-y-3">
-                <div className="p-3 bg-white rounded-xl shadow-2xl inline-block border-4 border-emerald-500/40">
+                <div className="p-3 bg-white dark:bg-slate-900 rounded-xl shadow-2xl inline-block border-4 border-emerald-500/40">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={qrData.data_url}
@@ -222,11 +222,11 @@ export default function WhatsAppPage() {
               </div>
             ) : (
               <div className="py-8 flex flex-col items-center space-y-3">
-                <div className="w-16 h-16 rounded-full bg-slate-800 flex items-center justify-center text-slate-500">
+                <div className="w-16 h-16 rounded-full bg-slate-800 flex items-center justify-center text-slate-500 dark:text-slate-400">
                   <QrCode className="w-8 h-8" />
                 </div>
                 <p className="text-sm font-medium text-slate-300">QR Code Inactive</p>
-                <p className="text-xs text-slate-500 max-w-[220px]">
+                <p className="text-xs text-slate-500 dark:text-slate-400 max-w-[220px]">
                   Click <strong>Start Session</strong> to generate a pairing QR code.
                 </p>
               </div>

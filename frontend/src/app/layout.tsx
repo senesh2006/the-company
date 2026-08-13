@@ -21,7 +21,7 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
       </head>
-      <body className="bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-50 min-h-screen antialiased selection:bg-emerald-500/20 selection:text-emerald-900">
+      <body className="bg-slate-50 dark:bg-slate-950 text-slate-900 dark:bg-slate-950 dark:text-slate-50 min-h-screen antialiased selection:bg-emerald-500/20 selection:text-emerald-900">
         <AppProvider attribute="class" defaultTheme="system" enableSystem={true}>
           <FramerProvider>
             <AppShell>

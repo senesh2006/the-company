@@ -94,10 +94,10 @@ export function AgentDetailPanel() {
           animate={{ x: 0, opacity: 1 }}
           exit={{ x: 440, opacity: 0 }}
           transition={{ type: "spring", damping: 25, stiffness: 220 }}
-          className="fixed right-0 top-0 bottom-0 w-full sm:w-[460px] bg-white/95 border-l border-slate-200 z-50 flex flex-col shadow-2xl backdrop-blur-2xl text-slate-900"
+          className="fixed right-0 top-0 bottom-0 w-full sm:w-[460px] bg-white dark:bg-slate-900/95 border-l border-slate-200 dark:border-slate-700 z-50 flex flex-col shadow-2xl backdrop-blur-2xl text-slate-900 dark:text-slate-100"
         >
           {/* Header */}
-          <div className="p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50/80">
+          <div className="p-5 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between bg-slate-50/80 dark:bg-slate-900/80">
             <div className="flex items-center gap-3">
               <div className={`w-3.5 h-3.5 rounded-full ring-4 ${
                 agent?.status === 'Running' ? 'bg-emerald-500 ring-emerald-500/20 animate-pulse' :
@@ -107,17 +107,17 @@ export function AgentDetailPanel() {
               }`} />
               <div>
                 <div className="flex items-center gap-2">
-                  <h2 className="font-bold text-sm text-slate-900">{agent?.name || 'Inspecting Worker...'}</h2>
+                  <h2 className="font-bold text-sm text-slate-900 dark:text-slate-100">{agent?.name || 'Inspecting Worker...'}</h2>
                   <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold uppercase">
                     AI Worker
                   </span>
                 </div>
-                <p className="text-xs text-slate-500 font-mono mt-0.5">{agent?.role || 'Autonomous Unit'}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 font-mono mt-0.5">{agent?.role || 'Autonomous Unit'}</p>
               </div>
             </div>
             <button 
               onClick={() => setSelectedAgentId(null)}
-              className="text-slate-400 hover:text-slate-700 transition-colors p-1.5 rounded-xl hover:bg-slate-200"
+              className="text-slate-400 hover:text-slate-700 dark:text-slate-300 transition-colors p-1.5 rounded-xl hover:bg-slate-200"
             >
               <X className="w-5 h-5" />
             </button>
@@ -136,7 +136,7 @@ export function AgentDetailPanel() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Brain className="w-4 h-4 text-emerald-700" />
-                    <span className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                    <span className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
                       Cognitive Reasoning Stream
                     </span>
                   </div>
@@ -169,18 +169,18 @@ export function AgentDetailPanel() {
                     defaultExpanded={false}
                   />
                 ) : (
-                  <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-500 text-xs text-center font-mono">
+                  <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 text-xs text-center font-mono">
                     Worker is idle and awaiting next mandate dispatch.
                   </div>
                 )}
               </div>
               
               {/* Trust Tier & Governance Governance Card (PRD v6.0 §6.1) */}
-              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3 shadow-xs">
+              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 space-y-3 shadow-xs">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <ShieldCheck className="w-4 h-4 text-emerald-700" />
-                    <span className="text-xs font-bold uppercase tracking-wider text-slate-700">Earned Trust Governance</span>
+                    <span className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">Earned Trust Governance</span>
                   </div>
                   <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full uppercase border ${
                     trustTier === 'operate' ? 'bg-emerald-100 text-emerald-800 border-emerald-300' :
@@ -194,7 +194,7 @@ export function AgentDetailPanel() {
                 {/* Progress bar towards Assist promotion */}
                 {trustTier === 'observe' && (
                   <div>
-                    <div className="flex justify-between text-[11px] text-slate-600 mb-1">
+                    <div className="flex justify-between text-[11px] text-slate-600 dark:text-slate-400 mb-1">
                       <span>Clean Cycles for Assist Promotion</span>
                       <span className="font-mono font-bold text-emerald-700">{cleanCycles} / 3</span>
                     </div>
@@ -208,24 +208,24 @@ export function AgentDetailPanel() {
                 )}
 
                 <div className="grid grid-cols-2 gap-2 pt-1 text-center">
-                  <div className="p-2.5 rounded-xl bg-white border border-slate-200">
-                    <span className="text-[10px] text-slate-500 uppercase font-semibold block">Authority Limit</span>
-                    <span className="text-xs font-bold text-slate-900 font-mono mt-0.5">
+                  <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-semibold block">Authority Limit</span>
+                    <span className="text-xs font-bold text-slate-900 dark:text-slate-100 font-mono mt-0.5">
                       ${authorityLimit.toFixed(2)} USD
                     </span>
                   </div>
-                  <div className="p-2.5 rounded-xl bg-white border border-slate-200">
-                    <span className="text-[10px] text-slate-500 uppercase font-semibold block">Specialization</span>
-                    <span className="text-xs font-semibold text-slate-700 font-mono mt-0.5 truncate block">
+                  <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-semibold block">Specialization</span>
+                    <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 font-mono mt-0.5 truncate block">
                       {agent.specialization_id || 'standard-v1'}
                     </span>
                   </div>
-                  <div className="p-2.5 rounded-xl bg-white border border-slate-200 col-span-2">
+                  <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 col-span-2">
                     <div className="flex items-center justify-center gap-1.5">
                       <BrainCircuit className="w-3.5 h-3.5 text-slate-400" />
-                      <span className="text-[10px] text-slate-500 uppercase font-semibold block">LLM Model</span>
+                      <span className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-semibold block">LLM Model</span>
                     </div>
-                    <span className="text-xs font-semibold text-slate-700 font-mono mt-0.5 truncate block">
+                    <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 font-mono mt-0.5 truncate block">
                       {agent.model || 'gpt-4o-mini'}
                     </span>
                   </div>
@@ -272,17 +272,17 @@ export function AgentDetailPanel() {
                 <button
                   onClick={() => handleStatusChange('Idle')}
                   disabled={updateStatus.isPending}
-                  className="py-2 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5"
+                  className="py-2 px-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 border border-slate-300 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5"
                 >
                   <Power className="w-3.5 h-3.5" /> Reset Idle
                 </button>
               </div>
 
               {/* Directive Injection Form */}
-              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200">
+              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700">
                 <div className="flex items-center gap-2 mb-2">
                   <Terminal className="w-3.5 h-3.5 text-emerald-700" />
-                  <span className="text-xs font-bold text-slate-700">Live Directive Injection</span>
+                  <span className="text-xs font-bold text-slate-700 dark:text-slate-300">Live Directive Injection</span>
                 </div>
                 <form onSubmit={handleInject} className="space-y-2">
                   <textarea
@@ -290,7 +290,7 @@ export function AgentDetailPanel() {
                     value={instructionText}
                     onChange={(e) => setInstructionText(e.target.value)}
                     placeholder="Inject instruction into running worker..."
-                    className="w-full bg-white border border-slate-300 rounded-xl p-2.5 text-xs text-slate-900 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 resize-none font-mono"
+                    className="w-full bg-white dark:bg-slate-900 border border-slate-300 rounded-xl p-2.5 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 resize-none font-mono"
                   />
                   <button
                     type="submit"

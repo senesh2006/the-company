@@ -198,26 +198,26 @@ export default function HirePage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200/80 pb-4">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
+            <h1 className="text-2xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">
               Recruit Workers
             </h1>
             <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
               Autonomous Specialists
             </span>
           </div>
-          <p className="text-xs text-slate-500 font-medium mt-1">
+          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-1">
             Deploy in-house specialist agents powered by deterministic LangGraph sub-orchestrators and safety guardrails.
           </p>
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs font-semibold">
+          <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold">
             <button
               onClick={() => setActiveTab("Specialists")}
               className={`px-3 py-1.5 rounded-lg transition-all ${
                 activeTab === "Specialists"
-                  ? "bg-white text-slate-900 shadow-xs font-bold"
-                  : "text-slate-600 hover:text-slate-900"
+                  ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-xs font-bold"
+                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:text-slate-100"
               }`}
             >
               Specialist Roster
@@ -226,8 +226,8 @@ export default function HirePage() {
               onClick={() => setActiveTab("Governance")}
               className={`px-3 py-1.5 rounded-lg transition-all ${
                 activeTab === "Governance"
-                  ? "bg-white text-slate-900 shadow-xs font-bold"
-                  : "text-slate-600 hover:text-slate-900"
+                  ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-xs font-bold"
+                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:text-slate-100"
               }`}
             >
               Trust Tier Policy
@@ -254,7 +254,7 @@ export default function HirePage() {
               placeholder="Search available specialist workers..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-white border border-slate-200 rounded-xl pl-10 pr-4 py-2 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 shadow-xs"
+              className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl pl-10 pr-4 py-2 text-xs text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 shadow-xs"
             />
           </div>
 
@@ -267,8 +267,8 @@ export default function HirePage() {
               return (
                 <div
                   key={specialist.id}
-                  className={`bg-white rounded-3xl p-6 border transition-all flex flex-col justify-between shadow-xs ${
-                    hired ? "border-emerald-300 ring-1 ring-emerald-400/30" : "border-slate-200/90 hover:border-slate-300 hover:shadow-md"
+                  className={`bg-white dark:bg-slate-900 rounded-3xl p-6 border transition-all flex flex-col justify-between shadow-xs ${
+                    hired ? "border-emerald-300 ring-1 ring-emerald-400/30" : "border-slate-200/90 dark:border-slate-700/90 hover:border-slate-300 hover:shadow-md"
                   }`}
                 >
                   <div className="space-y-5">
@@ -284,9 +284,9 @@ export default function HirePage() {
                         </div>
                         <div>
                           <div className="flex items-center gap-2">
-                            <h2 className="text-base font-bold text-slate-900">{specialist.name}</h2>
+                            <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">{specialist.name}</h2>
                           </div>
-                          <p className="text-xs font-semibold text-slate-500 mt-0.5">
+                          <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mt-0.5">
                             {specialist.department} &bull; <span className="font-mono text-[11px]">{specialist.role}</span>
                           </p>
                         </div>
@@ -298,25 +298,25 @@ export default function HirePage() {
                           <span>Active in Fleet</span>
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 border border-slate-200 text-[10px] font-bold">
-                          <Bot className="w-3.5 h-3.5 text-slate-500" />
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 text-[10px] font-bold">
+                          <Bot className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
                           <span>Ready to Deploy</span>
                         </span>
                       )}
                     </div>
 
                     {/* Description */}
-                    <p className="text-xs text-slate-600 leading-relaxed">
+                    <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
                       {specialist.description}
                     </p>
 
                     {/* Architectural Specifications */}
-                    <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-2">
+                    <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200/80 space-y-2">
                       <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                        <Workflow className="w-3.5 h-3.5 text-slate-500" />
+                        <Workflow className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
                         <span>Execution Engine</span>
                       </div>
-                      <p className="text-xs font-mono font-medium text-slate-800">
+                      <p className="text-xs font-mono font-medium text-slate-800 dark:text-slate-200">
                         {specialist.architecture}
                       </p>
                     </div>
@@ -328,7 +328,7 @@ export default function HirePage() {
                       </p>
                       <ul className="space-y-1.5">
                         {specialist.capabilities.map((cap) => (
-                          <li key={cap} className="flex items-center gap-2 text-xs text-slate-700">
+                          <li key={cap} className="flex items-center gap-2 text-xs text-slate-700 dark:text-slate-300">
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0"></span>
                             <span>{cap}</span>
                           </li>
@@ -338,7 +338,7 @@ export default function HirePage() {
                   </div>
 
                   {/* Footer / Action */}
-                  <div className="pt-6 mt-6 border-t border-slate-100 space-y-3">
+                  <div className="pt-6 mt-6 border-t border-slate-100 dark:border-slate-800 space-y-3">
                     <div className="flex items-center gap-3">
                       <div className="flex items-center gap-1.5">
                         <BrainCircuit className="w-3.5 h-3.5 text-slate-400" />
@@ -353,7 +353,7 @@ export default function HirePage() {
                             [specialist.id]: e.target.value as ModelId,
                           }))
                         }
-                        className="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-[10px] text-slate-700 font-semibold focus:outline-none focus:border-emerald-500 disabled:opacity-60"
+                        className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-[10px] text-slate-700 dark:text-slate-300 font-semibold focus:outline-none focus:border-emerald-500 disabled:opacity-60"
                       >
                         {availableModels.map((m) => (
                           <option key={m.id} value={m.id}>
@@ -374,7 +374,7 @@ export default function HirePage() {
                       {hired ? (
                         <Link
                           href="/agents"
-                          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold transition-colors"
+                          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-800 dark:text-slate-200 text-xs font-bold transition-colors"
                         >
                           <span>View Worker</span>
                           <ArrowRight className="w-3.5 h-3.5" />
@@ -408,12 +408,12 @@ export default function HirePage() {
       {/* Tab: Governance */}
       {activeTab === "Governance" && (
         <div className="space-y-6">
-          <div className="p-6 rounded-3xl bg-white border border-slate-200 space-y-4 shadow-xs">
-            <div className="flex items-center gap-2.5 text-slate-900 font-bold text-base">
+          <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 space-y-4 shadow-xs">
+            <div className="flex items-center gap-2.5 text-slate-900 dark:text-slate-100 font-bold text-base">
               <ShieldCheck className="w-5 h-5 text-emerald-600" />
               <h2>Autonomous Trust Tier Governance</h2>
             </div>
-            <p className="text-xs text-slate-600 leading-relaxed max-w-3xl">
+            <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed max-w-3xl">
               All newly recruited agents start in the <span className="font-semibold text-amber-800">Observe Tier</span>, where every execution output requires founder confirmation before finalizing state changes. Clean operational cycles progressively unlock autonomous execution capabilities.
             </p>
 
@@ -422,8 +422,8 @@ export default function HirePage() {
                 <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300 uppercase">
                   Observe Tier (Level 1)
                 </span>
-                <p className="text-xs font-bold text-slate-900 mt-2">100% Founder Approval</p>
-                <p className="text-[11px] text-slate-600 leading-relaxed">
+                <p className="text-xs font-bold text-slate-900 dark:text-slate-100 mt-2">100% Founder Approval</p>
+                <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
                   Every tool execution, journal entry, and campaign copy draft is held in an observation gate awaiting your manual review.
                 </p>
               </div>
@@ -432,8 +432,8 @@ export default function HirePage() {
                 <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 border border-blue-300 uppercase">
                   Assist Tier (Level 2)
                 </span>
-                <p className="text-xs font-bold text-slate-900 mt-2">5 Clean Cycles Required</p>
-                <p className="text-[11px] text-slate-600 leading-relaxed">
+                <p className="text-xs font-bold text-slate-900 dark:text-slate-100 mt-2">5 Clean Cycles Required</p>
+                <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
                   Autonomous execution within a $100 spending and authority limit. Actions exceeding limits route to your review queue.
                 </p>
               </div>
@@ -442,8 +442,8 @@ export default function HirePage() {
                 <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 uppercase">
                   Operate Tier (Level 3)
                 </span>
-                <p className="text-xs font-bold text-slate-900 mt-2">15 Clean Cycles Required</p>
-                <p className="text-[11px] text-slate-600 leading-relaxed">
+                <p className="text-xs font-bold text-slate-900 dark:text-slate-100 mt-2">15 Clean Cycles Required</p>
+                <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
                   Full operational autonomy within a $1,000 limit with passive telemetry logging and automatic circuit breaker fallback.
                 </p>
               </div>
@@ -455,17 +455,17 @@ export default function HirePage() {
       {/* Deploy Custom Agent Modal */}
       {showDeployModal && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in duration-150">
-          <div className="bg-white border border-slate-200 rounded-3xl p-6 md:p-8 max-w-lg w-full shadow-2xl space-y-5">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-3xl p-6 md:p-8 max-w-lg w-full shadow-2xl space-y-5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center">
                   <Plus className="w-5 h-5" />
                 </div>
-                <h2 className="text-base font-bold text-slate-900">Deploy Custom AI Worker</h2>
+                <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">Deploy Custom AI Worker</h2>
               </div>
               <button
                 onClick={() => setShowDeployModal(false)}
-                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:bg-slate-800 transition-colors cursor-pointer"
               >
                 <XCircle className="w-5 h-5" />
               </button>
@@ -473,7 +473,7 @@ export default function HirePage() {
 
             <form onSubmit={handleCustomDeploy} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
                   Worker Codename
                 </label>
                 <input
@@ -482,19 +482,19 @@ export default function HirePage() {
                   placeholder="e.g. Scribe, Ledger, Echo, Atlas..."
                   value={customName}
                   onChange={(e) => setCustomName(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:bg-white focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-800 dark:text-slate-200 focus:bg-white dark:bg-slate-900 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
                     Specialist Role
                   </label>
                   <select
                     value={customRole}
                     onChange={(e) => setCustomRole(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:bg-white focus:outline-none focus:border-emerald-500"
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-800 dark:text-slate-200 focus:bg-white dark:bg-slate-900 focus:outline-none focus:border-emerald-500"
                   >
                     <option value="Marketing Manager">Marketing Manager</option>
                     <option value="Finance Manager">Finance Manager</option>
@@ -505,13 +505,13 @@ export default function HirePage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
                     Initial Trust Tier
                   </label>
                   <select
                     value={customTrustTier}
                     onChange={(e) => setCustomTrustTier(e.target.value as any)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:bg-white focus:outline-none font-semibold"
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-800 dark:text-slate-200 focus:bg-white dark:bg-slate-900 focus:outline-none font-semibold"
                   >
                     <option value="observe">Observe (Founder review)</option>
                     <option value="assist">Assist ($100 limit)</option>
@@ -521,7 +521,7 @@ export default function HirePage() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
                   LLM Model
                 </label>
                 <div className="flex items-center gap-2">
@@ -529,7 +529,7 @@ export default function HirePage() {
                   <select
                     value={customModel}
                     onChange={(e) => setCustomModel(e.target.value as ModelId)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:bg-white focus:outline-none focus:border-emerald-500 font-semibold"
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-800 dark:text-slate-200 focus:bg-white dark:bg-slate-900 focus:outline-none focus:border-emerald-500 font-semibold"
                   >
                     {availableModels.map((m) => (
                       <option key={m.id} value={m.id}>
@@ -538,7 +538,7 @@ export default function HirePage() {
                     ))}
                   </select>
                 </div>
-                <p className="text-[10px] text-slate-500 mt-1.5 ml-6">
+                <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1.5 ml-6">
                   {customRole === "Finance Manager"
                     ? "GPT-4o is recommended for precise accounting and audit reasoning."
                     : "GPT-4o Mini is the fastest and most cost-effective default for routine tasks."}
@@ -546,7 +546,7 @@ export default function HirePage() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
                   Initial Operational Directive / Mandate
                 </label>
                 <textarea
@@ -554,7 +554,7 @@ export default function HirePage() {
                   value={customGoal}
                   onChange={(e) => setCustomGoal(e.target.value)}
                   placeholder="e.g. Monitor market trends and draft weekly strategic summaries in Notion..."
-                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3 text-xs text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 font-medium resize-none"
+                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-2xl p-3 text-xs text-slate-800 dark:text-slate-200 focus:bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 font-medium resize-none"
                 />
               </div>
 
@@ -562,7 +562,7 @@ export default function HirePage() {
                 <button
                   type="button"
                   onClick={() => setShowDeployModal(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:bg-slate-800 transition-colors cursor-pointer"
                 >
                   Cancel
                 </button>

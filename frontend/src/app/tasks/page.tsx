@@ -132,10 +132,10 @@ export default function TasksPage() {
       {/* 1. Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex flex-col gap-1">
-          <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">
+          <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">
             Tasks & Operations
           </h1>
-          <p className="text-xs md:text-sm text-slate-500 font-medium">
+          <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 font-medium">
             Live execution monitoring and autonomous workflow orchestration
           </p>
         </div>
@@ -166,7 +166,7 @@ export default function TasksPage() {
               className={`pb-2 transition-all relative whitespace-nowrap cursor-pointer ${
                 activeTab === tab.id
                   ? "text-emerald-800 font-bold"
-                  : "text-slate-500 hover:text-slate-800"
+                  : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:text-slate-200"
               }`}
             >
               {tab.label}
@@ -182,19 +182,19 @@ export default function TasksPage() {
           <div className="relative">
             <button
               onClick={() => setShowFilterDropdown(!showFilterDropdown)}
-              className="px-3.5 py-1.5 rounded-xl bg-white border border-slate-200 text-slate-700 text-xs font-semibold flex items-center gap-1.5 hover:bg-slate-50 shadow-xs cursor-pointer"
+              className="px-3.5 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-xs font-semibold flex items-center gap-1.5 hover:bg-slate-50 dark:bg-slate-950 shadow-xs cursor-pointer"
             >
-              <SlidersHorizontal className="w-3.5 h-3.5 text-slate-500" />
+              <SlidersHorizontal className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
               <span>Filter</span>
             </button>
 
             {showFilterDropdown && (
-              <div className="absolute right-0 mt-2 w-48 bg-white border border-slate-200 rounded-2xl p-3 shadow-xl z-30 space-y-2">
+              <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl p-3 shadow-xl z-30 space-y-2">
                 <label className="text-[10px] font-bold uppercase text-slate-400">Priority</label>
                 <select
                   value={filterPriority}
                   onChange={(e) => setFilterPriority(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2 py-1.5 text-xs text-slate-800 focus:outline-none"
+                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl px-2 py-1.5 text-xs text-slate-800 dark:text-slate-200 focus:outline-none"
                 >
                   <option value="all">All Priorities</option>
                   <option value="P0">P0 - Critical</option>
@@ -207,28 +207,28 @@ export default function TasksPage() {
 
           <button 
             onClick={() => setSortBy(sortBy === "time" ? "priority" : "time")}
-            className="px-3.5 py-1.5 rounded-xl bg-white border border-slate-200 text-slate-700 text-xs font-semibold flex items-center gap-1.5 hover:bg-slate-50 shadow-xs cursor-pointer"
+            className="px-3.5 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-xs font-semibold flex items-center gap-1.5 hover:bg-slate-50 dark:bg-slate-950 shadow-xs cursor-pointer"
           >
-            <ArrowUpDown className="w-3.5 h-3.5 text-slate-500" />
+            <ArrowUpDown className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
             <span>Sort: {sortBy === "time" ? "Latest" : "Priority"}</span>
           </button>
         </div>
       </div>
 
       {/* 3. Task List Card Container */}
-      <div className="bg-white border border-slate-200/90 rounded-2xl shadow-xs overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-700/90 rounded-2xl shadow-xs overflow-hidden">
         {isLoading ? (
           <div className="p-12 text-center text-slate-400 flex flex-col items-center justify-center gap-2">
             <span className="material-symbols-outlined text-3xl animate-spin text-emerald-600">progress_activity</span>
             <p className="text-xs font-semibold">Synchronizing task fleet...</p>
           </div>
         ) : filteredTasks.length === 0 ? (
-          <div className="p-16 text-center text-slate-500 flex flex-col items-center justify-center gap-3">
+          <div className="p-16 text-center text-slate-500 dark:text-slate-400 flex flex-col items-center justify-center gap-3">
             <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
               <Sparkles className="w-6 h-6" />
             </div>
             <div>
-              <p className="text-sm font-bold text-slate-800">No operations found</p>
+              <p className="text-sm font-bold text-slate-800 dark:text-slate-200">No operations found</p>
               <p className="text-xs text-slate-400 mt-0.5">Dispatched missions and mandate tasks will appear here in real-time.</p>
             </div>
             <button
@@ -239,12 +239,12 @@ export default function TasksPage() {
             </button>
           </div>
         ) : (
-          <div className="divide-y divide-slate-100">
+          <div className="divide-y divide-slate-100 dark:divide-slate-800">
             {filteredTasks.map((task) => (
               <div
                 key={task.id}
                 onClick={() => setSelectedTask(task)}
-                className="p-5 hover:bg-slate-50/80 transition-all duration-150 flex flex-col lg:flex-row lg:items-center justify-between gap-4 group cursor-pointer"
+                className="p-5 hover:bg-slate-50/80 dark:bg-slate-900/80 transition-all duration-150 flex flex-col lg:flex-row lg:items-center justify-between gap-4 group cursor-pointer"
               >
                 {/* Left: Priority + Title + Subtitle */}
                 <div className="flex items-start gap-3.5 min-w-0 flex-1">
@@ -254,14 +254,14 @@ export default function TasksPage() {
                         ? "bg-rose-50 text-rose-700 border border-rose-200"
                         : task.priority === "P1"
                         ? "bg-amber-50 text-amber-800 border border-amber-200"
-                        : "bg-slate-100 text-slate-700 border border-slate-200"
+                        : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700"
                     }`}
                   >
                     {task.priority}
                   </span>
 
                   <div className="flex flex-col min-w-0">
-                    <h3 className="text-sm font-bold text-slate-900 group-hover:text-emerald-800 transition-colors truncate">
+                    <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 group-hover:text-emerald-800 transition-colors truncate">
                       {task.title}
                     </h3>
                     <p className={`text-xs mt-0.5 font-medium ${task.isBlocked ? "text-rose-600 font-semibold" : "text-slate-400"}`}>
@@ -277,7 +277,7 @@ export default function TasksPage() {
                     <div className={`w-7 h-7 shrink-0 ${
                       ((task.agentName === "Growth & Marketing Lead" || task.agentRole === "Marketing Manager") || (task.agentName === "Financial Controller & Auditor" || task.agentRole === "Finance Manager") || (task.agentName === "Personal Assistant" || task.agentName === "Supervisor" || task.agentRole === "Personal Assistant" || task.agentRole === "Supervisor"))
                         ? ""
-                        : "rounded-lg overflow-hidden bg-slate-100 border border-slate-200"
+                        : "rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700"
                     }`}>
                       {(task.agentName === "Growth & Marketing Lead" || task.agentRole === "Marketing Manager") ? (
                         <MarketingAvatar className="w-full h-full" />
@@ -290,7 +290,7 @@ export default function TasksPage() {
                       )}
                     </div>
                     <div className="flex flex-col">
-                      <span className="text-xs font-semibold text-slate-800 leading-tight">
+                      <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 leading-tight">
                         {task.agentName}
                       </span>
                       <span className="text-[10px] text-slate-400 leading-tight">
@@ -303,13 +303,13 @@ export default function TasksPage() {
                   <div className="flex items-center gap-3 w-44 justify-end">
                     {task.statusType === "in_progress" && (
                       <div className="flex items-center gap-2">
-                        <div className="w-16 h-1.5 rounded-full bg-slate-100 overflow-hidden">
+                        <div className="w-16 h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
                           <div
                             className="h-full bg-emerald-600 rounded-full"
                             style={{ width: `${task.progress}%` }}
                           />
                         </div>
-                        <span className="text-[11px] font-mono font-bold text-slate-600">
+                        <span className="text-[11px] font-mono font-bold text-slate-600 dark:text-slate-400">
                           {task.progress}%
                         </span>
                       </div>
@@ -322,7 +322,7 @@ export default function TasksPage() {
                           : task.statusType === "blocked"
                           ? "bg-rose-50 text-rose-700 border border-rose-200"
                           : task.statusType === "pending"
-                          ? "bg-slate-100 text-slate-700 border border-slate-200"
+                          ? "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700"
                           : "bg-emerald-50 text-emerald-800 border border-emerald-200"
                       }`}
                     >
@@ -341,7 +341,7 @@ export default function TasksPage() {
                     </span>
                   </div>
 
-                  <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-slate-700 transition-transform group-hover:translate-x-0.5" />
+                  <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-slate-700 dark:text-slate-300 transition-transform group-hover:translate-x-0.5" />
                 </div>
               </div>
             ))}
@@ -352,17 +352,17 @@ export default function TasksPage() {
       {/* 4. New Task Modal */}
       {showNewTaskModal && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-150">
-          <div className="bg-white border border-slate-200 rounded-3xl p-6 md:p-8 max-w-lg w-full shadow-2xl space-y-5">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-3xl p-6 md:p-8 max-w-lg w-full shadow-2xl space-y-5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center">
                   <Plus className="w-5 h-5" />
                 </div>
-                <h2 className="text-lg font-bold text-slate-900">Dispatch New Operation</h2>
+                <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">Dispatch New Operation</h2>
               </div>
               <button
                 onClick={() => setShowNewTaskModal(false)}
-                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:bg-slate-800 transition-colors cursor-pointer"
               >
                 <XCircle className="w-5 h-5" />
               </button>
@@ -370,7 +370,7 @@ export default function TasksPage() {
 
             <form onSubmit={handleCreateTask} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
                   Operation Mandate / Goal
                 </label>
                 <textarea
@@ -379,19 +379,19 @@ export default function TasksPage() {
                   value={newTaskTitle}
                   onChange={(e) => setNewTaskTitle(e.target.value)}
                   placeholder="e.g. Conduct comprehensive competitor pricing audit and output comparative table in shared memory..."
-                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3 text-xs text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 font-medium resize-none"
+                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-2xl p-3 text-xs text-slate-800 dark:text-slate-200 focus:bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 font-medium resize-none"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
                     Assignee Specialist
                   </label>
                   <select
                     value={newTaskAgentRole}
                     onChange={(e) => setNewTaskAgentRole(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:bg-white focus:outline-none"
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-800 dark:text-slate-200 focus:bg-white dark:bg-slate-900 focus:outline-none"
                   >
                     <option value="">Personal Assistant (Auto-delegate)</option>
                     {(agents || []).map((a) => (
@@ -403,13 +403,13 @@ export default function TasksPage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
                     Priority Tier
                   </label>
                   <select
                     value={newTaskPriority}
                     onChange={(e) => setNewTaskPriority(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:bg-white focus:outline-none font-semibold"
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-800 dark:text-slate-200 focus:bg-white dark:bg-slate-900 focus:outline-none font-semibold"
                   >
                     <option value="P0">P0 - Critical Block</option>
                     <option value="P1">P1 - High Priority</option>
@@ -422,7 +422,7 @@ export default function TasksPage() {
                 <button
                   type="button"
                   onClick={() => setShowNewTaskModal(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:bg-slate-800 transition-colors cursor-pointer"
                 >
                   Cancel
                 </button>
@@ -447,19 +447,19 @@ export default function TasksPage() {
           onClick={() => setSelectedTask(null)}
         >
           <div 
-            className="w-full sm:w-[580px] md:w-[680px] max-w-full bg-white h-full shadow-2xl flex flex-col justify-between border-l border-slate-200 overflow-y-auto shrink-0 z-50"
+            className="w-full sm:w-[580px] md:w-[680px] max-w-full bg-white dark:bg-slate-900 h-full shadow-2xl flex flex-col justify-between border-l border-slate-200 dark:border-slate-700 overflow-y-auto shrink-0 z-50"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="p-6 md:p-8 space-y-6">
               {/* Header */}
-              <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+              <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
                 <div className="flex items-center gap-2.5">
                   <span className={`px-2.5 py-1 rounded-lg text-xs font-black font-mono tracking-wider ${
                     selectedTask.priority === "P0"
                       ? "bg-rose-50 text-rose-700 border border-rose-200"
                       : selectedTask.priority === "P1"
                       ? "bg-amber-50 text-amber-800 border border-amber-200"
-                      : "bg-slate-100 text-slate-700 border border-slate-200"
+                      : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700"
                   }`}>
                     {selectedTask.priority}
                   </span>
@@ -467,7 +467,7 @@ export default function TasksPage() {
                 </div>
                 <button
                   onClick={() => setSelectedTask(null)}
-                  className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+                  className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:bg-slate-800 transition-colors cursor-pointer"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -475,10 +475,10 @@ export default function TasksPage() {
 
               {/* Title & Directive */}
               <div className="space-y-2">
-                <h2 className="text-lg md:text-xl font-bold text-slate-900 leading-snug break-words">
+                <h2 className="text-lg md:text-xl font-bold text-slate-900 dark:text-slate-100 leading-snug break-words">
                   {selectedTask.title}
                 </h2>
-                <div className="flex items-center gap-3 text-xs text-slate-500 font-mono">
+                <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400 font-mono">
                   <span>ID: {selectedTask.id}</span>
                   <span>&bull;</span>
                   <span>{selectedTask.subtitle}</span>
@@ -486,15 +486,15 @@ export default function TasksPage() {
               </div>
 
               {/* Status & Metadata Card */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 p-4 rounded-2xl bg-slate-50 border border-slate-200/80">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200/80">
                 <div>
                   <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
                     Assigned Specialist
                   </span>
-                  <p className="text-xs font-bold text-slate-800 truncate">
+                  <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
                     {selectedTask.agentName}
                   </p>
-                  <p className="text-[10px] text-slate-500 truncate">
+                  <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
                     {selectedTask.agentRole}
                   </p>
                 </div>
@@ -521,7 +521,7 @@ export default function TasksPage() {
                   <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
                     Verification Gate
                   </span>
-                  <p className="text-xs font-mono font-bold text-slate-800">
+                  <p className="text-xs font-mono font-bold text-slate-800 dark:text-slate-200">
                     {selectedTask.rawTask?.retry_count || 0} / 2 Retries
                   </p>
                   <p className="text-[10px] text-emerald-700 font-semibold">
@@ -535,14 +535,14 @@ export default function TasksPage() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <FileText className="w-4 h-4 text-emerald-700" />
-                    <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                    <h3 className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">
                       Execution Output & Deliverables
                     </h3>
                   </div>
                   {selectedTask.rawTask?.result && (
                     <button
                       onClick={() => handleCopyResult(selectedTask.rawTask.result)}
-                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-semibold transition-colors cursor-pointer"
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 text-[11px] font-semibold transition-colors cursor-pointer"
                     >
                       {copiedOutput ? (
                         <>
@@ -573,13 +573,13 @@ export default function TasksPage() {
                 )}
 
                 {selectedTask.rawTask?.result ? (
-                  <div className="p-4 rounded-2xl bg-white border border-slate-200 overflow-x-auto leading-relaxed shadow-inner max-h-[420px] select-text">
+                  <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 overflow-x-auto leading-relaxed shadow-inner max-h-[420px] select-text">
                     <MarkdownRenderer content={selectedTask.rawTask.result} />
                   </div>
                 ) : selectedTask.statusType === "completed" ? (
-                  <div className="p-6 rounded-2xl bg-slate-50 border border-slate-200 text-center text-slate-500 space-y-1">
+                  <div className="p-6 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-center text-slate-500 dark:text-slate-400 space-y-1">
                     <CheckCircle2 className="w-5 h-5 mx-auto text-emerald-600 mb-1" />
-                    <p className="text-xs font-semibold text-slate-700">
+                    <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                       Task completed successfully.
                     </p>
                     <p className="text-[11px] text-slate-400">
@@ -591,7 +591,7 @@ export default function TasksPage() {
             </div>
 
             {/* Footer */}
-            <div className="p-6 md:p-8 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between">
+            <div className="p-6 md:p-8 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 flex items-center justify-between">
               <span className="text-xs text-slate-400 font-medium">
                 Press ESC or click outside to close
               </span>

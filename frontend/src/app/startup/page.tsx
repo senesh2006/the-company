@@ -158,10 +158,10 @@ export default function StartupPage() {
 
   return (
     <div className="w-full max-w-[760px] mx-auto py-10 px-4 flex flex-col items-center justify-center">
-      <div className="w-full bg-white/95 backdrop-blur-xl border border-slate-200/90 rounded-3xl shadow-2xl shadow-slate-200/70 p-8 sm:p-10">
+      <div className="w-full bg-white dark:bg-slate-900/95 backdrop-blur-xl border border-slate-200/90 dark:border-slate-700/90 rounded-3xl shadow-2xl shadow-slate-200/70 p-8 sm:p-10">
         {/* Progress Bar & Header */}
         <div className="mb-8">
-          <div className="flex items-center justify-between text-xs font-semibold text-slate-500 mb-3">
+          <div className="flex items-center justify-between text-xs font-semibold text-slate-500 dark:text-slate-400 mb-3">
             <span className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
               Startup Setup & Fleet Configuration
@@ -169,7 +169,7 @@ export default function StartupPage() {
             <span>Step {step} of 3</span>
           </div>
           
-          <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+          <div className="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
             <div 
               className="h-full bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 transition-all duration-300 rounded-full"
               style={{ width: `${(step / 3) * 100}%` }}
@@ -185,17 +185,17 @@ export default function StartupPage() {
                 <span className="material-symbols-outlined text-sm">domain</span>
                 Step 1: Workspace DNA
               </div>
-              <h2 className="text-2xl font-bold text-slate-900 tracking-tight">
+              <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">
                 Define Your Organization
               </h2>
-              <p className="text-xs text-slate-500 mt-1">
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                 Configure your autonomous company identity and core operating mandate.
               </p>
             </div>
 
             <div className="space-y-4 pt-2">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                   Company / Organization Name
                 </label>
                 <input
@@ -203,18 +203,18 @@ export default function StartupPage() {
                   value={companyName}
                   onChange={(e) => setCompanyName(e.target.value)}
                   placeholder="e.g. HyperScale Autonomous Dynamics"
-                  className="w-full px-4 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 text-slate-800 font-medium"
+                  className="w-full px-4 py-2.5 text-xs bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:bg-slate-900 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 text-slate-800 dark:text-slate-200 font-medium"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                   Industry & Market Vertical
                 </label>
                 <select
                   value={industry}
                   onChange={(e) => setIndustry(e.target.value)}
-                  className="w-full px-4 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 text-slate-800 font-medium cursor-pointer"
+                  className="w-full px-4 py-2.5 text-xs bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:bg-slate-900 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 text-slate-800 dark:text-slate-200 font-medium cursor-pointer"
                 >
                   <option value="Technology & Software">Technology & Software</option>
                   <option value="E-Commerce & Retail">E-Commerce & Retail</option>
@@ -226,7 +226,7 @@ export default function StartupPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                   Founding Mandate & Mission Statement
                 </label>
                 <textarea
@@ -234,7 +234,7 @@ export default function StartupPage() {
                   value={mandate}
                   onChange={(e) => setMandate(e.target.value)}
                   placeholder="Describe your organization's primary objective..."
-                  className="w-full px-4 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 text-slate-800 font-medium resize-none"
+                  className="w-full px-4 py-2.5 text-xs bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:bg-slate-900 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 text-slate-800 dark:text-slate-200 font-medium resize-none"
                 />
               </div>
             </div>
@@ -260,10 +260,10 @@ export default function StartupPage() {
                 <span className="material-symbols-outlined text-sm">smart_toy</span>
                 Step 2: Founding AI Fleet
               </div>
-              <h2 className="text-2xl font-bold text-slate-900 tracking-tight">
+              <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">
                 Select Starter Worker Pods
               </h2>
-              <p className="text-xs text-slate-500 mt-1">
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                 Choose the autonomous agents that will form your initial company departments.
               </p>
             </div>
@@ -276,36 +276,36 @@ export default function StartupPage() {
                   className={`p-4 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between ${
                     agent.selected
                       ? "bg-emerald-50/40 border-emerald-500/80 shadow-md shadow-emerald-500/5 ring-2 ring-emerald-500/20"
-                      : "bg-slate-50/70 border-slate-200/90 hover:border-slate-300 opacity-60"
+                      : "bg-slate-50/70 border-slate-200/90 dark:border-slate-700/90 hover:border-slate-300 opacity-60"
                   }`}
                 >
                   <div>
                     <div className="flex items-center justify-between mb-2.5">
                       <div className="flex items-center gap-2.5">
                         <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${
-                          agent.selected ? "bg-emerald-500 text-white shadow-xs" : "bg-slate-200 text-slate-600"
+                          agent.selected ? "bg-emerald-500 text-white shadow-xs" : "bg-slate-200 text-slate-600 dark:text-slate-400"
                         }`}>
                           <span className="material-symbols-outlined text-lg">{agent.icon}</span>
                         </div>
                         <div>
-                          <h3 className="text-xs font-bold text-slate-900">{agent.name}</h3>
-                          <span className="text-[10px] font-semibold text-slate-500">{agent.department}</span>
+                          <h3 className="text-xs font-bold text-slate-900 dark:text-slate-100">{agent.name}</h3>
+                          <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400">{agent.department}</span>
                         </div>
                       </div>
                       
                       <div className={`w-5 h-5 rounded-full border flex items-center justify-center ${
-                        agent.selected ? "bg-emerald-500 border-emerald-600 text-white" : "border-slate-300 bg-white"
+                        agent.selected ? "bg-emerald-500 border-emerald-600 text-white" : "border-slate-300 bg-white dark:bg-slate-900"
                       }`}>
                         {agent.selected && <span className="material-symbols-outlined text-xs">check</span>}
                       </div>
                     </div>
 
-                    <p className="text-[11px] text-slate-600 leading-relaxed">
+                    <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
                       {agent.description}
                     </p>
                   </div>
 
-                  <div className="mt-3 pt-2.5 border-t border-slate-200/60 flex items-center justify-between text-[10px] font-mono text-slate-500">
+                  <div className="mt-3 pt-2.5 border-t border-slate-200/60 flex items-center justify-between text-[10px] font-mono text-slate-500 dark:text-slate-400">
                     <span>{agent.model}</span>
                     <span className="capitalize font-semibold text-emerald-700 bg-emerald-100/70 px-1.5 py-0.5 rounded">
                       {agent.trustTier}
@@ -319,7 +319,7 @@ export default function StartupPage() {
               <button
                 type="button"
                 onClick={() => setStep(1)}
-                className="px-5 py-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold transition-all cursor-pointer"
+                className="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:bg-slate-950 text-slate-700 dark:text-slate-300 text-xs font-semibold transition-all cursor-pointer"
               >
                 Back
               </button>
@@ -344,10 +344,10 @@ export default function StartupPage() {
                 <span className="material-symbols-outlined text-sm">shield</span>
                 Step 3: Governance & Guardrails
               </div>
-              <h2 className="text-2xl font-bold text-slate-900 tracking-tight">
+              <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">
                 Establish Human Oversight
               </h2>
-              <p className="text-xs text-slate-500 mt-1">
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                 Configure safety gates, spend thresholds, and executive approval policies.
               </p>
             </div>
@@ -355,7 +355,7 @@ export default function StartupPage() {
             <div className="space-y-4 pt-2">
               {/* Trust Tier Selector */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-2">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-2">
                   Default Organization Trust Tier
                 </label>
                 <div className="grid grid-cols-3 gap-3">
@@ -369,12 +369,12 @@ export default function StartupPage() {
                       onClick={() => setTrustTier(t.tier as any)}
                       className={`p-3.5 rounded-xl border transition-all cursor-pointer text-center ${
                         trustTier === t.tier
-                          ? "bg-emerald-50/50 border-emerald-500 ring-2 ring-emerald-500/20 text-slate-900 font-bold"
-                          : "bg-slate-50 border-slate-200 text-slate-600"
+                          ? "bg-emerald-50/50 border-emerald-500 ring-2 ring-emerald-500/20 text-slate-900 dark:text-slate-100 font-bold"
+                          : "bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400"
                       }`}
                     >
                       <div className="text-xs font-bold capitalize">{t.label}</div>
-                      <div className="text-[10px] text-slate-500 mt-1 font-normal leading-tight">{t.desc}</div>
+                      <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-1 font-normal leading-tight">{t.desc}</div>
                     </div>
                   ))}
                 </div>
@@ -383,7 +383,7 @@ export default function StartupPage() {
               {/* Monthly Spending Cap */}
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <label className="text-xs font-semibold text-slate-700">
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                     Monthly Fleet Authority Limit
                   </label>
                   <span className="text-xs font-mono font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
@@ -407,16 +407,16 @@ export default function StartupPage() {
               </div>
 
               {/* Summary Box */}
-              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/90 text-xs space-y-2">
-                <div className="flex justify-between text-slate-700">
+              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200/90 dark:border-slate-700/90 text-xs space-y-2">
+                <div className="flex justify-between text-slate-700 dark:text-slate-300">
                   <span className="font-semibold">Company:</span>
                   <span className="font-mono">{companyName}</span>
                 </div>
-                <div className="flex justify-between text-slate-700">
+                <div className="flex justify-between text-slate-700 dark:text-slate-300">
                   <span className="font-semibold">Initial AI Fleet:</span>
                   <span>{starterAgents.filter(a => a.selected).length} Active Specialist Pods</span>
                 </div>
-                <div className="flex justify-between text-slate-700">
+                <div className="flex justify-between text-slate-700 dark:text-slate-300">
                   <span className="font-semibold">Governance Tier:</span>
                   <span className="font-bold text-emerald-700 uppercase font-mono">{trustTier}</span>
                 </div>
@@ -427,7 +427,7 @@ export default function StartupPage() {
               <button
                 type="button"
                 onClick={() => setStep(2)}
-                className="px-5 py-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold transition-all cursor-pointer"
+                className="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:bg-slate-950 text-slate-700 dark:text-slate-300 text-xs font-semibold transition-all cursor-pointer"
               >
                 Back
               </button>
@@ -448,7 +448,7 @@ export default function StartupPage() {
         {isDeploying && (
           <div className="py-8 text-center space-y-6">
             <div className="inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-gradient-to-tr from-emerald-600 via-teal-500 to-cyan-500 p-[2px] shadow-2xl shadow-emerald-500/30 animate-bounce">
-              <div className="w-full h-full bg-white rounded-[22px] flex items-center justify-center">
+              <div className="w-full h-full bg-white dark:bg-slate-900 rounded-[22px] flex items-center justify-center">
                 <span className="material-symbols-outlined text-emerald-600 text-4xl font-bold animate-spin">
                   sync
                 </span>
@@ -456,15 +456,15 @@ export default function StartupPage() {
             </div>
 
             <div>
-              <h2 className="text-2xl font-bold text-slate-900 tracking-tight">
+              <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">
                 Instantiating Autonomous Workforce
               </h2>
-              <p className="text-xs text-slate-500 mt-1">
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                 Configuring multi-tenant orchestration, event bus, and AI worker pods...
               </p>
             </div>
 
-            <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden max-w-md mx-auto">
+            <div className="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden max-w-md mx-auto">
               <div 
                 className="h-full bg-emerald-500 transition-all duration-300"
                 style={{ width: `${deployProgress}%` }}

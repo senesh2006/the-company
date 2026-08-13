@@ -44,7 +44,7 @@ export default function AgentsPage() {
         let dept = "Operations";
         let sub = a.role || "Specialist";
         let icon = Bot;
-        let bg = "bg-slate-100 border-slate-200 text-slate-700";
+        let bg = "bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300";
 
         if (r.includes("market") || r.includes("growth")) {
           dept = "Marketing";
@@ -111,10 +111,10 @@ export default function AgentsPage() {
       {/* 1. Header Section */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex flex-col gap-1">
-          <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">
+          <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">
             Workers
           </h1>
-          <p className="text-xs md:text-sm text-slate-500 font-medium">
+          <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 font-medium">
             Hire, monitor and control your AI workforce
           </p>
         </div>
@@ -129,7 +129,7 @@ export default function AgentsPage() {
       </div>
 
       {/* 2. Filter & Toolbar Bar */}
-      <div className="bg-white p-3 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between gap-3 relative">
+      <div className="bg-white dark:bg-slate-900 p-3 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between gap-3 relative">
         <div className="flex items-center gap-2">
           {/* Filter Button */}
           <div className="relative">
@@ -138,7 +138,7 @@ export default function AgentsPage() {
               className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 border transition-all ${
                 filterDepartment !== "all" || filterStatus !== "all"
                   ? "bg-emerald-50 text-emerald-800 border-emerald-300"
-                  : "bg-slate-100/90 text-slate-700 border-slate-200/70 hover:bg-slate-200"
+                  : "bg-slate-100/90 text-slate-700 dark:text-slate-300 border-slate-200/70 hover:bg-slate-200"
               }`}
             >
               <SlidersHorizontal className="w-3.5 h-3.5" />
@@ -150,13 +150,13 @@ export default function AgentsPage() {
 
             {/* Filter Dropdown */}
             {showFilterDropdown && (
-              <div className="absolute left-0 mt-2 w-56 bg-white border border-slate-200 rounded-2xl p-3 shadow-xl z-30 space-y-3">
+              <div className="absolute left-0 mt-2 w-56 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl p-3 shadow-xl z-30 space-y-3">
                 <div>
                   <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Department</label>
                   <select
                     value={filterDepartment}
                     onChange={(e) => setFilterDepartment(e.target.value)}
-                    className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500"
+                    className="w-full mt-1 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-1.5 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-emerald-500"
                   >
                     <option value="all">All Departments</option>
                     <option value="Marketing">Marketing</option>
@@ -171,7 +171,7 @@ export default function AgentsPage() {
                   <select
                     value={filterStatus}
                     onChange={(e) => setFilterStatus(e.target.value)}
-                    className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500"
+                    className="w-full mt-1 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-1.5 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-emerald-500"
                   >
                     <option value="all">All Statuses</option>
                     <option value="Running">Running</option>
@@ -180,14 +180,14 @@ export default function AgentsPage() {
                   </select>
                 </div>
 
-                <div className="pt-2 border-t border-slate-100 flex justify-between">
+                <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex justify-between">
                   <button
                     onClick={() => {
                       setFilterDepartment("all");
                       setFilterStatus("all");
                       setShowFilterDropdown(false);
                     }}
-                    className="text-[11px] text-slate-500 hover:text-slate-800 font-semibold"
+                    className="text-[11px] text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:text-slate-200 font-semibold"
                   >
                     Reset
                   </button>
@@ -205,7 +205,7 @@ export default function AgentsPage() {
           {/* Sort Button */}
           <button
             onClick={toggleSort}
-            className="px-3.5 py-1.5 rounded-xl bg-slate-100/90 text-slate-700 text-xs font-semibold flex items-center gap-1.5 border border-slate-200/70 hover:bg-slate-200 transition-all"
+            className="px-3.5 py-1.5 rounded-xl bg-slate-100/90 text-slate-700 dark:text-slate-300 text-xs font-semibold flex items-center gap-1.5 border border-slate-200/70 hover:bg-slate-200 transition-all"
           >
             <ArrowUpDown className="w-3.5 h-3.5" />
             <span>Sort ({sortBy})</span>
@@ -213,13 +213,13 @@ export default function AgentsPage() {
         </div>
 
         {/* View Toggle */}
-        <div className="flex items-center gap-1 bg-slate-100/80 p-1 rounded-xl border border-slate-200/60">
+        <div className="flex items-center gap-1 bg-slate-100/80 dark:bg-slate-800/80 p-1 rounded-xl border border-slate-200/60">
           <button
             onClick={() => setViewMode("table")}
             className={`p-1.5 rounded-lg transition-all ${
               viewMode === "table"
-                ? "bg-white text-slate-900 shadow-xs"
-                : "text-slate-400 hover:text-slate-700"
+                ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-xs"
+                : "text-slate-400 hover:text-slate-700 dark:text-slate-300"
             }`}
             title="Table View"
           >
@@ -229,8 +229,8 @@ export default function AgentsPage() {
             onClick={() => setViewMode("grid")}
             className={`p-1.5 rounded-lg transition-all ${
               viewMode === "grid"
-                ? "bg-white text-slate-900 shadow-xs"
-                : "text-slate-400 hover:text-slate-700"
+                ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-xs"
+                : "text-slate-400 hover:text-slate-700 dark:text-slate-300"
             }`}
             title="Grid View"
           >
@@ -241,12 +241,12 @@ export default function AgentsPage() {
 
       {/* 3. Workers Content (Table / Grid or Empty State) */}
       {filteredWorkers.length === 0 ? (
-        <div className="bg-white rounded-3xl p-12 flex flex-col items-center justify-center text-center gap-3 border border-dashed border-slate-200 shadow-xs">
+        <div className="bg-white dark:bg-slate-900 rounded-3xl p-12 flex flex-col items-center justify-center text-center gap-3 border border-dashed border-slate-200 dark:border-slate-700 shadow-xs">
           <div className="w-12 h-12 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-700">
             <Bot className="w-6 h-6" />
           </div>
-          <h3 className="text-base font-bold text-slate-900">No Workers Recruited Yet</h3>
-          <p className="text-xs text-slate-500 max-w-sm">
+          <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">No Workers Recruited Yet</h3>
+          <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm">
             Deploy specialized autonomous AI agents to handle marketing, finance, research, and technical operations.
           </p>
           <a
@@ -258,20 +258,20 @@ export default function AgentsPage() {
           </a>
         </div>
       ) : viewMode === "table" ? (
-        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="border-b border-slate-100 bg-slate-50/50 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                  <th className="py-3.5 px-6 font-semibold text-slate-500">Worker</th>
-                  <th className="py-3.5 px-6 font-semibold text-slate-500">Department</th>
-                  <th className="py-3.5 px-6 font-semibold text-slate-500">Status</th>
-                  <th className="py-3.5 px-6 font-semibold text-slate-500">Current Task</th>
-                  <th className="py-3.5 px-6 font-semibold text-slate-500">Progress</th>
-                  <th className="py-3.5 px-6 font-semibold text-slate-500 text-right">Cost Today</th>
+                <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                  <th className="py-3.5 px-6 font-semibold text-slate-500 dark:text-slate-400">Worker</th>
+                  <th className="py-3.5 px-6 font-semibold text-slate-500 dark:text-slate-400">Department</th>
+                  <th className="py-3.5 px-6 font-semibold text-slate-500 dark:text-slate-400">Status</th>
+                  <th className="py-3.5 px-6 font-semibold text-slate-500 dark:text-slate-400">Current Task</th>
+                  <th className="py-3.5 px-6 font-semibold text-slate-500 dark:text-slate-400">Progress</th>
+                  <th className="py-3.5 px-6 font-semibold text-slate-500 dark:text-slate-400 text-right">Cost Today</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {filteredWorkers.map((worker) => {
                   const Icon = worker.icon;
                   const isRunning = worker.status === "Running";
@@ -281,7 +281,7 @@ export default function AgentsPage() {
                     <tr
                       key={worker.id}
                       onClick={() => setSelectedAgentId(worker.id)}
-                      className="hover:bg-slate-50/80 cursor-pointer transition-colors group"
+                      className="hover:bg-slate-50/80 dark:bg-slate-900/80 cursor-pointer transition-colors group"
                     >
                       {/* Worker Identity */}
                       <td className="py-4 px-6">
@@ -302,7 +302,7 @@ export default function AgentsPage() {
                             )}
                           </div>
                           <div>
-                            <div className="text-sm font-bold text-slate-900 group-hover:text-emerald-800 transition-colors">
+                            <div className="text-sm font-bold text-slate-900 dark:text-slate-100 group-hover:text-emerald-800 transition-colors">
                               {worker.name}
                             </div>
                             <div className="text-xs text-slate-400 font-medium">
@@ -314,7 +314,7 @@ export default function AgentsPage() {
 
                       {/* Department */}
                       <td className="py-4 px-6">
-                        <span className="text-xs text-slate-700 font-medium">
+                        <span className="text-xs text-slate-700 dark:text-slate-300 font-medium">
                           {worker.department}
                         </span>
                       </td>
@@ -327,7 +327,7 @@ export default function AgentsPage() {
                               ? "bg-emerald-50 text-emerald-700 border-emerald-200/80"
                               : isPaused
                               ? "bg-amber-50 text-amber-700 border-amber-200/80"
-                              : "bg-slate-100 text-slate-600 border-slate-200/80"
+                              : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200/80"
                           }`}
                         >
                           <span
@@ -345,7 +345,7 @@ export default function AgentsPage() {
 
                       {/* Current Task */}
                       <td className="py-4 px-6">
-                        <span className="text-xs text-slate-700 font-medium truncate block max-w-xs">
+                        <span className="text-xs text-slate-700 dark:text-slate-300 font-medium truncate block max-w-xs">
                           {worker.currentTask}
                         </span>
                       </td>
@@ -353,10 +353,10 @@ export default function AgentsPage() {
                       {/* Progress Bar & Number */}
                       <td className="py-4 px-6">
                         <div className="flex flex-col gap-1 w-24">
-                          <span className="text-[11px] font-bold text-slate-700 font-mono">
+                          <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300 font-mono">
                             {worker.progress > 0 ? `${worker.progress}%` : "0%"}
                           </span>
-                          <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                          <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
                             <div
                               className={`h-full rounded-full transition-all duration-300 ${
                                 isRunning
@@ -372,7 +372,7 @@ export default function AgentsPage() {
                       </td>
 
                       {/* Cost Today */}
-                      <td className="py-4 px-6 text-right font-mono text-xs font-bold text-slate-900">
+                      <td className="py-4 px-6 text-right font-mono text-xs font-bold text-slate-900 dark:text-slate-100">
                         ${worker.costToday.toFixed(2)}
                       </td>
                     </tr>
@@ -394,7 +394,7 @@ export default function AgentsPage() {
               <div
                 key={worker.id}
                 onClick={() => setSelectedAgentId(worker.id)}
-                className="bg-white p-5 rounded-2xl border border-slate-200/80 hover:border-emerald-500/50 shadow-xs hover:shadow-md transition-all cursor-pointer flex flex-col justify-between gap-4 group"
+                className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 hover:border-emerald-500/50 shadow-xs hover:shadow-md transition-all cursor-pointer flex flex-col justify-between gap-4 group"
               >
                 <div>
                   <div className="flex items-start justify-between gap-2">
@@ -419,7 +419,7 @@ export default function AgentsPage() {
                           ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                           : isPaused
                           ? "bg-amber-50 text-amber-700 border-amber-200"
-                          : "bg-slate-100 text-slate-600 border-slate-200"
+                          : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700"
                       }`}
                     >
                       <span className={`w-1.5 h-1.5 rounded-full ${isRunning ? "bg-emerald-500" : isPaused ? "bg-amber-500" : "bg-slate-400"}`} />
@@ -428,24 +428,24 @@ export default function AgentsPage() {
                   </div>
 
                   <div className="mt-3">
-                    <h3 className="text-sm font-bold text-slate-900 group-hover:text-emerald-800 transition-colors">
+                    <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 group-hover:text-emerald-800 transition-colors">
                       {worker.name}
                     </h3>
                     <p className="text-xs text-slate-400">{worker.sublabel} &bull; {worker.department}</p>
                   </div>
 
-                  <div className="mt-3 p-2.5 rounded-xl bg-slate-50 border border-slate-100 text-xs text-slate-700">
+                  <div className="mt-3 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 text-xs text-slate-700 dark:text-slate-300">
                     <p className="text-[10px] font-bold uppercase text-slate-400 mb-0.5">Current Task</p>
                     <p className="truncate font-medium">{worker.currentTask}</p>
                   </div>
                 </div>
 
-                <div className="space-y-2 pt-2 border-t border-slate-100">
+                <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
                   <div className="flex justify-between items-center text-xs">
-                    <span className="text-slate-500">Progress</span>
-                    <span className="font-mono font-bold text-slate-800">{worker.progress}%</span>
+                    <span className="text-slate-500 dark:text-slate-400">Progress</span>
+                    <span className="font-mono font-bold text-slate-800 dark:text-slate-200">{worker.progress}%</span>
                   </div>
-                  <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                  <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
                     <div
                       className={`h-full rounded-full ${isRunning ? "bg-emerald-800" : isPaused ? "bg-amber-500" : "bg-slate-300"}`}
                       style={{ width: `${worker.progress}%` }}
@@ -453,8 +453,8 @@ export default function AgentsPage() {
                   </div>
 
                   <div className="flex justify-between items-center text-xs pt-1">
-                    <span className="text-slate-500">Cost Today</span>
-                    <span className="font-mono font-bold text-slate-900">${worker.costToday.toFixed(2)}</span>
+                    <span className="text-slate-500 dark:text-slate-400">Cost Today</span>
+                    <span className="font-mono font-bold text-slate-900 dark:text-slate-100">${worker.costToday.toFixed(2)}</span>
                   </div>
                 </div>
               </div>
@@ -467,15 +467,15 @@ export default function AgentsPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5 mt-2">
         
         {/* Card 1: Active Workers */}
-        <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs flex flex-col justify-between hover:shadow-md transition-all">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200/80 shadow-xs flex flex-col justify-between hover:shadow-md transition-all">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500">Active Workers</span>
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Active Workers</span>
             <div className="text-emerald-600">
               <Radio className="w-5 h-5" />
             </div>
           </div>
           <div className="mt-3">
-            <span className="text-2xl md:text-3xl font-extrabold text-slate-900">
+            <span className="text-2xl md:text-3xl font-extrabold text-slate-900 dark:text-slate-100">
               {agents?.length || 0}
             </span>
             <p className="text-[11px] font-semibold text-slate-400 mt-1 flex items-center gap-1">
@@ -485,15 +485,15 @@ export default function AgentsPage() {
         </div>
 
         {/* Card 2: Compute Used */}
-        <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs flex flex-col justify-between hover:shadow-md transition-all">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200/80 shadow-xs flex flex-col justify-between hover:shadow-md transition-all">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500">Compute Used</span>
-            <div className="text-slate-600">
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Compute Used</span>
+            <div className="text-slate-600 dark:text-slate-400">
               <Cpu className="w-5 h-5" />
             </div>
           </div>
           <div className="mt-3">
-            <span className="text-2xl md:text-3xl font-extrabold text-slate-900">
+            <span className="text-2xl md:text-3xl font-extrabold text-slate-900 dark:text-slate-100">
               {(agents?.length || 0) > 0 ? "Normal" : "Idle"}
             </span>
             <p className="text-[11px] text-slate-400 font-medium mt-1">
@@ -503,15 +503,15 @@ export default function AgentsPage() {
         </div>
 
         {/* Card 3: Total Cost Today */}
-        <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs flex flex-col justify-between hover:shadow-md transition-all">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200/80 shadow-xs flex flex-col justify-between hover:shadow-md transition-all">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500">Total Cost Today</span>
-            <div className="text-slate-600">
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Total Cost Today</span>
+            <div className="text-slate-600 dark:text-slate-400">
               <CreditCard className="w-5 h-5" />
             </div>
           </div>
           <div className="mt-3">
-            <span className="text-2xl md:text-3xl font-extrabold text-slate-900">
+            <span className="text-2xl md:text-3xl font-extrabold text-slate-900 dark:text-slate-100">
               ${(metrics?.totalCost || 0).toFixed(2)}
             </span>
             <p className="text-[11px] font-semibold text-emerald-700 mt-1 flex items-center gap-1">
@@ -521,18 +521,18 @@ export default function AgentsPage() {
         </div>
 
         {/* Card 4: Tasks Completed */}
-        <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs flex flex-col justify-between hover:shadow-md transition-all">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200/80 shadow-xs flex flex-col justify-between hover:shadow-md transition-all">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500">Tasks Completed</span>
-            <div className="text-slate-700">
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Tasks Completed</span>
+            <div className="text-slate-700 dark:text-slate-300">
               <CheckCircle2 className="w-5 h-5" />
             </div>
           </div>
           <div className="mt-3">
-            <span className="text-2xl md:text-3xl font-extrabold text-slate-900">
+            <span className="text-2xl md:text-3xl font-extrabold text-slate-900 dark:text-slate-100">
               {metrics?.completedTasks || 0}
             </span>
-            <p className="text-[11px] text-slate-500 font-medium mt-1">
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium mt-1">
               {metrics?.errorRate !== undefined ? `${(100 - metrics.errorRate).toFixed(1)}%` : "100%"} success rate
             </p>
           </div>

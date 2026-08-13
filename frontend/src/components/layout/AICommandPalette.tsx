@@ -59,11 +59,11 @@ export function AICommandPalette() {
               initial={{ opacity: 0, y: -20, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -20, scale: 0.95 }}
-              className="w-full max-w-xl rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl space-y-4 font-sans text-slate-800 relative"
+              className="w-full max-w-xl rounded-3xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-6 shadow-2xl space-y-4 font-sans text-slate-800 dark:text-slate-200 relative"
             >
               <button
                 onClick={() => setIsOpen(false)}
-                className="absolute right-5 top-5 p-1 rounded-xl bg-slate-100 text-slate-400 hover:text-slate-900 transition"
+                className="absolute right-5 top-5 p-1 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-slate-900 dark:text-slate-100 transition"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -73,13 +73,13 @@ export function AICommandPalette() {
                   <Command className="w-5 h-5 text-emerald-700" />
                 </div>
                 <div>
-                  <h3 className="text-base font-black text-slate-900 tracking-tight flex items-center gap-2">
+                  <h3 className="text-base font-black text-slate-900 dark:text-slate-100 tracking-tight flex items-center gap-2">
                     AI Master Control Palette
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200 font-mono">
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 font-mono">
                       ⌘K / Ctrl+K
                     </span>
                   </h3>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
                     Issue natural language directives to steer your AI workforce and web app.
                   </p>
                 </div>
@@ -88,12 +88,12 @@ export function AICommandPalette() {
               {isSuccess ? (
                 <div className="p-6 rounded-2xl bg-emerald-50 border border-emerald-200 text-center space-y-1">
                   <Sparkles className="w-8 h-8 text-emerald-600 mx-auto animate-bounce" />
-                  <h4 className="text-sm font-bold text-slate-900">Directive Executing Autonomously!</h4>
+                  <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100">Directive Executing Autonomously!</h4>
                 </div>
               ) : (
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div className="space-y-2">
-                    <div className="flex items-center justify-between text-xs font-bold text-slate-600">
+                    <div className="flex items-center justify-between text-xs font-bold text-slate-600 dark:text-slate-400">
                       <span>Target Department:</span>
                       <div className="flex items-center gap-1">
                         {["finance", "marketing", "engineering", "operations"].map(dept => (
@@ -104,7 +104,7 @@ export function AICommandPalette() {
                             className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition capitalize ${
                               targetDept === dept
                                 ? "bg-slate-900 text-white"
-                                : "bg-slate-100 text-slate-600 hover:text-slate-900"
+                                : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:text-slate-100"
                             }`}
                           >
                             {dept}
@@ -121,13 +121,13 @@ export function AICommandPalette() {
                         placeholder={`e.g. "Audit trial balance, hire a QA tester, and navigate me to engineering..."`}
                         value={prompt}
                         onChange={(e) => setPrompt(e.target.value)}
-                        className="w-full pl-10 pr-4 py-3 rounded-2xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-500 transition"
+                        className="w-full pl-10 pr-4 py-3 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:border-emerald-500 transition"
                       />
                     </div>
                   </div>
 
                   <div className="flex items-center justify-between text-xs text-slate-400 pt-1">
-                    <span>Press <kbd className="px-1.5 py-0.5 bg-slate-100 rounded border border-slate-200 text-slate-600 font-mono">ESC</kbd> to exit</span>
+                    <span>Press <kbd className="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 rounded border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 font-mono">ESC</kbd> to exit</span>
                     <button
                       type="submit"
                       disabled={dispatchMutation.isPending || !prompt.trim()}

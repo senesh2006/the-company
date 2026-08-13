@@ -81,7 +81,7 @@ export function ThinkingProcess({
   const formattedDuration = typeof duration === "number" ? `${duration.toFixed(1)}s` : duration;
 
   return (
-    <div className={`my-3 rounded-2xl border border-slate-200/90 bg-slate-50/80 overflow-hidden shadow-xs transition-all ${className}`}>
+    <div className={`my-3 rounded-2xl border border-slate-200/90 dark:border-slate-700/90 bg-slate-50/80 dark:bg-slate-900/80 overflow-hidden shadow-xs transition-all ${className}`}>
       {/* Header Bar */}
       <button
         type="button"
@@ -99,12 +99,12 @@ export function ThinkingProcess({
           </div>
 
           <div className="flex items-center gap-2 flex-wrap min-w-0">
-            <span className="text-xs font-bold text-slate-800 tracking-tight">
+            <span className="text-xs font-bold text-slate-800 dark:text-slate-200 tracking-tight">
               {isThinking ? "Thinking..." : title}
             </span>
 
             {/* Badges */}
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-white text-slate-600 border border-slate-200 shadow-2xs">
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 shadow-2xs">
               {isThinking ? "Active Reasoning" : `${stepCount} step${stepCount !== 1 ? "s" : ""}`}
             </span>
 
@@ -117,13 +117,13 @@ export function ThinkingProcess({
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
-          <span className="text-[11px] font-medium text-slate-500 hidden sm:inline">
+          <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 hidden sm:inline">
             {isExpanded ? "Hide thoughts" : "View reasoning"}
           </span>
           <motion.div
             animate={{ rotate: isExpanded ? 180 : 0 }}
             transition={{ duration: 0.2 }}
-            className="text-slate-400 hover:text-slate-600"
+            className="text-slate-400 hover:text-slate-600 dark:text-slate-400"
           >
             <ChevronDown className="w-4 h-4" />
           </motion.div>
@@ -140,7 +140,7 @@ export function ThinkingProcess({
             transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
             className="overflow-hidden border-t border-slate-200/70"
           >
-            <div className="p-4 bg-white/70 space-y-3 text-xs leading-relaxed text-slate-700 font-sans border-l-3 border-emerald-500/70 ml-3 my-2 rounded-r-xl">
+            <div className="p-4 bg-white dark:bg-slate-900/70 space-y-3 text-xs leading-relaxed text-slate-700 dark:text-slate-300 font-sans border-l-3 border-emerald-500/70 ml-3 my-2 rounded-r-xl">
               {isThinking && (
                 <div className="flex items-center gap-2 text-emerald-800 text-[11px] font-mono bg-emerald-50/60 p-2.5 rounded-xl border border-emerald-100">
                   <div className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
@@ -152,10 +152,10 @@ export function ThinkingProcess({
                 <div className="space-y-2">
                   {steps.map((step, idx) => (
                     <div key={idx} className="flex items-start gap-2.5 text-[11px]">
-                      <span className="w-5 h-5 rounded-md bg-slate-100 text-slate-600 font-mono font-bold flex items-center justify-center shrink-0 text-[9px] border border-slate-200">
+                      <span className="w-5 h-5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-mono font-bold flex items-center justify-center shrink-0 text-[9px] border border-slate-200 dark:border-slate-700">
                         {idx + 1}
                       </span>
-                      <div className="flex-1 text-slate-700 font-mono text-[11px] bg-slate-50/80 p-2 rounded-lg border border-slate-100">
+                      <div className="flex-1 text-slate-700 dark:text-slate-300 font-mono text-[11px] bg-slate-50/80 dark:bg-slate-900/80 p-2 rounded-lg border border-slate-100 dark:border-slate-800">
                         {step}
                       </div>
                     </div>
@@ -164,7 +164,7 @@ export function ThinkingProcess({
               ) : null}
 
               {thoughtContent && (
-                <div className="text-[11px] font-mono text-slate-600 whitespace-pre-wrap leading-relaxed bg-slate-50/60 p-3 rounded-xl border border-slate-100 max-h-[320px] overflow-y-auto">
+                <div className="text-[11px] font-mono text-slate-600 dark:text-slate-400 whitespace-pre-wrap leading-relaxed bg-slate-50/60 p-3 rounded-xl border border-slate-100 dark:border-slate-800 max-h-[320px] overflow-y-auto">
                   {thoughtContent}
                 </div>
               )}

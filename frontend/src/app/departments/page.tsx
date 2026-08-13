@@ -212,30 +212,30 @@ function DepartmentsContent() {
   const attentionItems = deptDetails?.attention || [];
 
   return (
-    <div className="space-y-6 pb-20 text-slate-800 font-sans">
+    <div className="space-y-6 pb-20 text-slate-800 dark:text-slate-200 font-sans">
       {/* 1. CLEAN LIGHT SaaS HEADER & DEPARTMENT NAVIGATION */}
-      <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+      <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 mb-1">
+          <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">
             <Building2 className="w-4 h-4 text-emerald-700" />
             <span>Company Organization</span>
             <ChevronRight className="w-3 h-3 text-slate-400" />
-            <span className="text-slate-900 font-bold">Departments Hub</span>
+            <span className="text-slate-900 dark:text-slate-100 font-bold">Departments Hub</span>
           </div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-3">
+          <h1 className="text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tight flex items-center gap-3">
             <span>{currentDept.name}</span>
             <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full border ${currentDept.badgeClass}`}>
               {currentDeptAgents.length} {currentDeptAgents.length === 1 ? 'Worker' : 'Workers'}
             </span>
           </h1>
-          <p className="text-xs text-slate-500 mt-1 max-w-2xl leading-relaxed">
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-2xl leading-relaxed">
             {currentDept.description}
           </p>
         </div>
 
         <div className="flex items-center gap-3 self-start lg:self-auto flex-wrap">
           {/* Department Unit Selector Pills */}
-          <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200">
+          <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
             {DEPARTMENTS.map(dept => {
               const isSelected = dept.id === selectedDeptId;
               const Icon = dept.icon;
@@ -246,7 +246,7 @@ function DepartmentsContent() {
                   className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
                     isSelected
                       ? "bg-slate-900 text-white shadow-sm"
-                      : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/60"
+                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:text-slate-100 hover:bg-slate-200/60"
                   }`}
                 >
                   <Icon className="w-3.5 h-3.5" />
@@ -267,14 +267,14 @@ function DepartmentsContent() {
       </div>
 
       {/* VIEW TABS BAR */}
-      <div className="flex items-center justify-between border-b border-slate-200 pb-2">
+      <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-2">
         <div className="flex items-center gap-2">
           <button
             onClick={() => setActiveTab("overview")}
             className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition ${
               activeTab === "overview"
-                ? "bg-white text-slate-900 border border-slate-200 shadow-sm"
-                : "text-slate-500 hover:text-slate-800"
+                ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-700 shadow-sm"
+                : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:text-slate-200"
             }`}
           >
             <BarChart3 className="w-4 h-4 text-emerald-700" />
@@ -285,8 +285,8 @@ function DepartmentsContent() {
             onClick={() => setActiveTab("workspace")}
             className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition ${
               activeTab === "workspace"
-                ? "bg-white text-slate-900 border border-slate-200 shadow-sm"
-                : "text-slate-500 hover:text-slate-800"
+                ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-700 shadow-sm"
+                : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:text-slate-200"
             }`}
           >
             <FileSpreadsheet className="w-4 h-4 text-cyan-700" />
@@ -297,8 +297,8 @@ function DepartmentsContent() {
             onClick={() => setActiveTab("workforce")}
             className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition ${
               activeTab === "workforce"
-                ? "bg-white text-slate-900 border border-slate-200 shadow-sm"
-                : "text-slate-500 hover:text-slate-800"
+                ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-700 shadow-sm"
+                : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:text-slate-200"
             }`}
           >
             <Bot className="w-4 h-4 text-indigo-700" />
@@ -307,11 +307,11 @@ function DepartmentsContent() {
         </div>
 
         <div className="flex items-center gap-2 text-xs">
-          <span className="text-slate-500 font-medium">Cadence:</span>
+          <span className="text-slate-500 dark:text-slate-400 font-medium">Cadence:</span>
           <select
             value={timeframe}
             onChange={(e: any) => setTimeframe(e.target.value)}
-            className="bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-slate-800 font-bold focus:outline-none cursor-pointer text-xs"
+            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1 text-slate-800 dark:text-slate-200 font-bold focus:outline-none cursor-pointer text-xs"
           >
             <option value="Weekly">Weekly</option>
             <option value="Monthly">Monthly</option>
@@ -339,7 +339,7 @@ function DepartmentsContent() {
                       </div>
                       <div>
                         <p className="text-[11px] font-bold text-cyan-900 uppercase tracking-wider">Total Income</p>
-                        <h4 className="text-2xl font-black text-slate-900 font-mono mt-0.5">$200,000</h4>
+                        <h4 className="text-2xl font-black text-slate-900 dark:text-slate-100 font-mono mt-0.5">$200,000</h4>
                       </div>
                     </div>
                   </div>
@@ -351,7 +351,7 @@ function DepartmentsContent() {
                       </div>
                       <div>
                         <p className="text-[11px] font-bold text-rose-900 uppercase tracking-wider">Total Expenses</p>
-                        <h4 className="text-2xl font-black text-slate-900 font-mono mt-0.5">$50,000</h4>
+                        <h4 className="text-2xl font-black text-slate-900 dark:text-slate-100 font-mono mt-0.5">$50,000</h4>
                       </div>
                     </div>
                   </div>
@@ -363,7 +363,7 @@ function DepartmentsContent() {
                       </div>
                       <div>
                         <p className="text-[11px] font-bold text-emerald-900 uppercase tracking-wider">Net Profit</p>
-                        <h4 className="text-2xl font-black text-slate-900 font-mono mt-0.5">$150,000</h4>
+                        <h4 className="text-2xl font-black text-slate-900 dark:text-slate-100 font-mono mt-0.5">$150,000</h4>
                       </div>
                     </div>
                   </div>
@@ -371,31 +371,31 @@ function DepartmentsContent() {
 
                 {/* Revenue Projection & Variance */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs">
+                  <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-xs">
                     <span className="p-1.5 rounded-lg bg-emerald-50 text-emerald-800 font-bold text-xs flex items-center gap-1 border border-emerald-200 w-fit">
                       <TrendingUp className="w-3.5 h-3.5" />
                       <span>96.6%</span>
                     </span>
-                    <h4 className="text-xl font-bold text-slate-900 font-mono mt-2">$200,000</h4>
-                    <p className="text-[11px] text-slate-500">Total Receivable Amount</p>
+                    <h4 className="text-xl font-bold text-slate-900 dark:text-slate-100 font-mono mt-2">$200,000</h4>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400">Total Receivable Amount</p>
                   </div>
 
-                  <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs">
+                  <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-xs">
                     <span className="p-1.5 rounded-lg bg-rose-50 text-rose-800 font-bold text-xs flex items-center gap-1 border border-rose-200 w-fit">
                       <TrendingDown className="w-3.5 h-3.5" />
                       <span>56.3%</span>
                     </span>
-                    <h4 className="text-xl font-bold text-slate-900 font-mono mt-2">$150,000</h4>
-                    <p className="text-[11px] text-slate-500">Total Payable Amount</p>
+                    <h4 className="text-xl font-bold text-slate-900 dark:text-slate-100 font-mono mt-2">$150,000</h4>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400">Total Payable Amount</p>
                   </div>
 
-                  <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs">
+                  <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-xs">
                     <span className="p-1.5 rounded-lg bg-blue-50 text-blue-800 font-bold text-xs flex items-center gap-1 border border-blue-200 w-fit">
                       <Clock className="w-3.5 h-3.5" />
                       <span>45%</span>
                     </span>
-                    <h4 className="text-xl font-bold text-slate-900 font-mono mt-2">$150,000</h4>
-                    <p className="text-[11px] text-slate-500">Pending Receipt Audits</p>
+                    <h4 className="text-xl font-bold text-slate-900 dark:text-slate-100 font-mono mt-2">$150,000</h4>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400">Pending Receipt Audits</p>
                   </div>
                 </div>
               </div>
@@ -413,7 +413,7 @@ function DepartmentsContent() {
                       </div>
                       <div>
                         <p className="text-[11px] font-bold text-cyan-900 uppercase tracking-wider">Audience Reach</p>
-                        <h4 className="text-2xl font-black text-slate-900 font-mono mt-0.5">450,000</h4>
+                        <h4 className="text-2xl font-black text-slate-900 dark:text-slate-100 font-mono mt-0.5">450,000</h4>
                       </div>
                     </div>
                   </div>
@@ -425,7 +425,7 @@ function DepartmentsContent() {
                       </div>
                       <div>
                         <p className="text-[11px] font-bold text-indigo-900 uppercase tracking-wider">Conversion Rate</p>
-                        <h4 className="text-2xl font-black text-slate-900 font-mono mt-0.5">4.8%</h4>
+                        <h4 className="text-2xl font-black text-slate-900 dark:text-slate-100 font-mono mt-0.5">4.8%</h4>
                       </div>
                     </div>
                   </div>
@@ -437,36 +437,36 @@ function DepartmentsContent() {
                       </div>
                       <div>
                         <p className="text-[11px] font-bold text-emerald-900 uppercase tracking-wider">Copy Volume</p>
-                        <h4 className="text-2xl font-black text-slate-900 font-mono mt-0.5">1,240 Posts</h4>
+                        <h4 className="text-2xl font-black text-slate-900 dark:text-slate-100 font-mono mt-0.5">1,240 Posts</h4>
                       </div>
                     </div>
                   </div>
                 </div>
 
                 {/* Campaign Channel Grid */}
-                <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-4">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-2">
+                <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-xs space-y-4">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-2">
                     <Share2 className="w-4 h-4 text-cyan-700" />
                     <span>Active Marketing Campaigns & Channels</span>
                   </h3>
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+                    <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700">
                       <span className="text-[10px] font-bold uppercase text-cyan-700">LinkedIn B2B</span>
-                      <p className="text-sm font-extrabold text-slate-900 mt-1">Founders Campaign</p>
-                      <p className="text-[11px] text-slate-500 mt-0.5">40% Traffic Share</p>
+                      <p className="text-sm font-extrabold text-slate-900 dark:text-slate-100 mt-1">Founders Campaign</p>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">40% Traffic Share</p>
                     </div>
 
-                    <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+                    <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700">
                       <span className="text-[10px] font-bold uppercase text-indigo-700">X / Twitter</span>
-                      <p className="text-sm font-extrabold text-slate-900 mt-1">Autonomous Tech Launch</p>
-                      <p className="text-[11px] text-slate-500 mt-0.5">30% Traffic Share</p>
+                      <p className="text-sm font-extrabold text-slate-900 dark:text-slate-100 mt-1">Autonomous Tech Launch</p>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">30% Traffic Share</p>
                     </div>
 
-                    <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+                    <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700">
                       <span className="text-[10px] font-bold uppercase text-emerald-700">Organic SEO</span>
-                      <p className="text-sm font-extrabold text-slate-900 mt-1">AI Workers Guides</p>
-                      <p className="text-[11px] text-slate-500 mt-0.5">20% Traffic Share</p>
+                      <p className="text-sm font-extrabold text-slate-900 dark:text-slate-100 mt-1">AI Workers Guides</p>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">20% Traffic Share</p>
                     </div>
                   </div>
                 </div>
@@ -485,7 +485,7 @@ function DepartmentsContent() {
                       </div>
                       <div>
                         <p className="text-[11px] font-bold text-indigo-900 uppercase tracking-wider">Active Repositories</p>
-                        <h4 className="text-2xl font-black text-slate-900 font-mono mt-0.5">14 Repos</h4>
+                        <h4 className="text-2xl font-black text-slate-900 dark:text-slate-100 font-mono mt-0.5">14 Repos</h4>
                       </div>
                     </div>
                   </div>
@@ -497,7 +497,7 @@ function DepartmentsContent() {
                       </div>
                       <div>
                         <p className="text-[11px] font-bold text-emerald-900 uppercase tracking-wider">Commits Today</p>
-                        <h4 className="text-2xl font-black text-slate-900 font-mono mt-0.5">86 Commits</h4>
+                        <h4 className="text-2xl font-black text-slate-900 dark:text-slate-100 font-mono mt-0.5">86 Commits</h4>
                       </div>
                     </div>
                   </div>
@@ -509,45 +509,45 @@ function DepartmentsContent() {
                       </div>
                       <div>
                         <p className="text-[11px] font-bold text-cyan-900 uppercase tracking-wider">Test Pass Rate</p>
-                        <h4 className="text-2xl font-black text-slate-900 font-mono mt-0.5">99.4%</h4>
+                        <h4 className="text-2xl font-black text-slate-900 dark:text-slate-100 font-mono mt-0.5">99.4%</h4>
                       </div>
                     </div>
                   </div>
                 </div>
 
                 {/* Tech Stack & Pipeline Status */}
-                <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-4">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-2">
+                <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-xs space-y-4">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-2">
                     <Server className="w-4 h-4 text-indigo-700" />
                     <span>Production Services & CI/CD Telemetry</span>
                   </h3>
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+                    <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700">
                       <span className="text-[10px] font-bold uppercase text-emerald-700 flex items-center gap-1">
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse" />
                         Next.js Frontend
                       </span>
-                      <p className="text-sm font-extrabold text-slate-900 mt-1">Railway Production</p>
-                      <p className="text-[11px] text-slate-500 mt-0.5">Static Prerendered 18/18</p>
+                      <p className="text-sm font-extrabold text-slate-900 dark:text-slate-100 mt-1">Railway Production</p>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">Static Prerendered 18/18</p>
                     </div>
 
-                    <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+                    <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700">
                       <span className="text-[10px] font-bold uppercase text-indigo-700 flex items-center gap-1">
                         <span className="w-1.5 h-1.5 rounded-full bg-indigo-600 animate-pulse" />
                         FastAPI Engine
                       </span>
-                      <p className="text-sm font-extrabold text-slate-900 mt-1">Python 3.11 Uvicorn</p>
-                      <p className="text-[11px] text-slate-500 mt-0.5">Subprocess Sandbox Active</p>
+                      <p className="text-sm font-extrabold text-slate-900 dark:text-slate-100 mt-1">Python 3.11 Uvicorn</p>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">Subprocess Sandbox Active</p>
                     </div>
 
-                    <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+                    <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700">
                       <span className="text-[10px] font-bold uppercase text-cyan-700 flex items-center gap-1">
                         <span className="w-1.5 h-1.5 rounded-full bg-cyan-600 animate-pulse" />
                         PostgreSQL Store
                       </span>
-                      <p className="text-sm font-extrabold text-slate-900 mt-1">Durable Key-Value</p>
-                      <p className="text-[11px] text-slate-500 mt-0.5">Shared Memory Ref Sync</p>
+                      <p className="text-sm font-extrabold text-slate-900 dark:text-slate-100 mt-1">Durable Key-Value</p>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">Shared Memory Ref Sync</p>
                     </div>
                   </div>
                 </div>
@@ -566,7 +566,7 @@ function DepartmentsContent() {
                       </div>
                       <div>
                         <p className="text-[11px] font-bold text-purple-900 uppercase tracking-wider">Active Workflows</p>
-                        <h4 className="text-2xl font-black text-slate-900 font-mono mt-0.5">32 Tasks</h4>
+                        <h4 className="text-2xl font-black text-slate-900 dark:text-slate-100 font-mono mt-0.5">32 Tasks</h4>
                       </div>
                     </div>
                   </div>
@@ -578,7 +578,7 @@ function DepartmentsContent() {
                       </div>
                       <div>
                         <p className="text-[11px] font-bold text-amber-900 uppercase tracking-wider">Approvals Handled</p>
-                        <h4 className="text-2xl font-black text-slate-900 font-mono mt-0.5">124 Approvals</h4>
+                        <h4 className="text-2xl font-black text-slate-900 dark:text-slate-100 font-mono mt-0.5">124 Approvals</h4>
                       </div>
                     </div>
                   </div>
@@ -590,36 +590,36 @@ function DepartmentsContent() {
                       </div>
                       <div>
                         <p className="text-[11px] font-bold text-emerald-900 uppercase tracking-wider">Memory Keys</p>
-                        <h4 className="text-2xl font-black text-slate-900 font-mono mt-0.5">1,450 Keys</h4>
+                        <h4 className="text-2xl font-black text-slate-900 dark:text-slate-100 font-mono mt-0.5">1,450 Keys</h4>
                       </div>
                     </div>
                   </div>
                 </div>
 
                 {/* Operations Governance & Compliance Grid */}
-                <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-4">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-2">
+                <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-xs space-y-4">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-2">
                     <ShieldCheck className="w-4 h-4 text-purple-700" />
                     <span>Governance & Executive Operations Telemetry</span>
                   </h3>
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+                    <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700">
                       <span className="text-[10px] font-bold uppercase text-purple-700">Maker-Checker Policy</span>
-                      <p className="text-sm font-extrabold text-slate-900 mt-1">Active Guardrails</p>
-                      <p className="text-[11px] text-slate-500 mt-0.5">Human Approval Required</p>
+                      <p className="text-sm font-extrabold text-slate-900 dark:text-slate-100 mt-1">Active Guardrails</p>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">Human Approval Required</p>
                     </div>
 
-                    <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+                    <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700">
                       <span className="text-[10px] font-bold uppercase text-emerald-700">Audit Compliance</span>
-                      <p className="text-sm font-extrabold text-slate-900 mt-1">100% Verified</p>
-                      <p className="text-[11px] text-slate-500 mt-0.5">SOX Audit Trail Active</p>
+                      <p className="text-sm font-extrabold text-slate-900 dark:text-slate-100 mt-1">100% Verified</p>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">SOX Audit Trail Active</p>
                     </div>
 
-                    <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+                    <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700">
                       <span className="text-[10px] font-bold uppercase text-amber-700">Decision SLA</span>
-                      <p className="text-sm font-extrabold text-slate-900 mt-1">0.4 Seconds</p>
-                      <p className="text-[11px] text-slate-500 mt-0.5">Event Bus Latency</p>
+                      <p className="text-sm font-extrabold text-slate-900 dark:text-slate-100 mt-1">0.4 Seconds</p>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">Event Bus Latency</p>
                     </div>
                   </div>
                 </div>
@@ -627,9 +627,9 @@ function DepartmentsContent() {
             )}
 
             {/* LIVE WIDGET: RECENT ACTIVITIES & TELEMETRY STREAM */}
-            <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-4">
+            <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-xs space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-2">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-2">
                   <Activity className="w-4 h-4 text-emerald-700" />
                   <span>Recent {currentDept.shortName} Activities & Stream</span>
                 </h3>
@@ -641,15 +641,15 @@ function DepartmentsContent() {
                   <p className="text-xs text-slate-400 italic py-4 text-center">No recent activities logged yet.</p>
                 ) : (
                   recentActivities.map((act: any, idx: number) => (
-                    <div key={idx} className="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between gap-3 text-xs">
+                    <div key={idx} className="p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 flex items-center justify-between gap-3 text-xs">
                       <div className="flex items-center gap-3">
                         <span className="w-2 h-2 rounded-full bg-emerald-600 shrink-0 animate-pulse" />
                         <div>
-                          <p className="font-semibold text-slate-900">{act.text}</p>
-                          <span className="text-[10px] text-slate-500">{act.time}</span>
+                          <p className="font-semibold text-slate-900 dark:text-slate-100">{act.text}</p>
+                          <span className="text-[10px] text-slate-500 dark:text-slate-400">{act.time}</span>
                         </div>
                       </div>
-                      <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border shrink-0 ${act.badgeClass || 'bg-slate-100 text-slate-700 border-slate-200'}`}>
+                      <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border shrink-0 ${act.badgeClass || 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'}`}>
                         {act.badge || 'EXEC'}
                       </span>
                     </div>
@@ -661,8 +661,8 @@ function DepartmentsContent() {
             {/* LIVE WIDGET: AI OPERATIONAL ALERTS & ATTENTION QUEUE */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Operational Alerts */}
-              <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-3">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-2">
+              <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-xs space-y-3">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-2">
                   <Bell className="w-4 h-4 text-cyan-700" />
                   <span>AI Operational Alerts</span>
                 </h3>
@@ -672,12 +672,12 @@ function DepartmentsContent() {
                     <p className="text-xs text-slate-400 italic py-2">No active alerts.</p>
                   ) : (
                     alerts.map((alt: any, idx: number) => (
-                      <div key={idx} className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-0.5">
+                      <div key={idx} className="p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 space-y-0.5">
                         <div className="flex items-center gap-2">
                           <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                          <h4 className="text-xs font-bold text-slate-900">{alt.title}</h4>
+                          <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100">{alt.title}</h4>
                         </div>
-                        <p className="text-[11px] text-slate-500 pl-5.5">{alt.desc}</p>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 pl-5.5">{alt.desc}</p>
                       </div>
                     ))
                   )}
@@ -685,8 +685,8 @@ function DepartmentsContent() {
               </div>
 
               {/* Attention Queue */}
-              <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-3">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-2">
+              <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-xs space-y-3">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-2">
                   <AlertCircle className="w-4 h-4 text-amber-700" />
                   <span>Attention Queue ({attentionItems.length})</span>
                 </h3>
@@ -717,42 +717,42 @@ function DepartmentsContent() {
           <div className="lg:col-span-4 space-y-6">
 
             {/* CHECKLIST CARD */}
-            <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-4">
+            <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-sm space-y-4">
               <div>
-                <h3 className="text-sm font-bold text-slate-900 flex items-center justify-between">
+                <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center justify-between">
                   <span>{currentDept.shortName} Setup Guide</span>
                   <span className="text-[11px] font-mono text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
                     {completedTasksCount}/{currentChecklist.length} Complete
                   </span>
                 </h3>
-                <p className="text-[11px] text-slate-500 mt-0.5">
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
                   Complete the department configuration tasks below.
                 </p>
               </div>
 
               {/* Progress Bar */}
               <div className="space-y-1">
-                <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden border border-slate-200">
+                <div className="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden border border-slate-200 dark:border-slate-700">
                   <div
                     className="bg-emerald-600 h-full transition-all duration-300"
                     style={{ width: `${currentChecklist.length > 0 ? (completedTasksCount / currentChecklist.length) * 100 : 0}%` }}
                   />
                 </div>
-                <p className="text-[10px] text-slate-500 text-right font-medium">
+                <p className="text-[10px] text-slate-500 dark:text-slate-400 text-right font-medium">
                   Setup progress {completedTasksCount} to {currentChecklist.length} tasks complete
                 </p>
               </div>
 
               {/* Interactive Checklist */}
-              <div className="space-y-2 border-t border-slate-100 pt-3">
+              <div className="space-y-2 border-t border-slate-100 dark:border-slate-800 pt-3">
                 {currentChecklist.map((task: any) => (
                   <button
                     key={task.id}
                     onClick={() => toggleChecklistItem(task.id)}
                     className={`w-full p-2.5 rounded-xl text-left text-xs transition flex items-center gap-2.5 ${
                       task.completed
-                        ? "bg-slate-50 text-slate-400 line-through border border-slate-200/60"
-                        : "bg-white text-slate-800 hover:bg-slate-50 border border-slate-200 shadow-2xs"
+                        ? "bg-slate-50 dark:bg-slate-950 text-slate-400 line-through border border-slate-200/60"
+                        : "bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 hover:bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 shadow-2xs"
                     }`}
                   >
                     {task.completed ? (
@@ -767,33 +767,33 @@ function DepartmentsContent() {
             </div>
 
             {/* AI SUPPORT CARD */}
-            <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-3">
+            <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-sm space-y-3">
               <div>
-                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
                   Department AI Support
                 </h3>
-                <p className="text-[11px] text-slate-500 mt-0.5">
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
                   Reach out for assistance or trigger automated reviews.
                 </p>
               </div>
 
               <div className="grid grid-cols-2 gap-2">
-                <button className="p-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-800 text-xs font-bold flex items-center justify-center gap-2 transition">
+                <button className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 hover:bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold flex items-center justify-center gap-2 transition">
                   <Video className="w-3.5 h-3.5 text-indigo-600" />
                   <span>Book Demo</span>
                 </button>
 
-                <button className="p-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-800 text-xs font-bold flex items-center justify-center gap-2 transition">
+                <button className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 hover:bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold flex items-center justify-center gap-2 transition">
                   <MessageSquare className="w-3.5 h-3.5 text-emerald-600" />
                   <span>Live Chat</span>
                 </button>
 
-                <button className="p-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-800 text-xs font-bold flex items-center justify-center gap-2 transition">
+                <button className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 hover:bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold flex items-center justify-center gap-2 transition">
                   <Mail className="w-3.5 h-3.5 text-cyan-600" />
                   <span>Email Us</span>
                 </button>
 
-                <button className="p-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-800 text-xs font-bold flex items-center justify-center gap-2 transition">
+                <button className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 hover:bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold flex items-center justify-center gap-2 transition">
                   <HelpCircle className="w-3.5 h-3.5 text-purple-600" />
                   <span>Help Center</span>
                 </button>
@@ -811,7 +811,7 @@ function DepartmentsContent() {
               </p>
               <button
                 onClick={() => setIsDispatchModalOpen(true)}
-                className="px-4 py-2 rounded-xl bg-white text-emerald-900 hover:bg-slate-100 text-xs font-extrabold shadow-sm transition active:scale-95 flex items-center gap-1.5"
+                className="px-4 py-2 rounded-xl bg-white dark:bg-slate-900 text-emerald-900 hover:bg-slate-100 dark:bg-slate-800 text-xs font-extrabold shadow-sm transition active:scale-95 flex items-center gap-1.5"
               >
                 <span>Get Invite Link</span>
                 <ArrowUpRight className="w-4 h-4 text-emerald-900" />
@@ -827,10 +827,10 @@ function DepartmentsContent() {
         <div className="space-y-6">
           {selectedDeptId === "finance" && <ChartOfAccountsSheet />}
           {selectedDeptId !== "finance" && (
-            <div className="p-8 rounded-2xl border border-slate-200 bg-white shadow-xs text-center space-y-3">
+            <div className="p-8 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-xs text-center space-y-3">
               <FileSpreadsheet className="w-10 h-10 text-emerald-600 mx-auto" />
-              <h3 className="text-lg font-bold text-slate-900">{currentDept.name} Domain Tools</h3>
-              <p className="text-xs text-slate-500 max-w-md mx-auto">
+              <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">{currentDept.name} Domain Tools</h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto">
                 Interactive domain workspace tools, state memory, and action triggers for {currentDept.name}.
               </p>
             </div>
@@ -842,9 +842,9 @@ function DepartmentsContent() {
       {activeTab === "workforce" && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {currentDeptAgents.length === 0 ? (
-            <div className="col-span-full p-10 rounded-2xl border border-dashed border-slate-300 bg-white text-center space-y-3">
+            <div className="col-span-full p-10 rounded-2xl border border-dashed border-slate-300 bg-white dark:bg-slate-900 text-center space-y-3">
               <Bot className="w-10 h-10 text-slate-400 mx-auto" />
-              <h4 className="text-sm font-bold text-slate-700">No autonomous workers assigned yet</h4>
+              <h4 className="text-sm font-bold text-slate-700 dark:text-slate-300">No autonomous workers assigned yet</h4>
               <Link
                 href={`/hire?department=${encodeURIComponent(currentDept.name)}`}
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-semibold shadow-sm transition"
@@ -857,19 +857,19 @@ function DepartmentsContent() {
             currentDeptAgents.map((agent: any) => (
               <div
                 key={agent.id}
-                className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs hover:border-slate-300 transition flex flex-col justify-between"
+                className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-xs hover:border-slate-300 transition flex flex-col justify-between"
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-700 font-bold">
+                  <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-700 dark:text-slate-300 font-bold">
                     <Bot className="w-5 h-5 text-emerald-700" />
                   </div>
                   <div>
-                    <h4 className="text-sm font-bold text-slate-900">{agent.name || "AI Worker"}</h4>
-                    <p className="text-xs text-slate-500 font-medium">{agent.role || "Specialist"}</p>
+                    <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100">{agent.name || "AI Worker"}</h4>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">{agent.role || "Specialist"}</p>
                   </div>
                 </div>
-                <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
-                  <span className="text-slate-500 font-medium">Status: <strong className="text-emerald-700 font-bold">{agent.status || "Idle"}</strong></span>
+                <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
+                  <span className="text-slate-500 dark:text-slate-400 font-medium">Status: <strong className="text-emerald-700 font-bold">{agent.status || "Idle"}</strong></span>
                   <button
                     onClick={() => setSelectedAgentId(agent.id)}
                     className="text-emerald-800 font-bold hover:underline"
@@ -891,11 +891,11 @@ function DepartmentsContent() {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full max-w-lg rounded-3xl border border-slate-200 bg-white p-6 md:p-8 shadow-2xl space-y-5 relative"
+              className="w-full max-w-lg rounded-3xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-6 md:p-8 shadow-2xl space-y-5 relative"
             >
               <button
                 onClick={() => setIsDispatchModalOpen(false)}
-                className="absolute right-5 top-5 p-1.5 rounded-xl bg-slate-100 text-slate-500 hover:text-slate-900 transition"
+                className="absolute right-5 top-5 p-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:text-slate-100 transition"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -905,10 +905,10 @@ function DepartmentsContent() {
                   <DeptIcon className="w-6 h-6" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-slate-900">
+                  <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">
                     Prompt {currentDept.shortName} Workforce
                   </h3>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
                     Dispatch an autonomous objective directly to your AI workers.
                   </p>
                 </div>
@@ -917,12 +917,12 @@ function DepartmentsContent() {
               {dispatchSuccess ? (
                 <div className="p-6 rounded-2xl bg-emerald-50 border border-emerald-200 text-center space-y-2">
                   <CheckCircle2 className="w-10 h-10 text-emerald-600 mx-auto" />
-                  <h4 className="text-sm font-bold text-slate-900">Directive Dispatched Successfully!</h4>
+                  <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100">Directive Dispatched Successfully!</h4>
                 </div>
               ) : (
                 <form onSubmit={handleDispatchDirective} className="space-y-4">
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
                       Department Objective / Prompt
                     </label>
                     <textarea
@@ -931,7 +931,7 @@ function DepartmentsContent() {
                       placeholder={`e.g. Run weekly performance audit and update report...`}
                       value={directivePrompt}
                       onChange={(e) => setDirectivePrompt(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3.5 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-500 transition resize-none"
+                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-2xl p-3.5 text-xs text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:border-emerald-500 transition resize-none"
                     />
                   </div>
 
@@ -939,7 +939,7 @@ function DepartmentsContent() {
                     <button
                       type="button"
                       onClick={() => setIsDispatchModalOpen(false)}
-                      className="px-4 py-2 rounded-xl text-xs font-bold text-slate-500 hover:text-slate-800 transition"
+                      className="px-4 py-2 rounded-xl text-xs font-bold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:text-slate-200 transition"
                     >
                       Cancel
                     </button>
@@ -973,7 +973,7 @@ function DepartmentsContent() {
 
 export default function DepartmentsPage() {
   return (
-    <Suspense fallback={<div className="p-12 text-center text-slate-500 font-medium">Loading Departments...</div>}>
+    <Suspense fallback={<div className="p-12 text-center text-slate-500 dark:text-slate-400 font-medium">Loading Departments...</div>}>
       <DepartmentsContent />
     </Suspense>
   );

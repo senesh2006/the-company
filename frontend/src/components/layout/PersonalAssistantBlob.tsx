@@ -100,13 +100,13 @@ export function PersonalAssistantBlob() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.9 }}
             transition={{ type: "spring", stiffness: 400, damping: 30 }}
-            className="fixed bottom-24 right-6 z-[60] w-[380px] max-w-[calc(100vw-2rem)] bg-white rounded-3xl shadow-2xl border border-slate-200/80 overflow-hidden flex flex-col"
+            className="fixed bottom-24 right-6 z-[60] w-[380px] max-w-[calc(100vw-2rem)] bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200/80 overflow-hidden flex flex-col"
             style={{ maxHeight: "min(560px, calc(100vh - 160px))" }}
           >
             {/* Header */}
             <div className="px-5 py-4 bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-500 text-white flex items-center justify-between shrink-0">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center border border-white/30">
+                <div className="w-9 h-9 rounded-2xl bg-white dark:bg-slate-900/20 backdrop-blur-sm flex items-center justify-center border border-white/30">
                   <Sparkles className="w-5 h-5 text-white" />
                 </div>
                 <div>
@@ -118,7 +118,7 @@ export function PersonalAssistantBlob() {
               </div>
               <button
                 onClick={() => setIsOpen(false)}
-                className="p-1.5 rounded-xl hover:bg-white/20 transition-colors cursor-pointer"
+                className="p-1.5 rounded-xl hover:bg-white dark:bg-slate-900/20 transition-colors cursor-pointer"
               >
                 <ChevronDown className="w-5 h-5" />
               </button>
@@ -135,7 +135,7 @@ export function PersonalAssistantBlob() {
                     className={`max-w-[85%] px-3.5 py-2.5 rounded-2xl text-xs leading-relaxed ${
                       msg.role === "user"
                         ? "bg-emerald-600 text-white rounded-br-lg"
-                        : "bg-white text-slate-800 border border-slate-200 rounded-bl-lg shadow-sm"
+                        : "bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-bl-lg shadow-sm"
                     }`}
                   >
                     {msg.content}
@@ -145,7 +145,7 @@ export function PersonalAssistantBlob() {
 
               {isLoading && (
                 <div className="flex justify-start">
-                  <div className="bg-white text-slate-500 border border-slate-200 rounded-2xl rounded-bl-lg px-4 py-3 shadow-sm flex items-center gap-2">
+                  <div className="bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700 rounded-2xl rounded-bl-lg px-4 py-3 shadow-sm flex items-center gap-2">
                     <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-600" />
                     <span className="text-xs font-medium">Dispatching to team...</span>
                   </div>
@@ -157,7 +157,7 @@ export function PersonalAssistantBlob() {
             {/* Input */}
             <form
               onSubmit={handleSubmit}
-              className="px-4 py-3 bg-white border-t border-slate-100 flex items-end gap-2 shrink-0"
+              className="px-4 py-3 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 flex items-end gap-2 shrink-0"
             >
               <textarea
                 ref={inputRef}
@@ -166,7 +166,7 @@ export function PersonalAssistantBlob() {
                 onKeyDown={handleKeyDown}
                 placeholder="Tell me what you need..."
                 rows={1}
-                className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-300 resize-none font-medium max-h-20"
+                className="flex-1 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5 text-xs text-slate-800 dark:text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-300 resize-none font-medium max-h-20"
                 style={{ minHeight: 38 }}
               />
               <button

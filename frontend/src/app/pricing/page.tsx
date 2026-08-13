@@ -75,10 +75,10 @@ export default function PricingPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
           >
-            <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-slate-900 mb-4">
+            <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-slate-900 dark:text-slate-100 mb-4">
               Scale Your <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-indigo-600">Autonomous Workforce</span>
             </h1>
-            <p className="text-lg text-slate-500 max-w-2xl mx-auto">
+            <p className="text-lg text-slate-500 dark:text-slate-400 max-w-2xl mx-auto">
               Choose the perfect plan to unleash AI agents across your organization. Simple, transparent pricing that grows with you.
             </p>
           </motion.div>
@@ -89,14 +89,14 @@ export default function PricingPage() {
             transition={{ delay: 0.2, duration: 0.5 }}
             className="flex items-center justify-center gap-3 mt-8"
           >
-            <span className={`text-sm font-semibold ${!isAnnual ? "text-slate-900" : "text-slate-500"}`}>Monthly</span>
+            <span className={`text-sm font-semibold ${!isAnnual ? "text-slate-900 dark:text-slate-100" : "text-slate-500 dark:text-slate-400"}`}>Monthly</span>
             <button 
               onClick={() => setIsAnnual(!isAnnual)}
               className="relative inline-flex h-7 w-14 items-center rounded-full bg-slate-200 transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
             >
-              <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition-transform ${isAnnual ? "translate-x-8 bg-emerald-500" : "translate-x-1"}`} />
+              <span className={`inline-block h-5 w-5 transform rounded-full bg-white dark:bg-slate-900 shadow-sm transition-transform ${isAnnual ? "translate-x-8 bg-emerald-500" : "translate-x-1"}`} />
             </button>
-            <span className={`text-sm font-semibold ${isAnnual ? "text-slate-900" : "text-slate-500"}`}>
+            <span className={`text-sm font-semibold ${isAnnual ? "text-slate-900 dark:text-slate-100" : "text-slate-500 dark:text-slate-400"}`}>
               Annually <span className="text-[10px] font-bold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full ml-1">SAVE 20%</span>
             </span>
           </motion.div>
@@ -109,10 +109,10 @@ export default function PricingPage() {
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 * (index + 1), duration: 0.6 }}
-              className={`relative bg-white rounded-3xl p-8 flex flex-col h-full border ${
+              className={`relative bg-white dark:bg-slate-900 rounded-3xl p-8 flex flex-col h-full border ${
                 tier.popular 
                   ? "border-indigo-500 shadow-2xl shadow-indigo-500/10 scale-105 z-10" 
-                  : "border-slate-200 shadow-lg shadow-slate-200/50"
+                  : "border-slate-200 dark:border-slate-700 shadow-lg shadow-slate-200/50"
               }`}
             >
               {tier.popular && (
@@ -124,16 +124,16 @@ export default function PricingPage() {
               )}
 
               <div className="mb-6">
-                <div className="w-12 h-12 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center mb-4 shadow-sm">
+                <div className="w-12 h-12 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 flex items-center justify-center mb-4 shadow-sm">
                   {tier.icon}
                 </div>
-                <h3 className="text-2xl font-bold text-slate-900">{tier.name}</h3>
-                <p className="text-sm text-slate-500 mt-2 line-clamp-2 h-10">{tier.description}</p>
+                <h3 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{tier.name}</h3>
+                <p className="text-sm text-slate-500 dark:text-slate-400 mt-2 line-clamp-2 h-10">{tier.description}</p>
               </div>
 
               <div className="mb-8">
                 <div className="flex items-end gap-1">
-                  <span className="text-4xl font-black text-slate-900">
+                  <span className="text-4xl font-black text-slate-900 dark:text-slate-100">
                     {tier.price !== "Custom" && isAnnual ? `$${Math.round(parseInt(tier.price.replace('$', '')) * 0.8)}` : tier.price}
                   </span>
                   {tier.price !== "Custom" && (
@@ -151,7 +151,7 @@ export default function PricingPage() {
                     <div className="w-5 h-5 rounded-full bg-emerald-50 flex items-center justify-center shrink-0 mt-0.5">
                       <Check className="w-3 h-3 text-emerald-600" />
                     </div>
-                    <span className="text-sm text-slate-700 font-medium">{feature}</span>
+                    <span className="text-sm text-slate-700 dark:text-slate-300 font-medium">{feature}</span>
                   </div>
                 ))}
               </div>

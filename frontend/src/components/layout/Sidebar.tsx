@@ -99,7 +99,7 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
               <div className="relative flex items-center gap-3">
                 <Icon className={cn(
                   "w-4 h-4 transition-colors",
-                  isActive ? "text-emerald-400" : "text-slate-400 group-hover:text-slate-600"
+                  isActive ? "text-emerald-400" : "text-slate-400 group-hover:text-slate-600 dark:text-slate-400"
                 )} />
                 <span className={cn(isActive && "text-white")}>{item.name}</span>
               </div>
@@ -109,7 +109,7 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
                     "text-[10px] font-bold px-2 py-0.5 rounded-full border transition-colors",
                     isActive
                       ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
-                      : item.badgeColor || "bg-slate-100 text-slate-600 border-slate-200"
+                      : item.badgeColor || "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700"
                   )}>
                     {item.badge}
                   </span>
@@ -137,7 +137,7 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
             whileTap={{ scale: 0.95 }}
             transition={{ type: "spring", stiffness: 400, damping: 25 }}
           >
-            <div className="w-full h-full bg-white rounded-[11px] flex items-center justify-center">
+            <div className="w-full h-full bg-white dark:bg-slate-900 rounded-[11px] flex items-center justify-center">
               <Sparkles className="w-5 h-5 text-emerald-600" />
             </div>
           </motion.div>
@@ -148,7 +148,7 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
                 v6.0
               </span>
             </h1>
-            <p className="text-[11px] text-slate-500 font-medium">Autonomous Workforce</p>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">Autonomous Workforce</p>
           </div>
         </Link>
       </div>
@@ -178,7 +178,7 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
             <div className="flex items-center gap-3 min-w-0">
               <div className="relative shrink-0">
                 <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-500 to-emerald-400 p-[1px]">
-                  <div className="w-full h-full bg-white rounded-[11px] flex items-center justify-center text-xs font-bold text-slate-700">
+                  <div className="w-full h-full bg-white dark:bg-slate-900 rounded-[11px] flex items-center justify-center text-xs font-bold text-slate-700 dark:text-slate-300">
                     {userInitials}
                   </div>
                 </div>
@@ -245,7 +245,7 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-emerald-600 via-teal-500 to-cyan-500 p-[1px]">
-                    <div className="w-full h-full bg-white rounded-md flex items-center justify-center">
+                    <div className="w-full h-full bg-white dark:bg-slate-900 rounded-md flex items-center justify-center">
                       <Sparkles className="w-4 h-4 text-emerald-600" />
                     </div>
                   </div>
@@ -253,7 +253,7 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
                 </div>
                 <button
                   onClick={onMobileClose}
-                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100"
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:bg-slate-800"
                 >
                   <X className="w-5 h-5" />
                 </button>
