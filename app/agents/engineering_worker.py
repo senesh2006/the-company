@@ -105,7 +105,14 @@ def act(state: EngineeringWorkerState):
         
     react_agent = create_react_agent(llm, tools, **kwargs)
     
-    messages = [HumanMessage(content=f"Execute this technical plan:\n{state['plan']}")]
+    messages = [HumanMessage(content=(
+        f"Assigned Technical Mandate: {state['task'].description}\n\n"
+        f"Implementation Plan:\n{state['plan']}\n\n"
+        f"DIRECTIVE:\n"
+        f"1. Actively execute all relevant tool calls to implement, inspect, and verify code.\n"
+        f"2. DO NOT output a description of calling tools. Directly invoke the tools.\n"
+        f"3. Synthesize the results into a clear, complete engineering deliverable."
+    ))]
     res = react_agent.invoke({"messages": messages}, config={"recursion_limit": 50})
     
     return {"messages": [res["messages"][-1]], "final_output": res["messages"][-1].content}
@@ -224,19 +231,29 @@ def make_engineering_worker_node(agent_data: dict):
         try:
             final_state = engineering_worker_app.invoke(worker_state)
             
-            final_output = final_state["final_output"]
-            status = final_state["status"]
-            confidence = final_state["confidence"]
-            side_effects = final_state["side_effects"]
-            
+            observations = final_state.get("observations", "")
+            plan_text = final_state.get("plan", "")
+
+            if "<thought>" not in final_output and "<think>" not in final_output and "### Thought" not in final_output:
+                thought_parts = []
+                if observations:
+                    thought_parts.append(f"1. Technical Analysis & Architecture Scope:\n{observations}")
+                if plan_text:
+                    thought_parts.append(f"2. Implementation & Testing Plan:\n{plan_text}")
+                thought_parts.append(f"3. Quality & Regression Verification:\nConfidence: {confidence:.2f} | Side Effects: {', '.join(side_effects) if side_effects else 'None'}")
+                thought_block = f"<thought>\n" + "\n\n".join(thought_parts) + f"\n</thought>"
+                full_deliverable = f"{thought_block}\n\n{final_output}"
+            else:
+                full_deliverable = final_output
+
             reasoning_summary = f"Confidence: {confidence}\nSide Effects: {side_effects}"
-            
-            task_service.update_task_result(task.id, final_output)
+
+            task_service.update_task_result(task.id, full_deliverable)
             task_service.update_task_status(task.id, status)
-            
+
             updated_task = task.copy()
             updated_task.status = status if status in ["completed", "failed"] else "completed" 
-            updated_task.result = final_output
+            updated_task.result = full_deliverable
             
         except Exception as e:
             import traceback

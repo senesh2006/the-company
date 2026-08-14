@@ -559,22 +559,25 @@ export default function TasksPage() {
                   )}
                 </div>
 
-                {selectedTask.statusType !== "completed" && (
+                {/* If task has execution result, MarkdownRenderer extracts and displays the real agent thinking trace */}
+                {selectedTask.rawTask?.result ? (
+                  <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 overflow-x-auto leading-relaxed shadow-inner max-h-[500px] select-text">
+                    <MarkdownRenderer content={selectedTask.rawTask.result} />
+                  </div>
+                ) : selectedTask.statusType === "in_progress" ? (
                   <ThinkingProcess
                     isThinking={true}
                     title={`${selectedTask.agentName || "AI Worker"} is Reasoning`}
-                    steps={[
-                      "Evaluating mandate context and organizational policies",
-                      "Analyzing execution complexity & Maker-Checker safety criteria",
-                      "Executing specialist tool calls & drafting verified deliverables",
-                    ]}
+                    statusMessage={`Actively processing mandate: "${selectedTask.title}"`}
                     defaultExpanded={true}
                   />
-                )}
-
-                {selectedTask.rawTask?.result ? (
-                  <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 overflow-x-auto leading-relaxed shadow-inner max-h-[420px] select-text">
-                    <MarkdownRenderer content={selectedTask.rawTask.result} />
+                ) : selectedTask.statusType === "blocked" ? (
+                  <div className="p-6 rounded-2xl bg-rose-50/70 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/60 text-center text-rose-800 dark:text-rose-300 space-y-1">
+                    <AlertTriangle className="w-5 h-5 mx-auto text-rose-600 mb-1" />
+                    <p className="text-xs font-bold">Execution Paused: Governance Review Required</p>
+                    <p className="text-[11px] text-rose-600 dark:text-rose-400">
+                      Task reached human review gate or encountered validation error. Check Approvals page.
+                    </p>
                   </div>
                 ) : selectedTask.statusType === "completed" ? (
                   <div className="p-6 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-center text-slate-500 dark:text-slate-400 space-y-1">
@@ -586,7 +589,17 @@ export default function TasksPage() {
                       Deliverables recorded in audit trail.
                     </p>
                   </div>
-                ) : null}
+                ) : (
+                  <div className="p-6 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-center text-slate-500 dark:text-slate-400 space-y-1">
+                    <Clock className="w-5 h-5 mx-auto text-slate-400 mb-1" />
+                    <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                      Task queued in dispatch pipeline.
+                    </p>
+                    <p className="text-[11px] text-slate-400">
+                      Assigned to {selectedTask.agentName}. Execution will begin shortly.
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
 

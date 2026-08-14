@@ -280,7 +280,7 @@ class SocialMonitorTool(BaseTool):
         )
 
 class SEOTrackerInput(BaseModel):
-    action: str = Field(description="'audit_keywords' or 'technical_audit'")
+    action: str = Field(default="audit_keywords", description="'audit_keywords' or 'technical_audit'")
     target_url: Optional[str] = Field(None, description="The domain or path to audit")
 
 class SEOTrackerTool(BaseTool):
@@ -289,16 +289,27 @@ class SEOTrackerTool(BaseTool):
     args_schema = SEOTrackerInput
     cost_estimate = 0.02
 
-    def _run(self, action: str, target_url: str = None) -> str:
+    def _run(self, action: str = "audit_keywords", target_url: str = None) -> str:
+        act_clean = (action or "audit_keywords").lower().strip().replace("-", "_")
+        if "tech" in act_clean:
+            act_clean = "technical_audit"
+        elif "keyword" in act_clean or "audit" in act_clean:
+            act_clean = "audit_keywords"
+
         default_res = json.dumps({
-            "action": action,
-            "target": target_url or "global",
-            "keyword_movement": {"top_3": "+5", "top_10": "-2"},
-            "ai_prompt_visibility": "Medium - 45% share of voice",
-            "technical_issues": ["Missing H1 on /about", "Slow LCP on /pricing"],
-            "recommendation": "Fix LCP on pricing page immediately and update H1 tags to capture AI-prompt semantic intent."
+            "action": act_clean,
+            "target": target_url or "https://www.example.com",
+            "keyword_movement": {"top_3": "+5 positions", "top_10": "-2 positions", "new_ranked_keywords": 18},
+            "ai_prompt_visibility": "Medium-High - 48% share of voice in LLM answer engines (Perplexity, ChatGPT Search)",
+            "technical_issues": ["Missing H1 on /about", "Slow LCP on /pricing (3.4s)", "Unoptimized meta description on /features"],
+            "growth_trend_analysis": "Organic search visibility up +14% MoM driven by bottom-of-funnel comparative queries.",
+            "strategic_recommendations": [
+                "Optimize Core Web Vitals on /pricing to reduce bounce rate",
+                "Expand AEO (Answer Engine Optimization) content for high-intent prompt queries",
+                "Update H1 and structured schema on /about and /features"
+            ]
         }, indent=2)
-        return _marketing_mcp_call("seo", action, {"target": target_url}, default_res)
+        return _marketing_mcp_call("seo", act_clean, {"target": target_url}, default_res)
 
 class PaidMediaInput(BaseModel):
     action: str = Field(description="'pull_metrics' or 'reallocate_budget'")
@@ -352,7 +363,31 @@ class MerchFulfillmentTool(BaseTool):
             "new_redemptions": 5,
             "status": "Pending Human Approval via WhatsApp before dispatching to vendor."
         }, indent=2)
-        return _marketing_mcp_call("merch", action, {}, default_res)
+class RenderUIInput(BaseModel):
+    component: str = Field(description="Component name: 'StatCard', 'LineChart', 'BarChart', 'Table', 'FunnelChart', or 'PieChart'")
+    title: str = Field(description="Descriptive title headline for the interactive visual card")
+    props: Dict[str, Any] = Field(description="Component props matching the component's specification (e.g. { label, value, delta } for StatCard)")
+    narration: str = Field(description="Concise 1-2 sentence analytical insight or takeaway displayed beneath the component")
+
+class RenderUITool(BaseTool):
+    name = "render_ui"
+    description = (
+        "Renders an interactive live UI component for the user on the dashboard. "
+        "Use 'StatCard' for single metrics/KPIs, 'LineChart' for continuous time-series trends, "
+        "'BarChart' for categorical comparisons, 'Table' for ranked lists or tabular data, "
+        "'FunnelChart' for multi-stage conversion funnels, and 'PieChart' for distribution breakdown."
+    )
+    args_schema = RenderUIInput
+    cost_estimate = 0.001
+
+    def _run(self, component: str, title: str, props: Dict[str, Any], narration: str) -> str:
+        payload = {
+            "component": component,
+            "title": title,
+            "props": props,
+            "narration": narration
+        }
+        return f"```agent-ui\n{json.dumps(payload, indent=2)}\n```"
 
 def register_marketing_tools(business_id: str, agent_id: str = None, task_id: str = None):
     """
@@ -382,7 +417,8 @@ def register_marketing_tools(business_id: str, agent_id: str = None, task_id: st
         SEOTrackerTool(),
         PaidMediaTool(),
         EventScreenerTool(),
-        MerchFulfillmentTool()
+        MerchFulfillmentTool(),
+        RenderUITool()
     ]
     
     # Inject metadata for cost tracking

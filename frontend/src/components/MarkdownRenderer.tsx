@@ -1,7 +1,9 @@
 "use client";
 
-import { useMemo } from "react";
+import React, { useMemo } from "react";
 import { ThinkingProcess, extractThoughts } from "@/components/ThinkingProcess";
+import { DynamicUI } from "@/components/agent-ui/DynamicUI";
+import { parseAgentUIPayload, AgentUIPayload } from "@/lib/agent-ui/schema";
 
 interface MarkdownRendererProps {
   content: string;
@@ -9,10 +11,69 @@ interface MarkdownRendererProps {
   showThoughts?: boolean;
 }
 
+type ContentSegment =
+  | { type: "markdown"; content: string }
+  | { type: "agent-ui"; payload: AgentUIPayload };
+
 /**
- * Lightweight markdown formatter for agent output with built-in ChatGPT-style ThinkingProcess display.
- * Converts thoughts, markdown tables, ASCII tables, bold, italic, code blocks, and lists
- * into clean HTML.
+ * Parses content into markdown pieces and validated Dynamic UI payloads.
+ */
+function extractDynamicUI(text: string): ContentSegment[] {
+  if (!text) return [];
+
+  // Match:
+  // 1. <agent-ui>...</agent-ui>
+  // 2. ```(agent-ui|json:agent-ui|ui)\n...\n```
+  // 3. ```json\n...\n``` if it contains a valid AgentUIPayload
+  const blockRegex = /(?:<agent-ui>([\s\S]*?)<\/agent-ui>|```(?:agent-ui|json:agent-ui|ui)\n([\s\S]*?)```|```json\n([\s\S]*?)```)/gi;
+
+  const segments: ContentSegment[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = blockRegex.exec(text)) !== null) {
+    const preText = text.slice(lastIndex, match.index);
+    if (preText.trim()) {
+      segments.push({ type: "markdown", content: preText });
+    }
+
+    const rawJson = (match[1] || match[2] || match[3] || "").trim();
+    const parsed = parseAgentUIPayload(rawJson);
+
+    // If it's a valid agent UI payload, render as DynamicUI
+    // If it was explicitly marked as agent-ui / <agent-ui> but failed validation, we still pass it to DynamicUI so it displays the fallback error card
+    if (parsed.success) {
+      segments.push({ type: "agent-ui", payload: parsed.data });
+    } else if (match[1] || match[2]) {
+      // Explicitly tagged as agent-ui, so render validation fallback
+      segments.push({
+        type: "agent-ui",
+        payload: {
+          component: "StatCard",
+          title: "Invalid UI Payload",
+          props: { label: "Error", value: "Invalid" },
+          narration: parsed.error,
+        },
+      });
+    } else {
+      // Ordinary json code block that wasn't an agent UI payload; keep as markdown
+      segments.push({ type: "markdown", content: match[0] });
+    }
+
+    lastIndex = match.index + match[0].length;
+  }
+
+  const remaining = text.slice(lastIndex);
+  if (remaining.trim() || segments.length === 0) {
+    segments.push({ type: "markdown", content: remaining });
+  }
+
+  return segments;
+}
+
+/**
+ * Lightweight markdown formatter for agent output with built-in ChatGPT-style ThinkingProcess display
+ * and Generative Dynamic UI rendering.
  */
 export function MarkdownRenderer({ content, className = "", showThoughts = true }: MarkdownRendererProps) {
   const { thoughts, cleanContent } = useMemo(() => {
@@ -20,7 +81,9 @@ export function MarkdownRenderer({ content, className = "", showThoughts = true 
     return extractThoughts(content);
   }, [content, showThoughts]);
 
-  const html = useMemo(() => formatMarkdown(cleanContent || content), [cleanContent, content]);
+  const segments = useMemo(() => {
+    return extractDynamicUI(cleanContent || content);
+  }, [cleanContent, content]);
 
   return (
     <div className="space-y-3">
@@ -31,12 +94,22 @@ export function MarkdownRenderer({ content, className = "", showThoughts = true 
           defaultExpanded={false}
         />
       )}
-      {html ? (
-        <div
-          className={`prose prose-sm max-w-none prose-slate ${className}`}
-          dangerouslySetInnerHTML={{ __html: html }}
-        />
-      ) : null}
+      {segments.map((segment, idx) => {
+        if (segment.type === "agent-ui") {
+          return <DynamicUI key={idx} payload={segment.payload} />;
+        }
+
+        const html = formatMarkdown(segment.content);
+        if (!html) return null;
+
+        return (
+          <div
+            key={idx}
+            className={`prose prose-sm max-w-none prose-slate ${className}`}
+            dangerouslySetInnerHTML={{ __html: html }}
+          />
+        );
+      })}
     </div>
   );
 }
@@ -79,7 +152,6 @@ function formatMarkdown(content: string): string {
   processed = convertPipeTableBlocks(processed);
 
   // Convert simple ASCII tables (lines with at least 3 columns separated by 2+ spaces).
-  // Avoid lines that already contain pipes (handled above) or that look like single sentences.
   processed = processed.replace(
     /((?:^\s*\S+(?:\s{2,}\S+){2,}\s*$(?:\n?))+)/gm,
     (block: string) => {
@@ -145,7 +217,6 @@ function formatMarkdown(content: string): string {
 
 function isPipeTableLine(line: string): boolean {
   const trimmed = line.trim();
-  // Detect any line with 2+ pipe delimiters that yields at least 2 non-empty cells.
   const pipeCount = (trimmed.match(/\|/g) || []).length;
   if (pipeCount < 2) return false;
   const cells = splitPipeCells(trimmed);
@@ -179,7 +250,6 @@ function convertPipeTableBlocks(content: string): string {
     const line = lines[i];
 
     if (isPipeTableLine(line)) {
-      // Gather the whole table block (consecutive table-like lines).
       const blockLines: string[] = [line];
       let j = i + 1;
       while (j < lines.length && isPipeTableLine(lines[j])) {
@@ -187,7 +257,6 @@ function convertPipeTableBlocks(content: string): string {
         j++;
       }
 
-      // Convert even single-row pipe tables so clean rows like "A | B | C" render nicely.
       if (blockLines.length >= 1) {
         const tableHtml = convertPipeTableBlock(blockLines);
         result.push(tableHtml);
@@ -216,11 +285,9 @@ function convertPipeTableBlock(lines: string[]): string {
     headers = rows[0].map((c) => c.trim());
     body = rows.slice(2).filter((r) => !isEmptyRow(r));
   } else {
-    // For a single-row block without a header separator, use generic column headers.
     headers = rows[0].map((c) => c.trim());
     body = rows.slice(1).filter((r) => !isEmptyRow(r));
     if (body.length === 0) {
-      // Single data row: turn the row itself into the body and use generic headers.
       headers = Array.from({ length: maxCols }, (_, idx) => `Col ${idx + 1}`);
       body = [rows[0].map((c) => c.trim())];
     }

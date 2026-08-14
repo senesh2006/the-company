@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Bot, Send, X, Sparkles, Loader2, ChevronDown } from "lucide-react";
 import { useCreateTask } from "@/lib/queries";
 import { AssistantAvatar } from "@/components/ui/AssistantAvatar";
+import { MarkdownRenderer } from "@/components/MarkdownRenderer";
 
 interface Message {
   id: string;
@@ -139,7 +140,11 @@ export function PersonalAssistantBlob() {
                         : "bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-bl-lg shadow-sm"
                     }`}
                   >
-                    {msg.content}
+                    {msg.role === "assistant" ? (
+                      <MarkdownRenderer content={msg.content} />
+                    ) : (
+                      msg.content
+                    )}
                   </div>
                 </div>
               ))}

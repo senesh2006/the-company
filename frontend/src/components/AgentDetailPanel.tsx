@@ -6,7 +6,7 @@ import { useAgent, useUpdateAgentStatus, useInjectInstruction, useTasks } from '
 import { api, TrustTier } from '@/lib/api';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Play, Pause, Power, Terminal, Send, ShieldCheck, ArrowUpRight, ArrowDownRight, BrainCircuit, Sparkles, Brain } from 'lucide-react';
-import { ThinkingProcess } from '@/components/ThinkingProcess';
+import { ThinkingProcess, extractThoughts } from '@/components/ThinkingProcess';
 
 export function AgentDetailPanel() {
   const { selectedAgentId, setSelectedAgentId } = useAppStore();
@@ -152,20 +152,23 @@ export function AgentDetailPanel() {
                   <ThinkingProcess
                     isThinking={true}
                     title={`${agent.name} is Reasoning`}
-                    steps={[
-                      "Parsing assigned mandate objectives & constraints",
-                      "Evaluating company memory & financial/operational policies",
-                      "Formulating multi-step execution path with Maker-Checker guardrails",
-                    ]}
+                    statusMessage={
+                      activeWorkerTask
+                        ? `Processing mandate: "${activeWorkerTask.description}"`
+                        : `${agent.name} is formulating reasoning and tool execution strategy...`
+                    }
+                    model={agent.model || undefined}
                     defaultExpanded={true}
                   />
                 ) : latestWorkerTask ? (
                   <ThinkingProcess
                     thoughtContent={
-                      latestWorkerTask.result ||
-                      `Worker completed latest assigned mandate:\n"${latestWorkerTask.description}"\nVerification: Maker-Checker compliance verified with zero policy violations.`
+                      latestWorkerTask.result
+                        ? (extractThoughts(latestWorkerTask.result).thoughts || latestWorkerTask.result)
+                        : `Worker finished assigned mandate: "${latestWorkerTask.description}". Verification: Maker-Checker compliance verified.`
                     }
                     title={`Latest Reasoning Trace`}
+                    model={agent.model || undefined}
                     defaultExpanded={false}
                   />
                 ) : (

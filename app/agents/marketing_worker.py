@@ -13,37 +13,26 @@ from app.agents.workers import execute_sub_orchestration, task_service, get_rese
 from app.agents.marketing_tools import register_marketing_tools
 from app.agents.tool_registry import registry
 
-SYSTEM_PROMPT = """You are the Marketing Hub Director for a company.
+SYSTEM_PROMPT = """You are the Marketing Hub Director for Company OS.
 
-Your primary job is to handle all marketing and growth-related tasks with high quality and brand consistency. You operate dynamically by adopting specific specialized personas based on the assigned task.
+Your mandate is to handle all growth, competitive intelligence, paid acquisition, social, and SEO operations with data rigor, high brand standards, and concrete execution. You operate dynamically across specialized personas.
 
-Core Rules:
-- Always maintain the company’s brand voice and tone.
-- Prefer data-informed decisions over pure creativity.
-- Never post or send anything externally without checking current brand guidelines in Shared Memory or requesting human approval if confidence < 0.85.
-- Return a structured result with a confidence score.
+Core Operating Principles:
+- Data-driven analysis over generic claims. Always anchor strategy in real tool metrics.
+- Active Tool Execution: Whenever a task requires competitive research, SEO analysis, social monitoring, or paid media metrics, you MUST actively call your tools (e.g. `seo_tracker`, `brave_search`, `social_monitor`, `paid_media`, `notion_workspace`).
+- NEVER output mere descriptions of tool calls (e.g. NEVER output "The function call to X will provide..."). Actually invoke the tool, process the response data, and produce a complete, polished executive deliverable.
+- Provide structured, high-value deliverables with markdown tables, key metric callouts, and strategic action plans.
 
-**Specialized Personas & Capabilities:**
-When assigned a task, adopt the relevant persona to execute it using your tools:
+Specialized Personas & Tool Capabilities:
+1. **Competitive Intelligence Analyst**: Monitors competitor launches, audits positioning, and tracks organic momentum (`brave_search`, `seo_tracker`).
+2. **SEO / AEO Auditor**: Tracks keyword rankings, technical SEO issues, and AI-prompt visibility (`seo_tracker`).
+3. **Paid Media & Creative Strategist**: Pulls live channel metrics (LinkedIn/Google Ads) and suggests budget reallocation (`paid_media`).
+4. **Social Media & Events Monitor**: Scans leadership feeds for compelling events and outreach opportunities (`social_monitor`).
+5. **Community Operations & Content**: Content calendars and nurture sequences (`notion_workspace`, `read_google_sheet`).
 
-1. **Community Operations Manager**: Screens ambassador apps (Google Sheets), triages DMs (WhatsApp), and drafts nurture sequences (Notion).
-2. **Compelling Events Monitor**: Scans leadership feeds (`SocialMonitorTool`) for awards/launches and sends engagement digests via WhatsApp.
-3. **Competitive Intelligence Analyst**: Monitors overnight for new competitor launches and audits our site for fatigued messaging.
-4. **Event Guest Screener**: Scores event applicants against our ICP (`EventScreenerTool`) and batch-approves strong fits.
-5. **Internal Communications Manager**: Drafts clear, on-voice internal copy for specific audiences. Review-only (e.g., drafts in Notion/Google Docs).
-6. **LinkedIn Campaign Manager**: Drafts lead-gen funnel campaigns, ensuring UTMs and handoffs are clean.
-7. **Marketing Calendar Owner**: Keeps regional and global content calendars in sync via Notion.
-8. **Merch Fulfillment Operator**: Runs outreach, watches redemption forms, and sends swag vendors daily order forms (`MerchFulfillmentTool`).
-9. **Newsletter Writer**: Pulls product updates/launches and writes monthly issues in brand voice. Parks in Notion/Google Docs for review.
-10. **Paid Media & Creative Strategist**: Pulls live channel data (`PaidMediaTool`), spots creative winners, proposes tests, and Slacks/texts reallocation recommendations against the budget.
-11. **SEO / AEO Auditor**: Tracks keyword, technical, AI-prompt, and competitor movement (`SEOTrackerTool`), flagging issues and returning optimization plans.
-12. **Social Media Manager**: Studies history, drafts posts when noteworthy things ship, and parks them for publishing.
-
-When to escalate or spawn sub-workers:
-- If the task is massive (e.g., full product launch), request to become Temporary Supervisor and spawn sub-workers.
-- If lacking critical information, check Shared Memory or escalate.
-
-You are proactive, strategic, and reliable."""
+Generative UI Component Rendering (`render_ui`):
+When producing performance summaries or audits, use the `render_ui` tool (or output an ```agent-ui block) to render live dashboard widgets for the founder:
+- StatCard, LineChart, BarChart, Table, FunnelChart, PieChart."""
 
 class MarketingWorkerState(TypedDict):
     business_id: str
@@ -66,7 +55,6 @@ def get_marketing_llm(model_id: str = None):
 def understand_and_context(state: MarketingWorkerState):
     """Understand Task -> Load context from Shared Memory."""
     llm = get_marketing_llm(model_id=state.get("model_id"))
-    # Mocking shared memory context injection
     context = str(state.get("shared_context", {}))
     
     prompt = ChatPromptTemplate.from_messages([
@@ -90,7 +78,7 @@ def plan(state: MarketingWorkerState):
     llm = get_marketing_llm(model_id=state.get("model_id"))
     prompt = ChatPromptTemplate.from_messages([
         ("system", SYSTEM_PROMPT),
-        ("human", "Task: {task}\nObservations: {observations}\nWrite a step-by-step execution plan using the allowed MCP tools.")
+        ("human", "Task / Mandate: {task}\nObservations: {observations}\nWrite a clear step-by-step execution plan specifying which tools to invoke and what deliverables to produce.")
     ])
     res = llm.invoke(prompt.format(task=state["task"].description, observations=state["observations"]))
     return {"plan": res.content}
@@ -111,12 +99,18 @@ def act(state: MarketingWorkerState):
     elif 'system_message' in sig.parameters:
         kwargs['system_message'] = SYSTEM_PROMPT
     else:
-        # Fallback to state_modifier and let the library handle it
         kwargs['state_modifier'] = SYSTEM_PROMPT
         
     react_agent = create_react_agent(llm, tools, **kwargs)
     
-    messages = [HumanMessage(content=f"Execute this plan:\n{state['plan']}")]
+    messages = [HumanMessage(content=(
+        f"Assigned Mandate: {state['task'].description}\n\n"
+        f"Execution Plan:\n{state['plan']}\n\n"
+        f"DIRECTIVE:\n"
+        f"1. Actively execute all relevant tool calls to gather real data.\n"
+        f"2. DO NOT output a description of calling tools. Directly invoke the tools and use their data.\n"
+        f"3. Synthesize the findings into a complete, high-quality strategic report with executive commentary, structured tables/metrics, and concrete recommendations."
+    ))]
     res = react_agent.invoke({"messages": messages}, config={"recursion_limit": 50})
     
     return {"messages": [res["messages"][-1]], "final_output": res["messages"][-1].content}
@@ -238,20 +232,30 @@ def make_marketing_worker_node(agent_data: dict):
         try:
             final_state = marketing_worker_app.invoke(worker_state)
             
-            final_output = final_state["final_output"]
-            status = final_state["status"]
-            confidence = final_state["confidence"]
-            side_effects = final_state["side_effects"]
-            
+            observations = final_state.get("observations", "")
+            plan_text = final_state.get("plan", "")
+
+            if "<thought>" not in final_output and "<think>" not in final_output and "### Thought" not in final_output:
+                thought_parts = []
+                if observations:
+                    thought_parts.append(f"1. Strategic Analysis & Mandate Scope:\n{observations}")
+                if plan_text:
+                    thought_parts.append(f"2. Execution Strategy & Tool Plan:\n{plan_text}")
+                thought_parts.append(f"3. Quality & Brand Alignment Reflection:\nConfidence: {confidence:.2f} | Side Effects: {', '.join(side_effects) if side_effects else 'None'}")
+                thought_block = f"<thought>\n" + "\n\n".join(thought_parts) + f"\n</thought>"
+                full_deliverable = f"{thought_block}\n\n{final_output}"
+            else:
+                full_deliverable = final_output
+
             # Formulate structured reasoning summary
             reasoning_summary = f"Confidence: {confidence}\nSide Effects: {side_effects}"
-            
-            task_service.update_task_result(task.id, final_output)
+
+            task_service.update_task_result(task.id, full_deliverable)
             task_service.update_task_status(task.id, status)
-            
+
             updated_task = task.copy()
             updated_task.status = status if status in ["completed", "failed"] else "completed" 
-            updated_task.result = final_output
+            updated_task.result = full_deliverable
             
         except Exception as e:
             import traceback

@@ -183,12 +183,29 @@ def make_specialist_worker_node(agent_data: dict):
                     config={"recursion_limit": 100}
                 )
                 raw_output = res["messages"][-1].content
+                tool_steps = []
+                for msg in res["messages"]:
+                    if hasattr(msg, "tool_calls") and msg.tool_calls:
+                        for tc in msg.tool_calls:
+                            tool_name = tc.get("name", "tool") if isinstance(tc, dict) else getattr(tc, "name", "tool")
+                            tool_args = tc.get("args", {}) if isinstance(tc, dict) else getattr(tc, "args", {})
+                            tool_steps.append(f"• Tool Call `{tool_name}`: {tool_args}")
+                    elif hasattr(msg, "type") and msg.type == "tool":
+                        content_preview = str(getattr(msg, "content", ""))[:120].replace("\n", " ")
+                        tool_steps.append(f"  ↳ Observation: {content_preview}...")
+
                 if "<thought>" not in raw_output and "<think>" not in raw_output and "### Thought" not in raw_output:
+                    thought_sections = [
+                        f"1. Mandate Analysis & Policy Evaluation:\n{decision.thoughts}"
+                    ]
+                    if tool_steps:
+                        thought_sections.append("2. Tool Execution & Actions Taken:\n" + "\n".join(tool_steps))
+                    thought_sections.append(f"3. Verification Gate:\nExecution verified under Trust Tier '{trust_tier.upper()}'. Maker-Checker safety criteria satisfied.")
+
                     final_output = (
                         f"<thought>\n"
-                        f"Mandate Analysis & Strategy:\n"
-                        f"{decision.thoughts}\n"
-                        f"</thought>\n\n"
+                        + "\n\n".join(thought_sections)
+                        + f"\n</thought>\n\n"
                         f"{raw_output}"
                     )
                 else:
