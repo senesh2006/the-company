@@ -75,10 +75,6 @@ class TeamRunner:
         # Mark the main task as running in the DB
         self.task_service.update_task_status(self.task_id, "running")
         
-        # Mark all agents as Running
-        for agent in agents:
-            self.task_service.update_agent_status(agent["id"], "Running")
-        
         try:
             with self._get_checkpointer() as checkpointer:
                 app = self.graph.compile(checkpointer=checkpointer)

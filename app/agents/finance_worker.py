@@ -517,6 +517,8 @@ def make_finance_worker_node(agent_data: dict):
             circuit_breaker_reason=None
         )
 
+        task_service.update_agent_status(agent_id, "Running")
+
         try:
             final_state = finance_worker_app.invoke(worker_state)
 
@@ -579,10 +581,12 @@ def make_finance_worker_node(agent_data: dict):
             cost=final_state.get("cost", 0.0) if 'final_state' in locals() else 0.0
         )
 
+        task_service.update_agent_status(agent_id, "Idle")
+
         return {
             "task_graph": {task.id: updated_task},
             "worker_results": [worker_result],
-            "messages": [AIMessage(content=f"Finance Manager finished task '{task.description}':\n{final_output}")]
+            "messages": [AIMessage(content=f"Finance Manager finished task '{task.description}': {final_output[:200]}...")]
         }
 
     return node_func

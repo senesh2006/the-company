@@ -229,6 +229,8 @@ def make_marketing_worker_node(agent_data: dict):
             needs_sub_workers=False
         )
         
+        task_service.update_agent_status(agent_id, "Running")
+
         try:
             final_state = marketing_worker_app.invoke(worker_state)
 
@@ -293,6 +295,7 @@ def make_marketing_worker_node(agent_data: dict):
         # But we can format the output string to include them to satisfy the deliverable without breaking schema
         formatted_output = f"Result:\n{final_output}\n\nMetrics:\nStatus: {status}\nConfidence: {confidence:.2f}\nSide Effects: {side_effects}\nReasoning: {reasoning_summary}"
         worker_result.output = formatted_output
+        task_service.update_agent_status(agent_id, "Idle")
         
         return {
             "task_graph": {task.id: updated_task},

@@ -15,6 +15,7 @@ from app.agents.admin_tools import register_admin_tools
 from app.agents.marketing_tools import register_marketing_tools
 from app.agents.finance_tools import register_finance_tools
 from app.services.task_service import TaskService
+from app.core.config import settings
 
 task_service = TaskService()
 
@@ -160,11 +161,13 @@ def make_specialist_worker_node(agent_data: dict):
         if not task:
             return {}
             
+        task_service.update_agent_status(agent_id, "Running")
+
         try:
             decision = analyzer.invoke({"task_description": task.description})
             
             final_output = ""
-            if decision.decision == "spawn_subworkers":
+            if decision.decision == "spawn_subworkers" and settings.ALLOW_AUTONOMOUS_SUBWORKERS:
                 plan = researcher.invoke({
                     "task_description": task.description, 
                     "context": str(state.get("shared_context", {}))
@@ -266,6 +269,8 @@ def make_specialist_worker_node(agent_data: dict):
             output=final_output
         )
         
+        task_service.update_agent_status(agent_id, "Idle")
+
         return {
             "task_graph": {task.id: updated_task},
             "worker_results": [worker_result],

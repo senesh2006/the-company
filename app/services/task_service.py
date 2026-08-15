@@ -80,7 +80,18 @@ class TaskService:
                 a["clean_cycles_count"] = 0
             if "authority_limit_usd" not in a:
                 a["authority_limit_usd"] = 0.0 if a["trust_tier"] == "observe" else (100.0 if a["trust_tier"] == "assist" else 1000.0)
-        return agents
+
+        # Deduplicate redundant/duplicate agents per role for clean fleet governance (e.g. prevent 3 Finance Managers)
+        deduped: List[Dict[str, Any]] = []
+        seen_roles = set()
+        for a in agents:
+            r = (a.get("role") or "").strip().lower()
+            if r and r in seen_roles:
+                continue
+            seen_roles.add(r)
+            deduped.append(a)
+
+        return deduped[:settings.MAX_FLEET_SIZE]
 
     def create_agent(
         self,
