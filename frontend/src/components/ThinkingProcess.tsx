@@ -44,11 +44,11 @@ export interface ThinkingProcessProps {
  * Extracts <thought>...</thought>, <think>...</think>, <reasoning>...</reasoning>,
  * or Markdown style reasoning headers from text, returning the thought portion and clean final answer.
  */
-export function extractThoughts(rawText: string): { thoughts: string | null; cleanContent: string } {
-  if (!rawText) return { thoughts: null, cleanContent: "" };
+export function extractThoughts(rawText: string): { thoughts: string | null; cleanContent: string; steps?: string[] } {
+  if (!rawText) return { thoughts: null, cleanContent: "", steps: [] };
 
-  // Match XML/HTML style tags: <thought>, <think>, <reasoning>, <reason>, <thought_process>
-  const thoughtTagRegex = /<(thought|think|reasoning|reason|thought_process)>([\s\S]*?)<\/\1>/gi;
+  // Match XML/HTML style tags: <thought>, <think>, <reasoning>, <reason>, <thought_process>, <cognitive_trace>
+  const thoughtTagRegex = /<(thought|think|reasoning|reason|thought_process|cognitive_trace)>([\s\S]*?)<\/\1>/gi;
   const matches: string[] = [];
   let clean = rawText;
 
@@ -61,7 +61,18 @@ export function extractThoughts(rawText: string): { thoughts: string | null; cle
 
   if (matches.length > 0) {
     clean = rawText.replace(thoughtTagRegex, "").trim();
-    return { thoughts: matches.join("\n\n"), cleanContent: clean };
+    const combinedThoughts = matches.join("\n\n");
+    // Parse individual numbered or bulleted step chunks
+    const stepChunks = combinedThoughts
+      .split(/(?=(?:^\s*\d+[\.\)]|\n\s*\d+[\.\)]|\n\s*•|\n\s*-\s*|\n\s*###))/m)
+      .map(s => s.trim())
+      .filter(s => s.length > 0);
+
+    return { 
+      thoughts: combinedThoughts, 
+      cleanContent: clean, 
+      steps: stepChunks.length > 1 ? stepChunks : undefined 
+    };
   }
 
   // Match Markdown style: ### Thought Process ... ### Final Deliverables / Answer
@@ -70,10 +81,15 @@ export function extractThoughts(rawText: string): { thoughts: string | null; cle
   if (mdMatch && mdMatch[1].trim()) {
     const thoughts = mdMatch[1].trim();
     const cleanContent = rawText.replace(mdThoughtRegex, "").trim();
-    return { thoughts, cleanContent };
+    const stepChunks = thoughts
+      .split(/(?=(?:^\s*\d+[\.\)]|\n\s*\d+[\.\)]|\n\s*•|\n\s*-\s*|\n\s*###))/m)
+      .map(s => s.trim())
+      .filter(s => s.length > 0);
+
+    return { thoughts, cleanContent, steps: stepChunks.length > 1 ? stepChunks : undefined };
   }
 
-  return { thoughts: null, cleanContent: rawText };
+  return { thoughts: null, cleanContent: rawText, steps: [] };
 }
 
 export function ThinkingProcess({

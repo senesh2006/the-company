@@ -525,18 +525,35 @@ def make_finance_worker_node(agent_data: dict):
             confidence = final_state.get("confidence", 0.95)
             risk_level = final_state.get("risk_level", "low")
             side_effects = final_state.get("side_effects", [])
+            observations = final_state.get("observations", "")
+            feedback = final_state.get("feedback", "")
+            revision_count = final_state.get("revision_count", 0)
+
+            if "<thought>" not in final_output and "<think>" not in final_output and "### Thought" not in final_output:
+                thought_parts = []
+                if observations:
+                    thought_parts.append(f"1. Financial Audit & Ledger Analysis:\n{observations}")
+                thought_parts.append(f"2. Maker-Checker Verification & Compliance:\nRisk Level: {risk_level.upper()} | Confidence: {confidence:.2f} | Revisions: {revision_count}")
+                if feedback and revision_count > 0:
+                    thought_parts.append(f"3. Internal Quality Feedback:\n{feedback}")
+                if side_effects:
+                    thought_parts.append(f"4. Side Effects & Policy Compliance:\n{', '.join(side_effects)}")
+                thought_block = f"<thought>\n" + "\n\n".join(thought_parts) + f"\n</thought>"
+                full_deliverable = f"{thought_block}\n\n{final_output}"
+            else:
+                full_deliverable = final_output
 
             if final_state.get("circuit_breaker_tripped"):
                 status = "needs_approval"
                 reason = final_state.get("circuit_breaker_reason", "Circuit breaker tripped")
-                final_output = f"[CIRCUIT BREAKER TRIGGERED]\n{reason}\n\n{final_output}"
+                full_deliverable = f"[CIRCUIT BREAKER TRIGGERED]\n{reason}\n\n{full_deliverable}"
 
-            task_service.update_task_result(task.id, final_output)
+            task_service.update_task_result(task.id, full_deliverable)
             task_service.update_task_status(task.id, status)
 
             updated_task = task.copy()
             updated_task.status = status if status in ["completed", "failed", "needs_approval"] else "completed"
-            updated_task.result = final_output
+            updated_task.result = full_deliverable
 
         except Exception as e:
             import traceback
