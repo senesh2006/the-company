@@ -370,7 +370,8 @@ export const api = {
       body: JSON.stringify(payload),
     });
     if (!res.ok) throw new Error(`Failed to dispatch mandate (${res.status})`);
-    return res.json();
+    const data = await res.json();
+    return data.mandate_task || data.task || data;
   },
 
   // --- Review Task Action ---
@@ -484,6 +485,9 @@ export const api = {
   },
 
   getTaskById: async (taskId: string): Promise<Task> => {
+    if (!taskId || taskId === 'undefined' || taskId === 'null') {
+      throw new Error('Invalid taskId provided to getTaskById');
+    }
     const baseUrl = getBaseUrl();
     const res = await authFetch(`${baseUrl}/api/v1/tasks/detail/${taskId}`);
     if (!res.ok) throw new Error(`Failed to fetch task (${res.status})`);

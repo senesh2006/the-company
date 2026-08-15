@@ -62,13 +62,13 @@ export function PersonalAssistantBlob() {
     const assistantMsgId = `assistant-${Date.now()}`;
 
     try {
-      const task = await createTask.mutateAsync({
+      const task: any = await createTask.mutateAsync({
         title: taskText,
         description: taskText,
         priority: "P1",
       });
 
-      const taskId = task.id;
+      const taskId = task?.id || task?.mandate_task?.id || task?.task?.id;
 
       // Add single coordinating placeholder message
       setMessages((prev) => [
@@ -80,6 +80,11 @@ export function PersonalAssistantBlob() {
           timestamp: new Date(),
         },
       ]);
+
+      if (!taskId || taskId === "undefined" || taskId === "null") {
+        // Task dispatched but no synchronous ID returned
+        return;
+      }
 
       // Poll task until supervisor finishes executive synthesis
       let completed = false;

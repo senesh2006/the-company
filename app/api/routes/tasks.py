@@ -68,7 +68,7 @@ def create_mandate_default(payload: MandatePayload, background_tasks: Background
             expected_output=payload.expected_output
         )
         background_tasks.add_task(run_team_task_bg, biz_id, task["id"], payload.mandate)
-        return {"status": "success", "mandate_task": task}
+        return {"status": "success", "mandate_task": task, "task": task, "id": task.get("id")}
     except Exception as e:
         logger.error(f"Failed to dispatch mandate: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -218,6 +218,8 @@ def list_all_tasks(user = Depends(get_current_user)):
 def get_task_by_id(task_id: str, user = Depends(get_current_user)):
     """Retrieves a single task by ID."""
     try:
+        if not task_id or task_id in ["undefined", "null"]:
+            raise HTTPException(status_code=404, detail="Task not found")
         biz_id = user.business_id or "00000000-0000-0000-0000-000000000001"
         response = task_service.client.table("tasks").select("*").eq("id", task_id).execute()
         if response.data:
@@ -227,7 +229,7 @@ def get_task_by_id(task_id: str, user = Depends(get_current_user)):
         raise
     except Exception as e:
         logger.error(f"Failed to fetch task {task_id}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=404, detail=f"Task {task_id} not found")
 
 @router.get("/{business_id}")
 def list_tasks(business_id: str, status: Optional[str] = Query(None, description="Filter by status"), user = Depends(get_current_user)):
