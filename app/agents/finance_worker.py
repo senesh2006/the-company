@@ -115,7 +115,7 @@ def context_construction(state: FinanceWorkerState):
 
 # ----------------- COMPLEXITY ROUTER -----------------
 def route_complexity(state: FinanceWorkerState) -> Literal["spawn_subworkers", "maker"]:
-    if state.get("needs_sub_workers", False):
+    if state.get("needs_sub_workers", False) and getattr(settings, "ALLOW_AUTONOMOUS_SUBWORKERS", False):
         return "spawn_subworkers"
     return "maker"
 

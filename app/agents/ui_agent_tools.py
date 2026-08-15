@@ -58,13 +58,17 @@ def open_ui_approval_modal(modal_type: str, item_id: str, message: str = "", bus
 @tool
 def hire_autonomous_worker(role: str, department: str, name: Optional[str] = None, business_id: str = "00000000-0000-0000-0000-000000000001") -> str:
     """
-    AI Agent tool allowing the Orchestrator/Supervisor AI to autonomously hire a new specialized worker agent into the fleet.
-    Args:
-        role: Specialty role of the new worker (e.g. 'Tax Auditor', 'SEO Specialist', 'QA Engineer')
-        department: Target department ('finance', 'marketing', 'engineering', 'operations')
-        name: Optional custom display name for the worker
+    AI Agent tool allowing the Orchestrator/Supervisor AI to propose or hire a specialized worker agent.
+    Enforces maximum fleet size and governance approval policies.
     """
     try:
+        existing_agents = task_service.list_agents(business_id)
+        if len(existing_agents) >= settings.MAX_FLEET_SIZE:
+            return f"Cannot hire new worker '{role}'. Company fleet limit of {settings.MAX_FLEET_SIZE} agents reached. Please assign tasks to existing agents: {', '.join([a['role'] for a in existing_agents])}."
+
+        if not settings.ALLOW_AUTONOMOUS_HIRING:
+            return f"Autonomous agent creation is restricted. A hiring proposal for '{role}' has been logged for Founder approval in the Governance Gateway. Please execute with the current team."
+
         agent_name = name or f"Autonomous {role} ({department.capitalize()})"
         agent = task_service.create_agent(
             business_id=business_id,

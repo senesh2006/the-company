@@ -107,14 +107,17 @@ def global_supervisor_node(state: OrchestratorState):
     id_mapping = {}
     available_roles = roles  # The real agent roles from the DB
     
+    # Cap sub-tasks to prevent over-generation
+    tasks_to_create = (decision.new_tasks or [])[:settings.MAX_SUBTASKS_PER_MANDATE]
+    
     # Map LLM-generated IDs to real UUIDs
-    for t in decision.new_tasks:
+    for t in tasks_to_create:
         new_id = str(uuid.uuid4())
         if t.id:
             id_mapping[t.id] = new_id
         t.id = new_id
         
-    for t in decision.new_tasks:
+    for t in tasks_to_create:
         t.dependencies = [id_mapping.get(d, d) for d in t.dependencies]
         
         # --- CRITICAL: Validate and auto-correct assignee_role ---
@@ -268,6 +271,11 @@ def global_router(state: OrchestratorState):
                 else:
                     logger.error(f"No agent found for task '{task.description}' with role '{task.assignee_role}'. Available: {[a.role for a in agents.values()]}")
                     
+    iteration = state.get("iteration", 0)
+    if iteration >= settings.MAX_SUPERVISOR_ITERATIONS:
+        logger.info(f"Supervisor reached max iterations limit ({iteration}). Routing to executive synthesis.")
+        return "executive_synthesis"
+
     if all_completed and has_tasks:
         return "executive_synthesis"
         

@@ -146,7 +146,7 @@ def update_memory(state: MarketingWorkerState):
     return {"status": state.get("status", "success")}
 
 def decide(state: MarketingWorkerState) -> Literal["spawn_subworkers", "END"]:
-    if state["needs_sub_workers"]:
+    if state.get("needs_sub_workers") and getattr(settings, "ALLOW_AUTONOMOUS_SUBWORKERS", False):
         return "spawn_subworkers"
     return "END"
 
