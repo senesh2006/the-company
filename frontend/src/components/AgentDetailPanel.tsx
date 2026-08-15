@@ -5,8 +5,9 @@ import { useAppStore } from '@/lib/store';
 import { useAgent, useUpdateAgentStatus, useInjectInstruction, useTasks } from '@/lib/queries';
 import { api, TrustTier } from '@/lib/api';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Play, Pause, Power, Terminal, Send, ShieldCheck, ArrowUpRight, ArrowDownRight, BrainCircuit, Sparkles, Brain } from 'lucide-react';
+import { X, Play, Pause, Power, Terminal, Send, ShieldCheck, ArrowUpRight, ArrowDownRight, BrainCircuit, Sparkles, Brain, Layers } from 'lucide-react';
 import { ThinkingProcess, extractThoughts } from '@/components/ThinkingProcess';
+import { MilestoneMap } from '@/components/MilestoneMap';
 
 export function AgentDetailPanel() {
   const { selectedAgentId, setSelectedAgentId } = useAppStore();
@@ -210,6 +211,17 @@ export function AgentDetailPanel() {
                     </div>
                   );
                 })()}
+
+                {/* Milestone Roadmap */}
+                {(activeWorkerTask?.milestones || latestWorkerTask?.milestones) && (
+                  <div className="pt-2">
+                    <MilestoneMap
+                      milestones={activeWorkerTask?.milestones || latestWorkerTask?.milestones || []}
+                      progress={activeWorkerTask?.progress ?? latestWorkerTask?.progress}
+                      taskTitle={activeWorkerTask?.description || latestWorkerTask?.description}
+                    />
+                  </div>
+                )}
               </div>
               
               {/* Trust Tier & Governance Governance Card (PRD v6.0 §6.1) */}

@@ -7,12 +7,15 @@ import { useCreateTask } from "@/lib/queries";
 import { api } from "@/lib/api";
 import { AssistantAvatar } from "@/components/ui/AssistantAvatar";
 import { MarkdownRenderer } from "@/components/MarkdownRenderer";
+import { MilestoneMap, MilestoneItem } from "@/components/MilestoneMap";
 
 interface Message {
   id: string;
   role: "user" | "assistant";
   content: string;
   timestamp: Date;
+  milestones?: MilestoneItem[];
+  progress?: number;
 }
 
 export function PersonalAssistantBlob() {
@@ -96,19 +99,32 @@ export function PersonalAssistantBlob() {
         attempts++;
 
         try {
-          const updatedTask = await api.getTaskById(taskId);
-          if (updatedTask && (updatedTask.status === "completed" || updatedTask.status === "failed")) {
-            completed = true;
-            const finalResult = updatedTask.result || (updatedTask.status === "completed" ? "✅ Mandate successfully completed by your team." : "❌ Mandate execution encountered an issue.");
-            
-            setMessages((prev) =>
-              prev.map((msg) =>
-                msg.id === assistantMsgId
-                  ? { ...msg, content: finalResult }
-                  : msg
-              )
-            );
-            break;
+          const updatedTask: any = await api.getTaskById(taskId);
+          if (updatedTask) {
+            const ms = updatedTask.milestones;
+            const prog = updatedTask.progress;
+
+            if (updatedTask.status === "completed" || updatedTask.status === "failed") {
+              completed = true;
+              const finalResult = updatedTask.result || (updatedTask.status === "completed" ? "✅ Mandate successfully completed by your team." : "❌ Mandate execution encountered an issue.");
+              
+              setMessages((prev) =>
+                prev.map((msg) =>
+                  msg.id === assistantMsgId
+                    ? { ...msg, content: finalResult, milestones: ms, progress: 100 }
+                    : msg
+                )
+              );
+              break;
+            } else {
+              setMessages((prev) =>
+                prev.map((msg) =>
+                  msg.id === assistantMsgId
+                    ? { ...msg, milestones: ms, progress: prog }
+                    : msg
+                )
+              );
+            }
           }
         } catch {
           // Continue polling
@@ -187,7 +203,14 @@ export function PersonalAssistantBlob() {
                     }`}
                   >
                     {msg.role === "assistant" ? (
-                      <MarkdownRenderer content={msg.content} />
+                      <div className="space-y-3">
+                        {msg.milestones && msg.milestones.length > 0 && (
+                          <div className="mb-2">
+                            <MilestoneMap milestones={msg.milestones} progress={msg.progress} compact={false} />
+                          </div>
+                        )}
+                        <MarkdownRenderer content={msg.content} />
+                      </div>
                     ) : (
                       msg.content
                     )}

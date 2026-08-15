@@ -4,6 +4,7 @@ from typing import Optional, List, Any, Dict
 
 from app.services.task_service import TaskService
 from app.services.governance_service import GovernanceService
+from app.services.task_decomposer import generate_task_milestones, calculate_milestone_progress
 from app.core.logging import logger
 from app.api.deps import get_current_user
 
@@ -205,25 +206,44 @@ def create_default_task(payload: QueueTaskPayload, background_tasks: BackgroundT
 @router.get("")
 @router.get("/")
 def list_all_tasks(user = Depends(get_current_user)):
-    """Lists all tasks for the authenticated user's business."""
+    """Lists all tasks for the authenticated user's business, enriched with dynamic milestones."""
     try:
         biz_id = user.business_id or "00000000-0000-0000-0000-000000000001"
         response = task_service.client.table("tasks").select("*").eq("business_id", biz_id).order("created_at", desc=True).execute()
-        return response.data or []
+        tasks = response.data or []
+        for t in tasks:
+            ms = generate_task_milestones(
+                description=t.get("description") or t.get("mandate", ""),
+                assignee_role=t.get("assignee_role"),
+                status=t.get("status", "queued"),
+                result=t.get("result")
+            )
+            t["milestones"] = ms
+            t["progress"] = calculate_milestone_progress(ms)
+        return tasks
     except Exception as e:
         logger.error(f"Failed to fetch tasks: {e}")
         return []
 
 @router.get("/detail/{task_id}")
 def get_task_by_id(task_id: str, user = Depends(get_current_user)):
-    """Retrieves a single task by ID."""
+    """Retrieves a single task by ID enriched with dynamic milestones."""
     try:
         if not task_id or task_id in ["undefined", "null"]:
             raise HTTPException(status_code=404, detail="Task not found")
         biz_id = user.business_id or "00000000-0000-0000-0000-000000000001"
         response = task_service.client.table("tasks").select("*").eq("id", task_id).execute()
         if response.data:
-            return response.data[0]
+            t = response.data[0]
+            ms = generate_task_milestones(
+                description=t.get("description") or t.get("mandate", ""),
+                assignee_role=t.get("assignee_role"),
+                status=t.get("status", "queued"),
+                result=t.get("result")
+            )
+            t["milestones"] = ms
+            t["progress"] = calculate_milestone_progress(ms)
+            return t
         raise HTTPException(status_code=404, detail="Task not found")
     except HTTPException:
         raise

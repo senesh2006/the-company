@@ -5,6 +5,7 @@ import { useAuth } from "@/lib/auth-context";
 import { AssistantAvatar } from "@/components/ui/AssistantAvatar";
 import { MarkdownRenderer } from '@/components/MarkdownRenderer';
 import { ThinkingProcess } from '@/components/ThinkingProcess';
+import { MilestoneMap } from '@/components/MilestoneMap';
 import { useTasks, useAgents, useCreateTask } from "@/lib/queries";
 import { 
   Plus, 
@@ -88,6 +89,7 @@ export default function TasksPage() {
     }
 
     const priorityLabel = (t.priority === "high" || t.priority === "P0") ? "P0" : ((t.priority === "low" || t.priority === "P2") ? "P2" : "P1");
+    const milestones = t.milestones || [];
 
     return {
       id: t.id,
@@ -104,6 +106,7 @@ export default function TasksPage() {
       statusType: statType,
       progress: progress,
       category: cat,
+      milestones: milestones,
       rawTask: t
     };
   });
@@ -334,8 +337,12 @@ export default function TasksPage() {
                   </div>
 
                   {/* Status Badge & Progress */}
-                  <div className="flex items-center gap-3 w-44 justify-end">
-                    {task.statusType === "in_progress" && (
+                  <div className="flex items-center gap-3 w-52 justify-end">
+                    {task.milestones && task.milestones.length > 0 ? (
+                      <div className="w-24 hidden sm:block">
+                        <MilestoneMap compact={true} milestones={task.milestones} progress={task.progress} />
+                      </div>
+                    ) : task.statusType === "in_progress" ? (
                       <div className="flex items-center gap-2">
                         <div className="w-16 h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
                           <div
@@ -347,10 +354,10 @@ export default function TasksPage() {
                           {task.progress}%
                         </span>
                       </div>
-                    )}
+                    ) : null}
 
                     <span
-                      className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold tracking-wide uppercase flex items-center gap-1.5 ${
+                      className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold tracking-wide uppercase flex items-center gap-1.5 shrink-0 ${
                         task.statusType === "completed"
                           ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
                           : task.statusType === "blocked"
@@ -564,6 +571,15 @@ export default function TasksPage() {
                 </div>
               </div>
 
+              {/* AI Milestone Roadmap */}
+              {selectedTask.milestones && selectedTask.milestones.length > 0 && (
+                <MilestoneMap
+                  milestones={selectedTask.milestones}
+                  progress={selectedTask.progress}
+                  taskTitle={selectedTask.title}
+                />
+              )}
+
               {/* Execution Output */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
@@ -602,7 +618,7 @@ export default function TasksPage() {
                   <ThinkingProcess
                     isThinking={true}
                     title={`${selectedTask.agentName || "AI Worker"} is Reasoning`}
-                    statusMessage={`Actively processing mandate: "${selectedTask.title}"`}
+                    statusMessage={`${selectedTask.agentName || "Specialist"} is formulating reasoning and tool execution strategy...`}
                     defaultExpanded={true}
                   />
                 ) : selectedTask.statusType === "blocked" ? (

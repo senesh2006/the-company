@@ -81,6 +81,8 @@ export interface Task {
   result?: string;
   review_verdict?: string;
   retry_count: number;
+  milestones?: any[];
+  progress?: number;
   created_at: string;
   updated_at: string;
 }
