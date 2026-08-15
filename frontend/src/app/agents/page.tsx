@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useAgents, useMetrics } from "@/lib/queries";
+import { useAgents, useMetrics, useTasks } from "@/lib/queries";
 import { useAppStore } from "@/lib/store";
 import { useAuth } from "@/lib/auth-context";
 import { AssistantAvatar } from "@/components/ui/AssistantAvatar";
@@ -25,6 +25,7 @@ import {
 
 export default function AgentsPage() {
   const { data: agents, isLoading } = useAgents();
+  const { data: allTasks } = useTasks();
   const { data: metrics } = useMetrics();
   const { setSelectedAgentId } = useAppStore();
 
@@ -35,7 +36,7 @@ export default function AgentsPage() {
   const [viewMode, setViewMode] = useState<"table" | "grid">("table");
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
 
-  // Map real database agents
+  // Map real database agents with dynamic task progress
   const workers = (agents && agents.length > 0)
     ? agents.map((a: any) => {
         const r = (a.role || "").toLowerCase();
@@ -61,14 +62,40 @@ export default function AgentsPage() {
           bg = "bg-purple-50 border-purple-200 text-purple-700";
         }
 
+        // Correlate with active tasks to calculate real progress
+        const workerTasks = (allTasks || []).filter(
+          (t: any) => t.agent_id === a.id || 
+          t.assignee_role?.toLowerCase() === a.role?.toLowerCase() ||
+          t.assignee_role?.toLowerCase() === a.name?.toLowerCase()
+        );
+
+        const runningTask = workerTasks.find((t: any) => t.status === "running" || t.status === "in_progress");
+        const completedCount = workerTasks.filter((t: any) => t.status === "completed").length;
+        const totalCount = workerTasks.length;
+
+        let computedProgress = 0;
+        let currentTaskTitle = a.current_task_title || "Standby for directives";
+        let agentStatus = a.status || "Idle";
+
+        if (runningTask) {
+          agentStatus = "Running";
+          currentTaskTitle = runningTask.description || runningTask.mandate || "Executing active mandate";
+          const elapsedSec = Math.max(0, (Date.now() - new Date(runningTask.created_at || Date.now()).getTime()) / 1000);
+          computedProgress = elapsedSec < 4 ? 35 : elapsedSec < 12 ? 68 : 88;
+        } else if (totalCount > 0) {
+          computedProgress = Math.round((completedCount / totalCount) * 100);
+        } else {
+          computedProgress = 0;
+        }
+
         return {
           id: a.id,
           name: a.name || "Autonomous Agent",
           sublabel: sub,
           department: dept,
-          status: a.status || "Idle",
-          currentTask: a.current_task_title || "Standby for directives",
-          progress: a.task_progress ?? 0,
+          status: agentStatus,
+          currentTask: currentTaskTitle,
+          progress: computedProgress,
           costToday: a.cost_today_usd ?? 0.0,
           avatarBg: bg,
           icon: icon

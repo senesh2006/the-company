@@ -57,7 +57,7 @@ export default function TasksPage() {
     let cat = "active";
     let statType = "in_progress";
     let isBlocked = false;
-    let progress = 50;
+    let progress = t.progress !== undefined && t.progress !== null ? Number(t.progress) : 0;
 
     if (t.status === "completed") {
       cat = "completed";
@@ -67,11 +67,24 @@ export default function TasksPage() {
       cat = "scheduled";
       statType = "pending";
       progress = 0;
-    } else if (t.status === "needs_approval" || t.status === "failed" || t.status === "rejected") {
+    } else if (t.status === "needs_approval") {
+      cat = "active";
+      statType = "blocked";
+      isBlocked = true;
+      progress = 85;
+    } else if (t.status === "failed" || t.status === "rejected") {
       cat = "active";
       statType = "blocked";
       isBlocked = true;
       progress = 25;
+    } else {
+      // Actively running in progress
+      cat = "active";
+      statType = "in_progress";
+      if (!progress || progress === 0) {
+        const elapsedSec = Math.max(0, (Date.now() - new Date(t.created_at || Date.now()).getTime()) / 1000);
+        progress = elapsedSec < 4 ? 35 : elapsedSec < 12 ? 68 : 88;
+      }
     }
 
     const priorityLabel = (t.priority === "high" || t.priority === "P0") ? "P0" : ((t.priority === "low" || t.priority === "P2") ? "P2" : "P1");
