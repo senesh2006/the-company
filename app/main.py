@@ -100,10 +100,14 @@ def get_public_config():
 # Mount Static Files
 import os
 from fastapi.responses import JSONResponse
-os.makedirs("app/static", exist_ok=True)
-os.makedirs("app/static/_next", exist_ok=True)
 
-app.mount("/_next", StaticFiles(directory="app/static/_next"), name="next-assets")
+# Resolve static directory (frontend/out if built, otherwise app/static)
+STATIC_DIR = "frontend/out" if os.path.exists("frontend/out") and os.path.exists("frontend/out/_next") else "app/static"
+os.makedirs(STATIC_DIR, exist_ok=True)
+next_dir = os.path.join(STATIC_DIR, "_next")
+os.makedirs(next_dir, exist_ok=True)
+
+app.mount("/_next", StaticFiles(directory=next_dir, html=False), name="next-assets")
 
 @app.api_route("/{full_path:path}", methods=["GET", "HEAD"])
 async def serve_frontend(full_path: str):
@@ -114,20 +118,21 @@ async def serve_frontend(full_path: str):
     if full_path == "":
         full_path = "index"
         
-    # Check for direct file match (like favicon.ico)
-    file_path = os.path.join("app/static", full_path)
+    # Check for direct file match (like favicon.ico, images)
+    file_path = os.path.join(STATIC_DIR, full_path)
     if os.path.isfile(file_path):
-        return FileResponse(file_path)
+        headers = {"Cache-Control": "public, max-age=3600"} if not file_path.endswith(".html") else {"Cache-Control": "no-cache"}
+        return FileResponse(file_path, headers=headers)
         
     # Next.js maps routes to .html files
-    html_path = os.path.join("app/static", f"{full_path}.html")
+    html_path = os.path.join(STATIC_DIR, f"{full_path}.html")
     if os.path.isfile(html_path):
-        return FileResponse(html_path)
+        return FileResponse(html_path, headers={"Cache-Control": "no-cache"})
         
-    # Fallback to index.html for SPA feeling
-    index_path = os.path.join("app/static", "index.html")
+    # Fallback to index.html for SPA client-side routing
+    index_path = os.path.join(STATIC_DIR, "index.html")
     if os.path.isfile(index_path):
-        return FileResponse(index_path)
+        return FileResponse(index_path, headers={"Cache-Control": "no-cache"})
         
     return JSONResponse(status_code=404, content={"detail": "Not Found"})
 
