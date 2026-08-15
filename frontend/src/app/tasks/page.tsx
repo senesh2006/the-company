@@ -2,8 +2,6 @@
 
 import { useState } from "react";
 import { useAuth } from "@/lib/auth-context";
-import { MarketingAvatar } from "@/components/ui/MarketingAvatar";
-import { FinanceAvatar } from "@/components/ui/FinanceAvatar";
 import { AssistantAvatar } from "@/components/ui/AssistantAvatar";
 import { MarkdownRenderer } from '@/components/MarkdownRenderer';
 import { ThinkingProcess } from '@/components/ThinkingProcess';
@@ -29,7 +27,10 @@ import {
   X,
   FileText,
   ShieldCheck,
-  Cpu
+  Cpu,
+  Megaphone,
+  Briefcase,
+  Code
 } from "lucide-react";
 
 export default function TasksPage() {
@@ -274,21 +275,41 @@ export default function TasksPage() {
                 <div className="flex items-center gap-6 shrink-0">
                   {/* Agent badge */}
                   <div className="flex items-center gap-2">
-                    <div className={`w-7 h-7 shrink-0 ${
-                      ((task.agentName === "Growth & Marketing Lead" || task.agentRole === "Marketing Manager") || (task.agentName === "Financial Controller & Auditor" || task.agentRole === "Finance Manager") || (task.agentName === "Personal Assistant" || task.agentName === "Supervisor" || task.agentRole === "Personal Assistant" || task.agentRole === "Supervisor"))
-                        ? ""
-                        : "rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700"
-                    }`}>
-                      {(task.agentName === "Growth & Marketing Lead" || task.agentRole === "Marketing Manager") ? (
-                        <MarketingAvatar className="w-full h-full" />
-                      ) : (task.agentName === "Financial Controller & Auditor" || task.agentRole === "Finance Manager") ? (
-                        <FinanceAvatar className="w-full h-full" />
-                      ) : (task.agentName === "Personal Assistant" || task.agentName === "Supervisor" || task.agentRole === "Personal Assistant" || task.agentRole === "Supervisor") ? (
-                        <AssistantAvatar className="w-full h-full" faceColor="#ffffff" featureColor="#0c0c0c" />
-                      ) : (
-                        <img src={task.agentAvatar} alt={task.agentName} className="w-full h-full object-cover" />
-                      )}
-                    </div>
+                    {(() => {
+                      const isPA = (task.agentName === "Personal Assistant" || task.agentName === "Supervisor" || task.agentRole === "Personal Assistant" || task.agentRole === "Supervisor");
+                      const roleStr = (task.agentRole + " " + task.agentName).toLowerCase();
+                      const isMkt = roleStr.includes("market") || roleStr.includes("growth") || roleStr.includes("social");
+                      const isFin = roleStr.includes("finance") || roleStr.includes("account") || roleStr.includes("audit") || roleStr.includes("ledger");
+                      const isEng = roleStr.includes("engineer") || roleStr.includes("code") || roleStr.includes("dev") || roleStr.includes("tech");
+                      
+                      const badgeBg = isMkt 
+                        ? "bg-emerald-50 text-emerald-700 border-emerald-200" 
+                        : isFin 
+                        ? "bg-blue-50 text-blue-700 border-blue-200" 
+                        : isEng 
+                        ? "bg-purple-50 text-purple-700 border-purple-200" 
+                        : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700";
+
+                      return (
+                        <div className={`w-7 h-7 shrink-0 ${
+                          isPA 
+                            ? "" 
+                            : `rounded-lg overflow-hidden ${badgeBg} border flex items-center justify-center`
+                        }`}>
+                          {isPA ? (
+                            <AssistantAvatar className="w-full h-full" faceColor="#ffffff" featureColor="#0c0c0c" />
+                          ) : isMkt ? (
+                            <Megaphone className="w-3.5 h-3.5" />
+                          ) : isFin ? (
+                            <Briefcase className="w-3.5 h-3.5" />
+                          ) : isEng ? (
+                            <Code className="w-3.5 h-3.5" />
+                          ) : (
+                            <Bot className="w-3.5 h-3.5" />
+                          )}
+                        </div>
+                      );
+                    })()}
                     <div className="flex flex-col">
                       <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 leading-tight">
                         {task.agentName}
