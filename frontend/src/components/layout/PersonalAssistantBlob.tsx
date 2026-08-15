@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Bot, Send, X, Sparkles, Loader2, ChevronDown } from "lucide-react";
 import { useCreateTask } from "@/lib/queries";
+import { api } from "@/lib/api";
 import { AssistantAvatar } from "@/components/ui/AssistantAvatar";
 import { MarkdownRenderer } from "@/components/MarkdownRenderer";
 
@@ -58,20 +59,56 @@ export function PersonalAssistantBlob() {
     setInput("");
     setIsLoading(true);
 
+    const assistantMsgId = `assistant-${Date.now()}`;
+
     try {
-      await createTask.mutateAsync({
+      const task = await createTask.mutateAsync({
         title: taskText,
         description: taskText,
         priority: "P1",
       });
 
-      const assistantMessage: Message = {
-        id: `assistant-${Date.now()}`,
-        role: "assistant",
-        content: `Got it! I've dispatched that to the team. I'll coordinate the workers and make sure it gets done. You can track progress on the Tasks page.`,
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, assistantMessage]);
+      const taskId = task.id;
+
+      // Add single coordinating placeholder message
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: assistantMsgId,
+          role: "assistant",
+          content: `🤖 *Coordinating team of specialists... Delegating mandates and aggregating deliverables into one unified briefing.*`,
+          timestamp: new Date(),
+        },
+      ]);
+
+      // Poll task until supervisor finishes executive synthesis
+      let completed = false;
+      let attempts = 0;
+      const maxAttempts = 60; // Up to 2 minutes
+
+      while (!completed && attempts < maxAttempts) {
+        await new Promise((r) => setTimeout(r, 2000));
+        attempts++;
+
+        try {
+          const updatedTask = await api.getTaskById(taskId);
+          if (updatedTask && (updatedTask.status === "completed" || updatedTask.status === "failed")) {
+            completed = true;
+            const finalResult = updatedTask.result || (updatedTask.status === "completed" ? "✅ Mandate successfully completed by your team." : "❌ Mandate execution encountered an issue.");
+            
+            setMessages((prev) =>
+              prev.map((msg) =>
+                msg.id === assistantMsgId
+                  ? { ...msg, content: finalResult }
+                  : msg
+              )
+            );
+            break;
+          }
+        } catch {
+          // Continue polling
+        }
+      }
     } catch (err: any) {
       const errorMessage: Message = {
         id: `error-${Date.now()}`,
@@ -79,7 +116,11 @@ export function PersonalAssistantBlob() {
         content: `Something went wrong while dispatching: ${err.message}. Please try again.`,
         timestamp: new Date(),
       };
-      setMessages((prev) => [...prev, errorMessage]);
+      setMessages((prev) =>
+        prev.some((m) => m.id === assistantMsgId)
+          ? prev.map((m) => (m.id === assistantMsgId ? errorMessage : m))
+          : [...prev, errorMessage]
+      );
     } finally {
       setIsLoading(false);
     }

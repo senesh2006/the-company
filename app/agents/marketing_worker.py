@@ -231,7 +231,11 @@ def make_marketing_worker_node(agent_data: dict):
         
         try:
             final_state = marketing_worker_app.invoke(worker_state)
-            
+
+            final_output = final_state.get("final_output", "")
+            status = final_state.get("status", "success")
+            confidence = float(final_state.get("confidence", 0.9))
+            side_effects = final_state.get("side_effects", [])
             observations = final_state.get("observations", "")
             plan_text = final_state.get("plan", "")
 
@@ -248,7 +252,7 @@ def make_marketing_worker_node(agent_data: dict):
                 full_deliverable = final_output
 
             # Formulate structured reasoning summary
-            reasoning_summary = f"Confidence: {confidence}\nSide Effects: {side_effects}"
+            reasoning_summary = f"Confidence: {confidence:.2f}\nSide Effects: {side_effects}"
 
             task_service.update_task_result(task.id, full_deliverable)
             task_service.update_task_status(task.id, status)

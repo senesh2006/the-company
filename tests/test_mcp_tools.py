@@ -216,8 +216,11 @@ class TestRealMCPPaths:
         mock_list = Mock()
         mock_list.auto_paging_iter.return_value = [mock_charge]
 
+        mock_stripe = Mock()
+        mock_stripe.Charge.list.return_value = mock_list
+
         with patch("app.agents.finance_tools.settings.STRIPE_API_KEY", "sk_test_123"):
-            with patch("stripe.Charge.list", return_value=mock_list):
+            with patch.dict("sys.modules", {"stripe": mock_stripe}):
                 tool = StripeFinanceTool()
                 result = tool.run(action="read_charges", customer_id="cus_real")
 
@@ -228,8 +231,11 @@ class TestRealMCPPaths:
 
     def test_stripe_finance_falls_back_when_stripe_sdk_errors(self):
         """If the Stripe SDK raises an error, the tool should return a clear error message."""
+        mock_stripe = Mock()
+        mock_stripe.Charge.list.side_effect = Exception("network error")
+
         with patch("app.agents.finance_tools.settings.STRIPE_API_KEY", "sk_test_123"):
-            with patch("stripe.Charge.list", side_effect=Exception("network error")):
+            with patch.dict("sys.modules", {"stripe": mock_stripe}):
                 tool = StripeFinanceTool()
                 result = tool.run(action="read_charges", customer_id="cus_real")
 

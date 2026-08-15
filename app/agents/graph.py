@@ -1,6 +1,6 @@
 from langgraph.graph import StateGraph, START, END
 from app.agents.state import OrchestratorState
-from app.agents.supervisor import global_supervisor_node, global_router
+from app.agents.supervisor import global_supervisor_node, global_router, executive_synthesis_node
 from app.agents.workers import make_specialist_worker_node
 from app.agents.marketing_worker import make_marketing_worker_node
 from app.agents.finance_worker import make_finance_worker_node
@@ -28,6 +28,10 @@ def create_team_graph(business_id: str, main_task_id: str):
     # Add Supervisor Level 1
     workflow.add_node("global_supervisor", global_supervisor_node)
     
+    # Add Executive Synthesis Node
+    workflow.add_node("executive_synthesis", executive_synthesis_node)
+    workflow.add_edge("executive_synthesis", END)
+    
     # Add Specialist Workers Level 2
     agent_nodes = []
     for agent in agents:
@@ -46,7 +50,7 @@ def create_team_graph(business_id: str, main_task_id: str):
 
     workflow.add_edge(START, "global_supervisor")
     
-    # Router conditional edges to workers or end
-    workflow.add_conditional_edges("global_supervisor", global_router, agent_nodes + [END])
+    # Router conditional edges to workers, executive synthesis, or end
+    workflow.add_conditional_edges("global_supervisor", global_router, agent_nodes + ["executive_synthesis", END])
     
     return workflow

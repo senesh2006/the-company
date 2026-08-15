@@ -106,10 +106,11 @@ def _stripe_run(action: str, customer_id: Optional[str], amount: Optional[float]
 
         return f"Stripe action '{action}' completed."
 
-    except stripe.error.StripeError as e:
-        logger.error(f"Stripe API error for action '{action}': {e}")
-        return f"Stripe API error: {e.user_message or str(e)}"
     except Exception as e:
+        stripe_err_cls = getattr(getattr(stripe, "error", None), "StripeError", None)
+        if stripe_err_cls and isinstance(stripe_err_cls, type) and issubclass(stripe_err_cls, BaseException) and isinstance(e, stripe_err_cls):
+            logger.error(f"Stripe API error for action '{action}': {e}")
+            return f"Stripe API error: {getattr(e, 'user_message', None) or str(e)}"
         logger.error(f"Unexpected Stripe error for action '{action}': {e}")
         return f"Stripe integration error: {str(e)}"
 

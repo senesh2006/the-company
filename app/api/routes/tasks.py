@@ -214,6 +214,21 @@ def list_all_tasks(user = Depends(get_current_user)):
         logger.error(f"Failed to fetch tasks: {e}")
         return []
 
+@router.get("/detail/{task_id}")
+def get_task_by_id(task_id: str, user = Depends(get_current_user)):
+    """Retrieves a single task by ID."""
+    try:
+        biz_id = user.business_id or "00000000-0000-0000-0000-000000000001"
+        response = task_service.client.table("tasks").select("*").eq("id", task_id).execute()
+        if response.data:
+            return response.data[0]
+        raise HTTPException(status_code=404, detail="Task not found")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to fetch task {task_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @router.get("/{business_id}")
 def list_tasks(business_id: str, status: Optional[str] = Query(None, description="Filter by status"), user = Depends(get_current_user)):
     """Lists tasks for a business, optionally filtered by status."""

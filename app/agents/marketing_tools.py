@@ -363,6 +363,7 @@ class MerchFulfillmentTool(BaseTool):
             "new_redemptions": 5,
             "status": "Pending Human Approval via WhatsApp before dispatching to vendor."
         }, indent=2)
+        return _marketing_mcp_call("merch", action, {}, default_res)
 class RenderUIInput(BaseModel):
     component: str = Field(description="Component name: 'StatCard', 'LineChart', 'BarChart', 'Table', 'FunnelChart', or 'PieChart'")
     title: str = Field(description="Descriptive title headline for the interactive visual card")

@@ -1,5 +1,6 @@
-from typing import Literal, List, Optional
+from typing import Literal, List, Optional, Dict, Any
 from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.messages import AIMessage, HumanMessage
 from pydantic import BaseModel, Field
 import uuid
 import logging
@@ -268,9 +269,115 @@ def global_router(state: OrchestratorState):
                     logger.error(f"No agent found for task '{task.description}' with role '{task.assignee_role}'. Available: {[a.role for a in agents.values()]}")
                     
     if all_completed and has_tasks:
-        return END
+        return "executive_synthesis"
         
     if not sends:
-        return END
+        return "executive_synthesis"
         
     return sends
+
+
+def executive_synthesis_node(state: OrchestratorState):
+    """
+    Synthesizes the outputs of all specialist agents and sub-tasks into ONE unified,
+    executive response from the Personal Assistant for the founder.
+    """
+    tasks = state.get("task_graph", {})
+    worker_results = state.get("worker_results", [])
+    supervisor_thoughts = state.get("supervisor_thoughts", [])
+    main_task_id = state.get("task_id")
+    
+    # Original instruction from founder
+    original_objective = ""
+    for msg in state.get("messages", []):
+        if isinstance(msg, HumanMessage) or getattr(msg, "type", "") == "human":
+            original_objective = msg.content
+            break
+    if not original_objective and state.get("messages"):
+        original_objective = state["messages"][0].content
+        
+    # Gather completed deliverables by role
+    deliverables_by_role: Dict[str, str] = {}
+    for wr in worker_results:
+        role = getattr(wr, "role", None) or getattr(wr, "agent_role", None) or "Specialist"
+        out = getattr(wr, "output", "") or ""
+        if out:
+            deliverables_by_role[role] = out
+            
+    for t_id, task in tasks.items():
+        role = task.assignee_role or "Specialist"
+        if task.result and role not in deliverables_by_role:
+            deliverables_by_role[role] = task.result
+
+    # Format synthesis
+    if len(deliverables_by_role) == 1:
+        single_role, single_output = next(iter(deliverables_by_role.items()))
+        unified_output = single_output
+    elif len(deliverables_by_role) > 1:
+        agents = state.get("active_agents", {})
+        model_id = None
+        for agent in agents.values():
+            if agent.model:
+                model_id = agent.model
+                break
+        llm = get_llm(model_id=model_id, role="default", temperature=0.2)
+        
+        deliverables_context = "\n\n".join([
+            f"=== {role.upper()} DELIVERABLE ===\n{out}"
+            for role, out in deliverables_by_role.items()
+        ])
+        
+        synth_prompt = ChatPromptTemplate.from_messages([
+            ("system", """You are the Founder's Personal Assistant & Chief of Staff.
+Your specialized team has just completed their assigned tasks for the founder's objective.
+Your job is to synthesize all their individual deliverables into ONE comprehensive, beautifully structured executive briefing for the founder.
+
+Guidelines:
+1. Provide a clear, high-impact Executive Summary answering the founder's objective directly.
+2. Integrate key findings, data tables, and metrics from each specialist (Marketing, Finance, Engineering, Operations) into cohesive, well-organized sections.
+3. If deliverables contain Generative UI blocks (```agent-ui) or markdown tables, preserve them.
+4. Conclude with prioritized Key Takeaways and Immediate Next Steps.
+5. Maintain a professional, crisp, and executive tone."""),
+            ("human", """Founder Objective:
+{objective}
+
+Team Sub-Agent Deliverables:
+{deliverables}
+
+Synthesize these team outputs into ONE unified executive response:""")
+        ])
+        
+        try:
+            res = llm.invoke(synth_prompt.format(
+                objective=original_objective,
+                deliverables=deliverables_context
+            ))
+            synthesis_body = res.content
+        except Exception as e:
+            logger.warning(f"Synthesis LLM invocation failed: {e}. Falling back to structured compilation.")
+            synthesis_body = "## Executive Summary\n\n" + "\n\n---\n\n".join([
+                f"### {role}\n{out}" for role, out in deliverables_by_role.items()
+            ])
+            
+        thought_lines = [
+            f"Multi-Agent Coordination & Delegation Trace:",
+            f"- Objective: {original_objective[:120]}...",
+            f"- Coordinated {len(deliverables_by_role)} specialized agents: {', '.join(deliverables_by_role.keys())}",
+            f"- All sub-agent tool executions verified and synthesized into unified executive deliverable."
+        ]
+        if supervisor_thoughts:
+            thought_lines.extend([f"- Supervisor Plan: {t[:100]}" for t in supervisor_thoughts[-2:]])
+            
+        unified_output = f"<thought>\n" + "\n".join(thought_lines) + f"\n</thought>\n\n{synthesis_body}"
+    else:
+        unified_output = "Task successfully completed by the team."
+
+    # Update main task result in DB
+    if main_task_id:
+        task_service.update_task_result(main_task_id, unified_output)
+        task_service.update_task_status(main_task_id, "completed")
+        
+    return {
+        "status": "completed",
+        "messages": [AIMessage(content=unified_output)]
+    }

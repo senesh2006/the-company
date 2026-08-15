@@ -483,6 +483,13 @@ export const api = {
     return res.json();
   },
 
+  getTaskById: async (taskId: string): Promise<Task> => {
+    const baseUrl = getBaseUrl();
+    const res = await authFetch(`${baseUrl}/api/v1/tasks/detail/${taskId}`);
+    if (!res.ok) throw new Error(`Failed to fetch task (${res.status})`);
+    return res.json();
+  },
+
   createTask: async (payload: { description: string; priority?: number }): Promise<Task> => {
     const baseUrl = getBaseUrl();
     const res = await authFetch(`${baseUrl}/api/v1/tasks`, {
