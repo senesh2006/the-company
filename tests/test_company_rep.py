@@ -97,12 +97,15 @@ def test_waha_company_rep_webhook_ingestion():
     async def _run():
         waha = WAHAService(base_url="http://mock-waha:3000", api_key="test_key")
 
+        from app.core.config import settings
+        sender_phone = settings.WAHA_FOUNDER_PHONE or "+15551234567@c.us"
+
         mock_webhook_payload = {
             "event": "message",
             "session": "default",
             "payload": {
                 "fromMe": False,
-                "from": "+15551234567@c.us",
+                "from": sender_phone,
                 "body": "Can someone help me set up an enterprise account?",
                 "timestamp": 1700000000,
                 "_data": {

@@ -360,17 +360,56 @@ class WAHAService:
         logger.info(f"Received WAHA webhook event: {event}")
 
         if event in ("message", "message.any"):
-            # Check if this message was sent by us (fromMe = True)
-            from_me = data.get("fromMe", False)
-            if from_me:
-                return {"status": "ignored", "reason": "message sent by self"}
-
             chat_id = data.get("from") or data.get("chatId") or ""
+            to_id = data.get("to") or ""
             body = data.get("body") or data.get("text") or ""
-            sender_name = data.get("_data", {}).get("notifyName") or data.get("author") or "WhatsApp User"
+            sender_name = data.get("_data", {}).get("notifyName") or data.get("author") or "Founder"
+            from_me = bool(data.get("fromMe", False))
 
             if not body or not chat_id:
                 return {"status": "ignored", "reason": "empty body or chat_id"}
+
+            # Ignore bot automated replies to avoid infinite feedback loops
+            if body.startswith("🤖") or body.startswith("*Company OS*") or "Mandate received from" in body:
+                return {"status": "ignored", "reason": "bot automated acknowledgment"}
+
+            # Restrict agent to ONLY founder's phone number if configured
+            founder_phone = settings.WAHA_FOUNDER_PHONE or ""
+            if founder_phone:
+                founder_digits = re.sub(r"\D", "", founder_phone)
+                chat_digits = re.sub(r"\D", "", chat_id)
+                to_digits = re.sub(r"\D", "", to_id)
+
+                is_from_founder = bool(
+                    founder_digits and (
+                        founder_digits == chat_digits or 
+                        chat_digits.endswith(founder_digits) or 
+                        founder_digits.endswith(chat_digits)
+                    )
+                )
+                is_to_founder_self = bool(
+                    from_me and founder_digits and (
+                        founder_digits == to_digits or 
+                        to_digits.endswith(founder_digits) or 
+                        founder_digits == chat_digits
+                    )
+                )
+
+                if not (is_from_founder or is_to_founder_self):
+                    logger.warning(
+                        f"Ignored WhatsApp message from unauthorized sender: {chat_id} "
+                        f"(Strictly restricted to founder phone: {founder_phone})"
+                    )
+                    return {
+                        "status": "ignored",
+                        "reason": f"unauthorized sender {chat_id} - agent restricted strictly to founder phone {founder_phone}"
+                    }
+
+                # If from_me is True and not sent to self/founder chat, ignore outbound messages to other people
+                if from_me and not is_to_founder_self:
+                    return {"status": "ignored", "reason": "outbound message to third party"}
+            elif from_me:
+                return {"status": "ignored", "reason": "message sent by self"}
 
             logger.info(f"Inbound WhatsApp from {sender_name} ({chat_id}): {body}")
 
