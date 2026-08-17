@@ -626,13 +626,8 @@ export default function TasksPage() {
                   <ThinkingProcess
                     isThinking={true}
                     title={`${selectedTask.agentName || "AI Worker"} is Reasoning`}
-                    statusMessage={`${selectedTask.agentName || "Specialist"} is formulating reasoning and tool execution strategy...`}
-                    steps={[
-                      `1. Mandate Ingestion & Parameter Extraction:\nAnalyzing objective: "${(selectedTask.description || selectedTask.title || "Active task").slice(0, 110)}" and querying shared company memory vault.`,
-                      `2. ReAct Plan & Tool Suite Formulation:\nEvaluating specialized tools and constructing optimal tool call sequence for ${selectedTask.agentName || "AI Worker"}.`,
-                      `3. Real-Time Tool Execution & API Dispatch:\nInvoking integrated MCP APIs, querying external data, and collecting observation telemetry.`,
-                      `4. Maker-Checker Verification & Quality Gate:\nValidating data precision, checking policy compliance, and formatting final deliverable.`
-                    ]}
+                    statusMessage={`${selectedTask.agentName || "Specialist"} is actively reasoning and executing tools in real time...`}
+                    steps={selectedTask.rawTask?.live_thoughts && selectedTask.rawTask.live_thoughts.length > 0 ? selectedTask.rawTask.live_thoughts : undefined}
                     defaultExpanded={true}
                   />
                 ) : selectedTask.statusType === "blocked" ? (

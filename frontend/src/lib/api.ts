@@ -83,6 +83,7 @@ export interface Task {
   retry_count: number;
   milestones?: any[];
   progress?: number;
+  live_thoughts?: any[];
   created_at: string;
   updated_at: string;
 }
@@ -494,6 +495,19 @@ export const api = {
     const res = await authFetch(`${baseUrl}/api/v1/tasks/detail/${taskId}`);
     if (!res.ok) throw new Error(`Failed to fetch task (${res.status})`);
     return res.json();
+  },
+
+  getTaskThoughts: async (taskId: string): Promise<any[]> => {
+    if (!taskId || taskId === 'undefined' || taskId === 'null') return [];
+    try {
+      const baseUrl = getBaseUrl();
+      const res = await authFetch(`${baseUrl}/api/v1/tasks/detail/${taskId}/thoughts`);
+      if (!res.ok) return [];
+      const data = await res.json();
+      return data.thoughts || [];
+    } catch {
+      return [];
+    }
   },
 
   createTask: async (payload: { description: string; priority?: number }): Promise<Task> => {

@@ -152,20 +152,15 @@ export function AgentDetailPanel() {
                 {(() => {
                   const isRunning = agent.status === 'Running';
                   if (isRunning) {
-                    const activeDesc = activeWorkerTask?.description || activeWorkerTask?.mandate || 'Active mandate';
-                    const roleName = agent.role || 'Specialist';
-                    const liveSteps = [
-                      `1. Mandate Ingestion & Scope Analysis:\nAnalyzing objective: "${activeDesc.slice(0, 100)}${activeDesc.length > 100 ? '...' : ''}" and querying shared company memory.`,
-                      `2. Execution & Tool Strategy:\nFormulating ReAct execution plan for ${roleName} (${roleName.includes("Marketing") ? "SEO Tracker, Paid Media, Ad Spend Analytics" : roleName.includes("Finance") ? "Ledger, Stripe API, Financial Auditing" : roleName.includes("Engineering") ? "Git, Terminal, Code Sandbox" : "Specialist Tool Suite"}).`,
-                      `3. Active Tool Acts & Observation:\nInvoking integrated MCP APIs, inspecting payloads, and collecting telemetry.`,
-                      `4. Maker-Checker Reflection:\nValidating data precision, policy compliance, and formulating final deliverable.`
-                    ];
+                    const realLiveSteps = activeWorkerTask?.live_thoughts && activeWorkerTask.live_thoughts.length > 0
+                      ? activeWorkerTask.live_thoughts
+                      : undefined;
                     return (
                       <ThinkingProcess
                         isThinking={true}
                         title={`${agent.name} is Reasoning`}
-                        statusMessage={`${agent.name} is actively executing ReAct reasoning and tool acts...`}
-                        steps={liveSteps}
+                        statusMessage={`${agent.name} is formulating reasoning and executing tools in real time...`}
+                        steps={realLiveSteps}
                         model={agent.model || undefined}
                         defaultExpanded={true}
                       />
@@ -175,29 +170,14 @@ export function AgentDetailPanel() {
                   if (latestWorkerTask) {
                     const extracted = latestWorkerTask.result ? extractThoughts(latestWorkerTask.result) : null;
                     const thoughtText = extracted?.thoughts;
-                    const parsedSteps = extracted?.steps;
+                    const parsedSteps = extracted?.steps || (latestWorkerTask.live_thoughts && latestWorkerTask.live_thoughts.length > 0 ? latestWorkerTask.live_thoughts : undefined);
 
-                    if (thoughtText) {
+                    if (thoughtText || parsedSteps) {
                       return (
                         <ThinkingProcess
-                          thoughtContent={thoughtText}
+                          thoughtContent={thoughtText || undefined}
                           steps={parsedSteps}
                           title={`Latest Reasoning Trace`}
-                          model={agent.model || undefined}
-                          defaultExpanded={false}
-                        />
-                      );
-                    } else {
-                      const completedDesc = latestWorkerTask.description || latestWorkerTask.mandate || 'Mandate';
-                      const fallbackSteps = [
-                        `1. Mandate Ingested & Analyzed:\n"${completedDesc.slice(0, 110)}${completedDesc.length > 110 ? '...' : ''}"`,
-                        `2. Tool Execution & Output Generation:\nSuccessfully generated comprehensive deliverable and recorded results.`,
-                        `3. Governance Verification:\nMaker-Checker compliance verified. Clean operational cycle recorded.`
-                      ];
-                      return (
-                        <ThinkingProcess
-                          steps={fallbackSteps}
-                          title={`Execution Verification Trace`}
                           model={agent.model || undefined}
                           defaultExpanded={false}
                         />

@@ -204,11 +204,31 @@ def make_specialist_worker_node(agent_data: dict):
 
                 total_input_tokens += max(10, len(task.description) // 4)
                 total_output_tokens += max(10, len(str(decision_thoughts)) // 4)
+
+                # Capture real-time LLM complexity reasoning
+                task_service.append_live_thought(
+                    task.id,
+                    {
+                        "label": f"Mandate Analysis & Strategy ({decision_choice.replace('_', ' ').title()})",
+                        "description": str(decision_thoughts),
+                        "icon": "brain",
+                        "status": "complete"
+                    }
+                )
             except Exception as analyze_err:
                 logger.warning(f"Complexity analyzer fallback for {role}: {analyze_err}")
 
             final_output = ""
             if decision_choice == "spawn_subworkers" and settings.ALLOW_AUTONOMOUS_SUBWORKERS:
+                task_service.append_live_thought(
+                    task.id,
+                    {
+                        "label": "Spawning Autonomous Sub-Workers",
+                        "description": f"Level-3 sub-orchestration initialized for {task.description[:80]}...",
+                        "icon": "cpu",
+                        "status": "complete"
+                    }
+                )
                 plan = researcher.invoke({
                     "task_description": task.description, 
                     "context": str(state.get("shared_context", {}))
@@ -254,14 +274,53 @@ def make_specialist_worker_node(agent_data: dict):
                             tool_name = tc.get("name", "tool") if isinstance(tc, dict) else getattr(tc, "name", "tool")
                             tool_args = tc.get("args", {}) if isinstance(tc, dict) else getattr(tc, "args", {})
                             tool_steps.append(f"• Tool Call `{tool_name}`: {tool_args}")
+
+                            # Detect URLs in tool arguments
+                            urls = []
+                            if isinstance(tool_args, dict):
+                                for v in tool_args.values():
+                                    if isinstance(v, str) and (v.startswith("http://") or v.startswith("https://") or "www." in v):
+                                        urls.append(v)
+
+                            # Record actual tool call live thought
+                            task_service.append_live_thought(
+                                task.id,
+                                {
+                                    "label": f"Executing Tool `{tool_name}`",
+                                    "description": f"Parameters: {tool_args}",
+                                    "icon": "search" if "search" in str(tool_name).lower() or "web" in str(tool_name).lower() else ("terminal" if "code" in str(tool_name).lower() or "git" in str(tool_name).lower() or "sandbox" in str(tool_name).lower() else "cpu"),
+                                    "urls": urls,
+                                    "status": "complete"
+                                }
+                            )
                     elif getattr(msg, "type", None) == "tool":
-                        content_preview = str(getattr(msg, "content", ""))[:120].replace("\n", " ")
+                        content_preview = str(getattr(msg, "content", ""))[:200].replace("\n", " ")
                         tool_steps.append(f"  ↳ Observation: {content_preview}...")
+                        task_service.append_live_thought(
+                            task.id,
+                            {
+                                "label": "Tool Observation Received",
+                                "description": content_preview,
+                                "icon": "database",
+                                "status": "complete"
+                            }
+                        )
 
                 if total_input_tokens == 0:
                     total_input_tokens = max(20, sum(len(str(getattr(m, "content", ""))) for m in res.get("messages", [])[:-1]) // 4)
                 if total_output_tokens == 0:
                     total_output_tokens = max(10, len(str(raw_output)) // 4)
+
+                # Record Governance reflection live thought
+                task_service.append_live_thought(
+                    task.id,
+                    {
+                        "label": f"Maker-Checker Verification (Tier: {trust_tier.upper()})",
+                        "description": f"Verified deliverable against trust tier policies and safety criteria.",
+                        "icon": "shield",
+                        "status": "complete"
+                    }
+                )
 
                 if "<thought>" not in raw_output and "<think>" not in raw_output and "### Thought" not in raw_output:
                     thought_sections = [

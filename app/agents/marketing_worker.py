@@ -71,6 +71,15 @@ def understand_and_context(state: MarketingWorkerState):
         needs_sub_workers = False
         analysis = "Could not parse JSON. Proceeding manually."
 
+    from app.services.task_service import TaskService
+    ts = TaskService()
+    ts.append_live_thought(state["task"].id, {
+        "label": "Strategic Context & Campaign Scope",
+        "description": analysis,
+        "icon": "brain",
+        "status": "complete"
+    })
+
     return {"observations": analysis, "needs_sub_workers": needs_sub_workers}
 
 def plan(state: MarketingWorkerState):
@@ -81,6 +90,15 @@ def plan(state: MarketingWorkerState):
         ("human", "Task / Mandate: {task}\nObservations: {observations}\nWrite a clear step-by-step execution plan specifying which tools to invoke and what deliverables to produce.")
     ])
     res = llm.invoke(prompt.format(task=state["task"].description, observations=state["observations"]))
+    
+    from app.services.task_service import TaskService
+    ts = TaskService()
+    ts.append_live_thought(state["task"].id, {
+        "label": "Marketing Execution Plan",
+        "description": res.content,
+        "icon": "terminal",
+        "status": "complete"
+    })
     return {"plan": res.content}
 
 def act(state: MarketingWorkerState):
@@ -131,6 +149,15 @@ def reflect(state: MarketingWorkerState):
         confidence = 0.9
         side_effects = []
         
+    from app.services.task_service import TaskService
+    ts = TaskService()
+    ts.append_live_thought(state["task"].id, {
+        "label": "Brand Quality & Alignment Reflection",
+        "description": f"Confidence: {confidence:.2f} | Side Effects: {', '.join(side_effects) if side_effects else 'None'}",
+        "icon": "shield",
+        "status": "complete"
+    })
+
     status = "needs_human" if confidence < 0.85 else "success"
     return {"confidence": confidence, "side_effects": side_effects, "status": status}
 

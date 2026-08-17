@@ -227,14 +227,13 @@ def list_all_tasks(user = Depends(get_current_user)):
 
 @router.get("/detail/{task_id}")
 def get_task_by_id(task_id: str, user = Depends(get_current_user)):
-    """Retrieves a single task by ID enriched with dynamic milestones."""
+    """Retrieves a single task by ID enriched with dynamic milestones and real-time live thoughts."""
     try:
         if not task_id or task_id in ["undefined", "null"]:
             raise HTTPException(status_code=404, detail="Task not found")
-        biz_id = user.business_id or "00000000-0000-0000-0000-000000000001"
-        response = task_service.client.table("tasks").select("*").eq("id", task_id).execute()
-        if response.data:
-            t = response.data[0]
+        
+        t = task_service.get_task(task_id)
+        if t:
             ms = generate_task_milestones(
                 description=t.get("description") or t.get("mandate", ""),
                 assignee_role=t.get("assignee_role"),
@@ -243,13 +242,31 @@ def get_task_by_id(task_id: str, user = Depends(get_current_user)):
             )
             t["milestones"] = ms
             t["progress"] = calculate_milestone_progress(ms)
+            if "live_thoughts" not in t or not t["live_thoughts"]:
+                t["live_thoughts"] = task_service.get_live_thoughts(task_id)
             return t
         raise HTTPException(status_code=404, detail="Task not found")
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Failed to fetch task {task_id}: {e}")
+        # Safe fallback
+        t = task_service.get_task(task_id)
+        if t:
+            return t
         raise HTTPException(status_code=404, detail=f"Task {task_id} not found")
+
+@router.get("/detail/{task_id}/thoughts")
+@router.get("/{task_id}/thoughts")
+def get_task_thoughts(task_id: str, user = Depends(get_current_user)):
+    """Returns captured real-time LLM thoughts and ReAct tool acts for a live task."""
+    try:
+        thoughts = task_service.get_live_thoughts(task_id)
+        return {"task_id": task_id, "thoughts": thoughts, "count": len(thoughts)}
+    except Exception as e:
+        logger.error(f"Error fetching live thoughts for {task_id}: {e}")
+        return {"task_id": task_id, "thoughts": [], "count": 0}
+
 
 @router.get("/{business_id}")
 def list_tasks(business_id: str, status: Optional[str] = Query(None, description="Filter by status"), user = Depends(get_current_user)):

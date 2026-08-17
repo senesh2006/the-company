@@ -244,25 +244,11 @@ export function ThinkingProcess({
     if (isThinking) {
       return [
         {
-          id: "active-1",
-          label: "Mandate Analysis & Scope Ingestion",
-          description: statusMessage || "Analyzing mandate parameters and querying shared memory context...",
+          id: "active-stream",
+          label: statusMessage || "Active Cognitive Reasoning Stream...",
+          description: "AI Worker is actively formulating reasoning, evaluating tools, and generating real-time deliverables...",
           icon: Brain,
-          status: "complete",
-        },
-        {
-          id: "active-2",
-          label: "Formulating ReAct Execution Strategy & Tool Plan",
-          description: "Evaluating specialized tools, API parameters, and safety boundaries...",
-          icon: Terminal,
           status: "active",
-        },
-        {
-          id: "active-3",
-          label: "Maker-Checker Verification & Deliverable Synthesis",
-          description: "Awaiting execution outputs and governance reflection...",
-          icon: ShieldCheck,
-          status: "pending",
         },
       ];
     }

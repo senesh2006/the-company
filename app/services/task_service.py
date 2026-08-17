@@ -27,14 +27,55 @@ def is_valid_uuid(val: Any) -> bool:
     except (ValueError, AttributeError, TypeError):
         return False
 
-# In-memory storage fallback for audit feed and agent metadata
+# In-memory storage fallback for audit feed, agent metadata, and real-time live thoughts
 _IN_MEMORY_AUDIT_LOG: List[Dict[str, Any]] = []
 _IN_MEMORY_AGENT_EXTRA: Dict[str, Dict[str, Any]] = {}
 _IN_MEMORY_AGENTS: Dict[str, Dict[str, Any]] = {}
+_IN_MEMORY_TASKS: Dict[str, Dict[str, Any]] = {}
+_IN_MEMORY_LIVE_THOUGHTS: Dict[str, List[Dict[str, Any]]] = {}
 
 class TaskService:
     def __init__(self, supabase_client: Optional[Client] = None):
         self._client = supabase_client
+
+    def append_live_thought(self, task_id: str, thought_entry: Dict[str, Any]) -> Dict[str, Any]:
+        """Appends a real-time LLM thought or tool act entry for a live task."""
+        if not task_id:
+            return thought_entry
+        t_id = str(task_id)
+        if t_id not in _IN_MEMORY_LIVE_THOUGHTS:
+            _IN_MEMORY_LIVE_THOUGHTS[t_id] = []
+        
+        entry = {
+            "id": thought_entry.get("id") or f"step-{len(_IN_MEMORY_LIVE_THOUGHTS[t_id]) + 1}",
+            "label": thought_entry.get("label") or "AI Agent Reasoning",
+            "description": thought_entry.get("description") or "",
+            "status": thought_entry.get("status") or "complete",
+            "icon": thought_entry.get("icon") or "brain",
+            "urls": thought_entry.get("urls") or [],
+            "image": thought_entry.get("image"),
+            "duration": thought_entry.get("duration"),
+            "timestamp": thought_entry.get("timestamp") or datetime.utcnow().isoformat() + "Z"
+        }
+        _IN_MEMORY_LIVE_THOUGHTS[t_id].append(entry)
+        
+        # Also update task record in memory
+        if t_id in _IN_MEMORY_TASKS:
+            _IN_MEMORY_TASKS[t_id]["live_thoughts"] = list(_IN_MEMORY_LIVE_THOUGHTS[t_id])
+            
+        return entry
+
+    def get_live_thoughts(self, task_id: str) -> List[Dict[str, Any]]:
+        """Retrieves captured real-time LLM thoughts for a task."""
+        if not task_id:
+            return []
+        return list(_IN_MEMORY_LIVE_THOUGHTS.get(str(task_id), []))
+
+    def clear_live_thoughts(self, task_id: str):
+        """Clears live thoughts for a task."""
+        if task_id and str(task_id) in _IN_MEMORY_LIVE_THOUGHTS:
+            del _IN_MEMORY_LIVE_THOUGHTS[str(task_id)]
+
 
     @property
     def client(self) -> Client:
@@ -377,6 +418,29 @@ class TaskService:
         except Exception as e:
             logger.error(f"Error fetching active task for agent {agent_id}: {e}")
             raise e
+
+    def get_task(self, task_id: str) -> Optional[dict[str, Any]]:
+        """Retrieves a single task by ID with cached fallback and real-time live_thoughts."""
+        if not task_id or task_id in ["undefined", "null"]:
+            return None
+        t_id = str(task_id)
+        task_data = None
+        try:
+            if settings.SUPABASE_URL and settings.SUPABASE_KEY:
+                response = self.client.table("tasks").select("*").eq("id", t_id).execute()
+                if response.data:
+                    task_data = dict(response.data[0])
+        except Exception as e:
+            logger.warning(f"Supabase task fetch fallback for {t_id}: {e}")
+
+        if not task_data and t_id in _IN_MEMORY_TASKS:
+            task_data = dict(_IN_MEMORY_TASKS[t_id])
+
+        if task_data:
+            task_data["live_thoughts"] = self.get_live_thoughts(t_id)
+            _IN_MEMORY_TASKS[t_id] = task_data
+            return task_data
+        return None
 
     def get_active_task_for_business(self, business_id: str) -> Optional[dict[str, Any]]:
         """Finds the currently running team task for a given business."""
