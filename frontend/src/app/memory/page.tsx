@@ -225,7 +225,7 @@ export default function MemoryPage() {
         <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="flex flex-col gap-2 max-w-2xl">
             <div className="flex items-center gap-2.5">
-              <span className="px-3 py-1 text-[11px] font-bold uppercase tracking-wider rounded-full bg-white dark:bg-slate-900/20 text-white border border-white/30 backdrop-blur-md">
+              <span className="px-3 py-1 text-[11px] font-bold uppercase tracking-wider rounded-full bg-emerald-950/60 text-emerald-200 border border-emerald-400/40 backdrop-blur-md">
                 Shared Knowledge Vault
               </span>
               <span className="text-xs text-emerald-100 font-mono">Cross-Worker Grounding Hub</span>
@@ -243,16 +243,16 @@ export default function MemoryPage() {
           <div className="flex items-center gap-3 shrink-0">
             <button
               onClick={() => setIsUploadOpen(true)}
-              className="px-4 py-2.5 rounded-xl bg-white dark:bg-slate-900 hover:bg-slate-100 dark:bg-slate-800 text-emerald-950 font-bold text-xs flex items-center gap-2 transition-all shadow-md hover:scale-[1.02] active:scale-[0.98]"
+              className="px-4 py-2.5 rounded-xl bg-white hover:bg-emerald-50 text-emerald-950 font-bold text-xs flex items-center gap-2 transition-all shadow-md hover:scale-[1.02] active:scale-[0.98] border border-white cursor-pointer"
             >
               <Upload className="w-4 h-4 text-emerald-700" />
               Upload Document
             </button>
             <button
               onClick={() => setIsAddKVOpen(true)}
-              className="px-4 py-2.5 rounded-xl bg-white dark:bg-slate-900/15 hover:bg-white dark:bg-slate-900/25 text-white font-medium text-xs border border-white/20 flex items-center gap-2 transition-all hover:scale-[1.02] backdrop-blur-md"
+              className="px-4 py-2.5 rounded-xl bg-emerald-950/60 hover:bg-emerald-900/80 text-white font-semibold text-xs border border-emerald-400/40 flex items-center gap-2 transition-all hover:scale-[1.02] backdrop-blur-md shadow-sm cursor-pointer"
             >
-              <Plus className="w-4 h-4 text-emerald-200" />
+              <Plus className="w-4 h-4 text-emerald-300" />
               Add Key-Value
             </button>
           </div>
@@ -263,30 +263,31 @@ export default function MemoryPage() {
           {CATEGORIES.map((cat) => {
             const Icon = cat.icon;
             const count = documents?.filter((d) => d.category === cat.label).length || 0;
+            const isSelected = selectedCategory === cat.label;
             return (
               <div 
                 key={cat.label}
                 onClick={() => {
-                  setSelectedCategory(cat.label === selectedCategory ? "all" : cat.label);
+                  setSelectedCategory(isSelected ? "all" : cat.label);
                   setActiveTab("knowledge");
                 }}
-                className={`p-3 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between gap-1.5 ${
-                  selectedCategory === cat.label 
-                    ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 border-white shadow-lg scale-[1.02]" 
-                    : "bg-white dark:bg-slate-900/10 border-white/15 text-white hover:bg-white dark:bg-slate-900/20 backdrop-blur-md"
+                className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between gap-2 ${
+                  isSelected 
+                    ? "bg-white text-slate-900 border-white shadow-xl scale-[1.02]" 
+                    : "bg-emerald-950/40 border-emerald-500/30 text-white hover:bg-emerald-900/60 backdrop-blur-md hover:border-emerald-400/50"
                 }`}
               >
                 <div className="flex items-center justify-between">
                   <div className={`p-1.5 rounded-lg border bg-gradient-to-br ${cat.color}`}>
                     <Icon className="w-4 h-4" />
                   </div>
-                  <span className={`font-mono text-[11px] font-bold ${selectedCategory === cat.label ? 'text-emerald-700' : 'text-emerald-100'}`}>
+                  <span className={`font-mono text-[11px] font-bold ${isSelected ? 'text-emerald-700' : 'text-emerald-300'}`}>
                     {count} {count === 1 ? "doc" : "docs"}
                   </span>
                 </div>
                 <div>
-                  <h4 className={`text-xs font-bold truncate ${selectedCategory === cat.label ? 'text-slate-900 dark:text-slate-100' : 'text-white'}`}>{cat.label}</h4>
-                  <p className={`text-[10px] line-clamp-1 ${selectedCategory === cat.label ? 'text-slate-500 dark:text-slate-400' : 'text-emerald-100/80'}`}>{cat.desc}</p>
+                  <h4 className={`text-xs font-bold truncate ${isSelected ? 'text-slate-900' : 'text-white'}`}>{cat.label}</h4>
+                  <p className={`text-[10px] line-clamp-1 ${isSelected ? 'text-slate-600' : 'text-emerald-200/90'}`}>{cat.desc}</p>
                 </div>
               </div>
             );
