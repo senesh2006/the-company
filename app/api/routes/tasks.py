@@ -212,14 +212,18 @@ def list_all_tasks(user = Depends(get_current_user)):
         response = task_service.client.table("tasks").select("*").eq("business_id", biz_id).order("created_at", desc=True).execute()
         tasks = response.data or []
         for t in tasks:
+            t_id = str(t.get("id", ""))
+            t_thoughts = task_service.get_live_thoughts(t_id)
             ms = generate_task_milestones(
                 description=t.get("description") or t.get("mandate", ""),
                 assignee_role=t.get("assignee_role"),
                 status=t.get("status", "queued"),
-                result=t.get("result")
+                result=t.get("result"),
+                live_thoughts=t_thoughts
             )
             t["milestones"] = ms
             t["progress"] = calculate_milestone_progress(ms)
+            t["live_thoughts"] = t_thoughts
         return tasks
     except Exception as e:
         logger.error(f"Failed to fetch tasks: {e}")
@@ -234,16 +238,17 @@ def get_task_by_id(task_id: str, user = Depends(get_current_user)):
         
         t = task_service.get_task(task_id)
         if t:
+            t_thoughts = t.get("live_thoughts") or task_service.get_live_thoughts(task_id)
             ms = generate_task_milestones(
                 description=t.get("description") or t.get("mandate", ""),
                 assignee_role=t.get("assignee_role"),
                 status=t.get("status", "queued"),
-                result=t.get("result")
+                result=t.get("result"),
+                live_thoughts=t_thoughts
             )
             t["milestones"] = ms
             t["progress"] = calculate_milestone_progress(ms)
-            if "live_thoughts" not in t or not t["live_thoughts"]:
-                t["live_thoughts"] = task_service.get_live_thoughts(task_id)
+            t["live_thoughts"] = t_thoughts
             return t
         raise HTTPException(status_code=404, detail="Task not found")
     except HTTPException:

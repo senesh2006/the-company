@@ -211,11 +211,11 @@ export function MilestoneMap({
                 </div>
 
                 {/* Milestone Info */}
-                <div className="space-y-1 min-w-0 flex-1">
-                  <h5 className="text-xs font-bold text-slate-900 dark:text-slate-100 line-clamp-2 leading-snug break-words min-h-[2rem]">
+                <div className="space-y-1.5 min-w-0 flex-1" title={`${m.title}: ${m.description}`}>
+                  <h5 className="text-xs font-bold text-slate-900 dark:text-slate-100 line-clamp-2 leading-snug break-words">
                     {m.title}
                   </h5>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed break-words min-h-[2rem]">
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-3 leading-relaxed break-words">
                     {m.description}
                   </p>
                 </div>
@@ -223,11 +223,11 @@ export function MilestoneMap({
                 {/* Assignee Badge Footer */}
                 <div className="pt-2.5 mt-2.5 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-[11px] min-w-0">
                   <span 
-                    className="inline-flex items-center gap-1.5 text-slate-600 dark:text-slate-400 font-medium min-w-0 truncate"
-                    title={m.assignee_role || "Specialist"}
+                    className="inline-flex items-center gap-1.5 text-slate-600 dark:text-slate-400 font-semibold min-w-0 truncate"
+                    title={m.assignee_role || "Specialist Worker"}
                   >
-                    <RoleIcon className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                    <span className="truncate">{m.assignee_role || "Specialist"}</span>
+                    <RoleIcon className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                    <span className="truncate">{m.assignee_role || "Specialist Worker"}</span>
                   </span>
                 </div>
               </div>
