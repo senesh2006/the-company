@@ -219,7 +219,8 @@ def list_all_tasks(user = Depends(get_current_user)):
                 assignee_role=t.get("assignee_role"),
                 status=t.get("status", "queued"),
                 result=t.get("result"),
-                live_thoughts=t_thoughts
+                live_thoughts=t_thoughts,
+                use_llm=False
             )
             t["milestones"] = ms
             t["progress"] = calculate_milestone_progress(ms)

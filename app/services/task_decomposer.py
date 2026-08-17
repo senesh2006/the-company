@@ -11,7 +11,8 @@ _AI_MILESTONE_CACHE: Dict[str, List[Dict[str, Any]]] = {}
 
 def decompose_task_with_ai(
     description: str,
-    assignee_role: Optional[str] = None
+    assignee_role: Optional[str] = None,
+    use_llm: bool = True
 ) -> List[Dict[str, Any]]:
     """
     Invokes the AI Supervisor LLM to dynamically deconstruct any operational mandate
@@ -26,6 +27,10 @@ def decompose_task_with_ai(
 
     if cache_key in _AI_MILESTONE_CACHE:
         return _AI_MILESTONE_CACHE[cache_key]
+
+    if not use_llm:
+        # Fast non-blocking contextual generator
+        return _generate_dynamic_fallback(clean_desc, role, cache_key)
 
     try:
         llm = get_llm(role="Supervisor", temperature=0.1)
@@ -67,7 +72,11 @@ def decompose_task_with_ai(
     except Exception as e:
         logger.warning(f"AI milestone decomposition fallback for '{clean_desc[:40]}': {e}")
 
-    # Dynamic contextual fallback if LLM is offline
+    return _generate_dynamic_fallback(clean_desc, role, cache_key)
+
+
+def _generate_dynamic_fallback(clean_desc: str, role: str, cache_key: str) -> List[Dict[str, Any]]:
+    """Generates customized contextual milestones instantly without waiting for network LLM."""
     desc_words = [w for w in re.findall(r'\b\w+\b', clean_desc) if len(w) > 3][:6]
     focus_topic = " ".join(desc_words).title() if desc_words else clean_desc[:30].title()
 
@@ -106,13 +115,14 @@ def generate_task_milestones(
     assignee_role: Optional[str] = None,
     status: str = "queued",
     result: Optional[str] = None,
-    live_thoughts: Optional[List[Dict[str, Any]]] = None
+    live_thoughts: Optional[List[Dict[str, Any]]] = None,
+    use_llm: bool = True
 ) -> List[Dict[str, Any]]:
     """
     Deconstructs any task / mandate into a sequential AI-generated roadmap of 3 to 4 concrete milestones.
     Dynamically tracks the completion status of each milestone based on real execution lifecycle and live thoughts.
     """
-    templates = decompose_task_with_ai(description=description, assignee_role=assignee_role)
+    templates = decompose_task_with_ai(description=description, assignee_role=assignee_role, use_llm=use_llm)
 
     # Assign status to each milestone based on task lifecycle & live thought progress
     milestones: List[Dict[str, Any]] = []
