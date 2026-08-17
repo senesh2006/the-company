@@ -1,8 +1,43 @@
 "use client";
 
-import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Brain, ChevronDown, Sparkles, Copy, Check, Terminal, Cpu } from "lucide-react";
+import React, { useMemo } from "react";
+import {
+  ChainOfThought,
+  ChainOfThoughtHeader,
+  ChainOfThoughtContent,
+  ChainOfThoughtStep,
+  ChainOfThoughtSearchResults,
+  ChainOfThoughtSearchResult,
+  ChainOfThoughtImage,
+} from "@/components/ai-elements/chain-of-thought";
+import { Image } from "@/components/ai-elements/image";
+import {
+  Brain,
+  SearchIcon,
+  ImageIcon,
+  Terminal,
+  Cpu,
+  ShieldCheck,
+  Globe,
+  Database,
+  CheckCircle2,
+  Sparkles,
+  LucideIcon,
+} from "lucide-react";
+
+export interface ParsedStepItem {
+  id: string | number;
+  label: string;
+  description?: string;
+  icon?: LucideIcon;
+  status: "pending" | "active" | "complete" | "error";
+  urls?: string[];
+  image?: {
+    src: string;
+    caption?: string;
+  };
+  duration?: string | number;
+}
 
 export interface ThinkingProcessProps {
   /**
@@ -12,9 +47,9 @@ export interface ThinkingProcessProps {
   /**
    * Array of individual thought/reasoning steps if available
    */
-  steps?: string[];
+  steps?: (string | ParsedStepItem)[];
   /**
-   * Title displayed in the thinking bar (e.g. "Thought Process", "Reasoning Trace")
+   * Title displayed in the thinking bar (e.g. "Personal Assistant is Reasoning", "Thought Process")
    */
   title?: string;
   /**
@@ -44,11 +79,16 @@ export interface ThinkingProcessProps {
  * Extracts <thought>...</thought>, <think>...</think>, <reasoning>...</reasoning>,
  * or Markdown style reasoning headers from text, returning the thought portion and clean final answer.
  */
-export function extractThoughts(rawText: string): { thoughts: string | null; cleanContent: string; steps?: string[] } {
+export function extractThoughts(rawText: string): {
+  thoughts: string | null;
+  cleanContent: string;
+  steps?: string[];
+} {
   if (!rawText) return { thoughts: null, cleanContent: "", steps: [] };
 
   // Match XML/HTML style tags: <thought>, <think>, <reasoning>, <reason>, <thought_process>, <cognitive_trace>
-  const thoughtTagRegex = /<(thought|think|reasoning|reason|thought_process|cognitive_trace)>([\s\S]*?)<\/\1>/gi;
+  const thoughtTagRegex =
+    /<(thought|think|reasoning|reason|thought_process|cognitive_trace)>([\s\S]*?)<\/\1>/gi;
   const matches: string[] = [];
   let clean = rawText;
 
@@ -65,31 +105,100 @@ export function extractThoughts(rawText: string): { thoughts: string | null; cle
     // Parse individual numbered or bulleted step chunks
     const stepChunks = combinedThoughts
       .split(/(?=(?:^\s*\d+[\.\)]|\n\s*\d+[\.\)]|\n\s*•|\n\s*-\s*|\n\s*###))/m)
-      .map(s => s.trim())
-      .filter(s => s.length > 0);
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0);
 
-    return { 
-      thoughts: combinedThoughts, 
-      cleanContent: clean, 
-      steps: stepChunks.length > 1 ? stepChunks : undefined 
+    return {
+      thoughts: combinedThoughts,
+      cleanContent: clean,
+      steps: stepChunks.length > 1 ? stepChunks : undefined,
     };
   }
 
   // Match Markdown style: ### Thought Process ... ### Final Deliverables / Answer
-  const mdThoughtRegex = /(?:###\s*(?:Thought Process|Internal Reasoning|Analysis & Strategy|Reasoning Trace|Agent Reasoning|Cognitive Trace)\s*\n)([\s\S]*?)(?=(?:\n###\s*|\n##\s*|$))/i;
+  const mdThoughtRegex =
+    /(?:###\s*(?:Thought Process|Internal Reasoning|Analysis & Strategy|Reasoning Trace|Agent Reasoning|Cognitive Trace)\s*\n)([\s\S]*?)(?=(?:\n###\s*|\n##\s*|$))/i;
   const mdMatch = rawText.match(mdThoughtRegex);
   if (mdMatch && mdMatch[1].trim()) {
     const thoughts = mdMatch[1].trim();
     const cleanContent = rawText.replace(mdThoughtRegex, "").trim();
     const stepChunks = thoughts
       .split(/(?=(?:^\s*\d+[\.\)]|\n\s*\d+[\.\)]|\n\s*•|\n\s*-\s*|\n\s*###))/m)
-      .map(s => s.trim())
-      .filter(s => s.length > 0);
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0);
 
-    return { thoughts, cleanContent, steps: stepChunks.length > 1 ? stepChunks : undefined };
+    return {
+      thoughts,
+      cleanContent,
+      steps: stepChunks.length > 1 ? stepChunks : undefined,
+    };
   }
 
   return { thoughts: null, cleanContent: rawText, steps: [] };
+}
+
+/**
+ * Parses raw text step or string into a structured Step item with detected icons, search URLs, images, and tool acts.
+ */
+function parseStepString(raw: string, index: number, isLast: boolean, isThinking: boolean): ParsedStepItem {
+  const lines = raw.split("\n").map((l) => l.trim()).filter(Boolean);
+  const firstLine = lines[0] || `Step ${index + 1}`;
+  const description = lines.length > 1 ? lines.slice(1).join("\n") : undefined;
+
+  // Extract URLs
+  const urlRegex = /(https?:\/\/[^\s\)\],]+)/gi;
+  const foundUrls: string[] = [];
+  let urlMatch: RegExpExecArray | null;
+  while ((urlMatch = urlRegex.exec(raw)) !== null) {
+    if (urlMatch[1]) {
+      foundUrls.push(urlMatch[1]);
+    }
+  }
+
+  // Detect Image markdown: ![caption](url)
+  const imageRegex = /!\[([^\]]*)\]\((https?:\/\/[^\s\)]+|data:image\/[^;]+;base64,[^\s\)]+)\)/i;
+  const imgMatch = raw.match(imageRegex);
+  let parsedImage: { src: string; caption?: string } | undefined = undefined;
+  if (imgMatch) {
+    parsedImage = {
+      caption: imgMatch[1] || "Generated image",
+      src: imgMatch[2],
+    };
+  }
+
+  // Choose appropriate icon
+  const lower = raw.toLowerCase();
+  let stepIcon: LucideIcon = Cpu;
+
+  if (lower.includes("search") || lower.includes("find") || lower.includes("lookup") || foundUrls.length > 0) {
+    stepIcon = SearchIcon;
+  } else if (lower.includes("image") || lower.includes("photo") || lower.includes("visual") || parsedImage) {
+    stepIcon = ImageIcon;
+  } else if (lower.includes("terminal") || lower.includes("code") || lower.includes("git") || lower.includes("sandbox") || lower.includes("tool")) {
+    stepIcon = Terminal;
+  } else if (lower.includes("memory") || lower.includes("database") || lower.includes("ledger") || lower.includes("vault")) {
+    stepIcon = Database;
+  } else if (lower.includes("maker-checker") || lower.includes("governance") || lower.includes("verify") || lower.includes("audit") || lower.includes("policy")) {
+    stepIcon = ShieldCheck;
+  } else if (lower.includes("mandate") || lower.includes("scope") || lower.includes("objective")) {
+    stepIcon = Brain;
+  }
+
+  const status: "pending" | "active" | "complete" = isThinking
+    ? isLast
+      ? "active"
+      : "complete"
+    : "complete";
+
+  return {
+    id: index,
+    label: firstLine.replace(/^[\d\.\)\-\•\#\*\s]+/, "").trim() || firstLine,
+    description: description,
+    icon: stepIcon,
+    status: status,
+    urls: foundUrls.length > 0 ? Array.from(new Set(foundUrls)) : undefined,
+    image: parsedImage,
+  };
 }
 
 export function ThinkingProcess({
@@ -103,138 +212,141 @@ export function ThinkingProcess({
   defaultExpanded = false,
   className = "",
 }: ThinkingProcessProps) {
-  const [isExpanded, setIsExpanded] = useState(defaultExpanded || isThinking);
-  const [copied, setCopied] = useState(false);
-
   // If there's no thoughts and not currently thinking, render nothing
   if (!thoughtContent && (!steps || steps.length === 0) && !isThinking) {
     return null;
   }
 
-  const stepCount = steps?.length || (thoughtContent ? thoughtContent.split(/\n\n+/).filter(Boolean).length : 1);
-  const formattedDuration = typeof duration === "number" ? `${duration.toFixed(1)}s` : duration;
-
-  const handleCopy = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    const textToCopy = thoughtContent || (steps ? steps.join("\n") : "");
-    if (textToCopy) {
-      navigator.clipboard.writeText(textToCopy);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+  // Process structured steps
+  const processedSteps: ParsedStepItem[] = useMemo(() => {
+    if (steps && steps.length > 0) {
+      return steps.map((s, idx) => {
+        if (typeof s === "string") {
+          return parseStepString(s, idx, idx === steps.length - 1, isThinking);
+        }
+        return s;
+      });
     }
-  };
+
+    if (thoughtContent) {
+      const chunks = thoughtContent
+        .split(/(?=(?:^\s*\d+[\.\)]|\n\s*\d+[\.\)]|\n\s*•|\n\s*-\s*|\n\s*###))/m)
+        .map((c) => c.trim())
+        .filter(Boolean);
+
+      if (chunks.length > 1) {
+        return chunks.map((c, idx) =>
+          parseStepString(c, idx, idx === chunks.length - 1, isThinking)
+        );
+      }
+    }
+
+    if (isThinking) {
+      return [
+        {
+          id: "active-1",
+          label: "Mandate Analysis & Scope Ingestion",
+          description: statusMessage || "Analyzing mandate parameters and querying shared memory context...",
+          icon: Brain,
+          status: "complete",
+        },
+        {
+          id: "active-2",
+          label: "Formulating ReAct Execution Strategy & Tool Plan",
+          description: "Evaluating specialized tools, API parameters, and safety boundaries...",
+          icon: Terminal,
+          status: "active",
+        },
+        {
+          id: "active-3",
+          label: "Maker-Checker Verification & Deliverable Synthesis",
+          description: "Awaiting execution outputs and governance reflection...",
+          icon: ShieldCheck,
+          status: "pending",
+        },
+      ];
+    }
+
+    return [];
+  }, [steps, thoughtContent, isThinking, statusMessage]);
+
+  const copyText = useMemo(() => {
+    if (thoughtContent) return thoughtContent;
+    if (steps && steps.length > 0) {
+      return steps
+        .map((s) => (typeof s === "string" ? s : `${s.label}\n${s.description || ""}`))
+        .join("\n\n");
+    }
+    return statusMessage || title;
+  }, [thoughtContent, steps, statusMessage, title]);
 
   return (
-    <div className={`my-3 rounded-2xl border border-slate-200/90 dark:border-slate-700/90 bg-slate-50/80 dark:bg-slate-900/80 overflow-hidden shadow-xs transition-all ${className}`}>
-      {/* Header Bar */}
-      <button
-        type="button"
-        onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full px-4 py-2.5 flex items-center justify-between gap-3 text-left hover:bg-slate-100/70 dark:hover:bg-slate-800/60 transition-colors select-none cursor-pointer"
-      >
-        <div className="flex items-center gap-2.5 min-w-0">
-          {/* Animated Brain / Sparkles Icon */}
-          <div className="w-7 h-7 rounded-xl bg-emerald-100/70 dark:bg-emerald-950/60 border border-emerald-200/80 dark:border-emerald-800/60 flex items-center justify-center text-emerald-700 dark:text-emerald-400 shrink-0">
-            {isThinking ? (
-              <Brain className="w-4 h-4 text-emerald-600 dark:text-emerald-400 animate-pulse" />
-            ) : (
-              <Sparkles className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-400" />
-            )}
-          </div>
+    <ChainOfThought
+      defaultOpen={defaultExpanded || isThinking}
+      status={isThinking ? "active" : "complete"}
+      className={className}
+    >
+      <ChainOfThoughtHeader
+        title={isThinking ? (title.includes("is Reasoning") ? title : `${title}`) : title}
+        model={model}
+        duration={duration}
+        copyContent={copyText}
+      />
 
-          <div className="flex items-center gap-2 flex-wrap min-w-0">
-            <span className="text-xs font-bold text-slate-800 dark:text-slate-200 tracking-tight">
-              {isThinking ? (title.includes("is Reasoning") ? title : "Thinking...") : title}
-            </span>
-
-            {/* Badges */}
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 shadow-2xs">
-              {isThinking ? "Active Reasoning" : `${stepCount} step${stepCount !== 1 ? "s" : ""}`}
-            </span>
-
-            {model && (
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-medium bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
-                {model}
-              </span>
-            )}
-
-            {formattedDuration && (
-              <span className="text-[10px] font-mono text-slate-400">
-                • {formattedDuration}
-              </span>
-            )}
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 shrink-0">
-          {thoughtContent && (
-            <button
-              type="button"
-              onClick={handleCopy}
-              title="Copy thought process"
-              className="p-1 rounded-lg hover:bg-slate-200/70 dark:hover:bg-slate-700 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
+      <ChainOfThoughtContent>
+        {processedSteps.length > 0 ? (
+          processedSteps.map((step, idx) => (
+            <ChainOfThoughtStep
+              key={step.id || idx}
+              label={step.label}
+              description={step.description}
+              icon={step.icon}
+              status={step.status}
+              duration={step.duration}
             >
-              {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-            </button>
-          )}
-
-          <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 hidden sm:inline">
-            {isExpanded ? "Hide thoughts" : "View reasoning"}
-          </span>
-          <motion.div
-            animate={{ rotate: isExpanded ? 180 : 0 }}
-            transition={{ duration: 0.2 }}
-            className="text-slate-400 hover:text-slate-600 dark:text-slate-400"
-          >
-            <ChevronDown className="w-4 h-4" />
-          </motion.div>
-        </div>
-      </button>
-
-      {/* Expandable Body */}
-      <AnimatePresence initial={false}>
-        {isExpanded && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-            className="overflow-hidden border-t border-slate-200/70 dark:border-slate-700/70"
-          >
-            <div className="p-4 bg-white dark:bg-slate-900/70 space-y-3 text-xs leading-relaxed text-slate-700 dark:text-slate-300 font-sans border-l-3 border-emerald-500/70 ml-3 my-2 rounded-r-xl">
-              {isThinking && (
-                <div className="flex items-center gap-2.5 text-emerald-800 dark:text-emerald-300 text-[11px] font-mono bg-emerald-50/60 dark:bg-emerald-950/40 p-2.5 rounded-xl border border-emerald-100 dark:border-emerald-900/50">
-                  <div className="w-2 h-2 rounded-full bg-emerald-500 animate-ping shrink-0" />
-                  <span className="leading-tight">
-                    {statusMessage || "Agent is formulating reasoning and tool execution strategy..."}
-                  </span>
-                </div>
+              {/* Search Results */}
+              {step.urls && step.urls.length > 0 && (
+                <ChainOfThoughtSearchResults>
+                  {step.urls.map((url) => {
+                    let hostname = url;
+                    try {
+                      hostname = new URL(url).hostname;
+                    } catch {
+                      // fallback
+                    }
+                    return (
+                      <ChainOfThoughtSearchResult key={url} url={url}>
+                        {hostname}
+                      </ChainOfThoughtSearchResult>
+                    );
+                  })}
+                </ChainOfThoughtSearchResults>
               )}
 
-              {steps && steps.length > 0 ? (
-                <div className="space-y-2">
-                  {steps.map((step, idx) => (
-                    <div key={idx} className="flex items-start gap-2.5 text-[11px]">
-                      <span className="w-5 h-5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-mono font-bold flex items-center justify-center shrink-0 text-[9px] border border-slate-200 dark:border-slate-700">
-                        {idx + 1}
-                      </span>
-                      <div className="flex-1 text-slate-700 dark:text-slate-300 font-mono text-[11px] bg-slate-50/80 dark:bg-slate-900/80 p-2 rounded-lg border border-slate-100 dark:border-slate-800 leading-relaxed whitespace-pre-wrap">
-                        {step}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : null}
-
-              {thoughtContent && (
-                <div className="text-[11px] font-mono text-slate-600 dark:text-slate-400 whitespace-pre-wrap leading-relaxed bg-slate-50/60 dark:bg-slate-950/60 p-3.5 rounded-xl border border-slate-100 dark:border-slate-800 max-h-[380px] overflow-y-auto select-text">
-                  {thoughtContent}
-                </div>
+              {/* Step Image */}
+              {step.image && (
+                <ChainOfThoughtImage caption={step.image.caption}>
+                  <Image
+                    src={step.image.src}
+                    alt={step.image.caption || "Deliverable"}
+                    className="max-h-48 w-auto rounded-lg border border-slate-200 dark:border-slate-800"
+                  />
+                </ChainOfThoughtImage>
               )}
+            </ChainOfThoughtStep>
+          ))
+        ) : thoughtContent ? (
+          <ChainOfThoughtStep
+            label="Internal Reasoning & Execution Analysis"
+            icon={Brain}
+            status="complete"
+          >
+            <div className="text-[11px] font-mono text-slate-600 dark:text-slate-400 whitespace-pre-wrap leading-relaxed bg-slate-50/70 dark:bg-slate-950/60 p-3 rounded-xl border border-slate-100 dark:border-slate-800 max-h-[350px] overflow-y-auto select-text">
+              {thoughtContent}
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
+          </ChainOfThoughtStep>
+        ) : null}
+      </ChainOfThoughtContent>
+    </ChainOfThought>
   );
 }
