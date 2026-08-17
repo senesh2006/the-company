@@ -214,7 +214,7 @@ export function AgentDetailPanel() {
 
                 {/* Milestone Roadmap */}
                 {(activeWorkerTask?.milestones || latestWorkerTask?.milestones) && (
-                  <div className="pt-2">
+                  <div className="pt-2 w-full min-w-0 overflow-hidden">
                     <MilestoneMap
                       milestones={activeWorkerTask?.milestones || latestWorkerTask?.milestones || []}
                       progress={activeWorkerTask?.progress ?? latestWorkerTask?.progress}

@@ -34,7 +34,14 @@ def get_complexity_analyzer(role: str, model_id: str = None):
 def make_level3_worker_node(role: str, model_id: str = None):
     llm = get_llm(model_id=model_id, role=role)
     tools = registry.get_langchain_tools("assistant") 
-    worker_agent = create_react_agent(llm, tools, state_modifier=f"You are a Temporary Sub-Worker acting as {role}.")
+    import inspect
+    sig = inspect.signature(create_react_agent)
+    kwargs = {}
+    if 'state_modifier' in sig.parameters:
+        kwargs['state_modifier'] = f"You are a Temporary Sub-Worker acting as {role}."
+    else:
+        kwargs['prompt'] = f"You are a Temporary Sub-Worker acting as {role}."
+    worker_agent = create_react_agent(llm, tools, **kwargs)
     
     def worker_node(state: SubOrchestrationState):
         results = {}
@@ -140,14 +147,23 @@ def make_specialist_worker_node(agent_data: dict):
     
     llm = get_llm(model_id=agent_model_id, role=role)
     tools = registry.get_langchain_tools(role)
+    system_modifier = (
+        f"You are {name}, acting as an in-house {role} at Trust Tier '{trust_tier.upper()}'. "
+        f"Always think step-by-step and structure your internal reasoning inside <thought>...</thought> "
+        f"(explain your plan, tool strategy, and policy considerations) before outputting your deliverables."
+    )
+    import inspect
+    sig = inspect.signature(create_react_agent)
+    sig_kwargs = {}
+    if 'state_modifier' in sig.parameters:
+        sig_kwargs['state_modifier'] = system_modifier
+    else:
+        sig_kwargs['prompt'] = system_modifier
+
     worker_agent = create_react_agent(
         llm, 
         tools, 
-        state_modifier=(
-            f"You are {name}, acting as an in-house {role} at Trust Tier '{trust_tier.upper()}'. "
-            f"Always think step-by-step and structure your internal reasoning inside <thought>...</thought> "
-            f"(explain your plan, tool strategy, and policy considerations) before outputting your deliverables."
-        )
+        **sig_kwargs
     )
     
     def node_func(state: OrchestratorState):

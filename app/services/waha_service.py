@@ -403,7 +403,7 @@ class WAHAService:
             if settings.WAHA_AUTO_DISPATCH_MANDATE:
                 try:
                     from app.services.task_service import TaskService
-                    from app.agents.runner import AutonomousRunner
+                    from app.agents.runner import TeamRunner
                     import asyncio
 
                     task_service = TaskService()
@@ -418,6 +418,8 @@ class WAHAService:
                         assignee_role="Personal Assistant"
                     )
 
+                    task_id = task.get("id") if isinstance(task, dict) else str(task)
+
                     # Log to Company Feed
                     task_service.log_audit_event(
                         business_id="00000000-0000-0000-0000-000000000001",
@@ -429,8 +431,8 @@ class WAHAService:
                     )
 
                     # Trigger runner in background
-                    runner = AutonomousRunner(business_id="00000000-0000-0000-0000-000000000001", prompt=mandate_desc)
-                    asyncio.create_task(asyncio.to_thread(runner.start))
+                    runner = TeamRunner(business_id="00000000-0000-0000-0000-000000000001", task_id=task_id)
+                    asyncio.create_task(asyncio.to_thread(runner.start, mandate_desc))
 
                     # 3. Acknowledge receipt via WhatsApp
                     try:

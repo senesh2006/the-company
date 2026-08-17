@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useAuth } from "@/lib/auth-context";
-import { AssistantAvatar } from "@/components/ui/AssistantAvatar";
 import { MarkdownRenderer } from '@/components/MarkdownRenderer';
 import { ThinkingProcess } from '@/components/ThinkingProcess';
 import { MilestoneMap } from '@/components/MilestoneMap';
@@ -53,43 +52,54 @@ export default function TasksPage() {
   // Map real database tasks
   const allTasks = (dbTasks || []).map((t: any) => {
     const assignedAgent = agents?.find(a => a.id === t.agent_id || a.role === t.assignee_role);
-    const statusUpper = (t.status || "queued").toUpperCase();
-    
-    let cat = "active";
-    let statType = "in_progress";
+    const statusRaw = (t.status || "pending").toLowerCase();
+    const statusUpper = (t.status || "pending").toUpperCase();
+    const milestones = t.milestones || [];
+    const completedMilestones = milestones.filter((m: any) => m.status === "completed").length;
+    const inProgressIndex = milestones.findIndex((m: any) => m.status === "in_progress");
+    const totalMilestones = milestones.length;
+
+    let cat: "active" | "scheduled" | "completed" | "backlog" = "active";
+    let statType: "in_progress" | "completed" | "pending" | "blocked" = "in_progress";
     let isBlocked = false;
     let progress = t.progress !== undefined && t.progress !== null ? Number(t.progress) : 0;
 
-    if (t.status === "completed") {
+    if (totalMilestones > 0) {
+      // If structured milestones exist, calculate exact mathematical progress
+      progress = (completedMilestones === 0 && inProgressIndex < 0) 
+        ? 0 
+        : Math.round(((completedMilestones + (inProgressIndex >= 0 ? 0.5 : 0)) / totalMilestones) * 100);
+    }
+
+    if (statusRaw === "completed" || statusRaw === "done") {
       cat = "completed";
       statType = "completed";
-      progress = 100;
-    } else if (t.status === "pending" || t.status === "queued") {
+      if (totalMilestones === 0) progress = 100;
+    } else if (statusRaw === "pending" || statusRaw === "queued" || statusRaw === "assigned" || statusRaw === "idle" || statusRaw === "created") {
       cat = "scheduled";
       statType = "pending";
-      progress = 0;
-    } else if (t.status === "needs_approval") {
+      if (totalMilestones === 0) progress = 0;
+    } else if (statusRaw === "needs_approval") {
       cat = "active";
       statType = "blocked";
       isBlocked = true;
-      progress = 85;
-    } else if (t.status === "failed" || t.status === "rejected") {
+      if (totalMilestones === 0) progress = 75;
+    } else if (statusRaw === "failed" || statusRaw === "rejected") {
       cat = "active";
       statType = "blocked";
       isBlocked = true;
-      progress = 25;
+      if (totalMilestones === 0) progress = 0;
     } else {
       // Actively running in progress
       cat = "active";
       statType = "in_progress";
-      if (!progress || progress === 0) {
+      if (totalMilestones === 0 && (!progress || progress === 0)) {
         const elapsedSec = Math.max(0, (Date.now() - new Date(t.created_at || Date.now()).getTime()) / 1000);
-        progress = elapsedSec < 4 ? 35 : elapsedSec < 12 ? 68 : 88;
+        progress = elapsedSec < 4 ? 25 : elapsedSec < 15 ? 50 : 75;
       }
     }
 
     const priorityLabel = (t.priority === "high" || t.priority === "P0") ? "P0" : ((t.priority === "low" || t.priority === "P2") ? "P2" : "P1");
-    const milestones = t.milestones || [];
 
     return {
       id: t.id,
@@ -105,7 +115,7 @@ export default function TasksPage() {
       status: statusUpper,
       statusType: statType,
       progress: progress,
-      category: cat,
+      category: cat as "active" | "scheduled" | "completed" | "backlog",
       milestones: milestones,
       rawTask: t
     };
@@ -304,22 +314,20 @@ export default function TasksPage() {
                         ? "bg-blue-50 text-blue-700 border-blue-200" 
                         : isEng 
                         ? "bg-purple-50 text-purple-700 border-purple-200" 
+                        : isPA
+                        ? "bg-indigo-50 text-indigo-700 border-indigo-200"
                         : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700";
 
                       return (
-                        <div className={`w-7 h-7 shrink-0 ${
-                          isPA 
-                            ? "" 
-                            : `rounded-lg overflow-hidden ${badgeBg} border flex items-center justify-center`
-                        }`}>
-                          {isPA ? (
-                            <AssistantAvatar className="w-full h-full" faceColor="#ffffff" featureColor="#0c0c0c" />
-                          ) : isMkt ? (
+                        <div className={`w-7 h-7 shrink-0 rounded-lg overflow-hidden ${badgeBg} border flex items-center justify-center`}>
+                          {isMkt ? (
                             <Megaphone className="w-3.5 h-3.5" />
                           ) : isFin ? (
                             <Briefcase className="w-3.5 h-3.5" />
                           ) : isEng ? (
                             <Code className="w-3.5 h-3.5" />
+                          ) : isPA ? (
+                            <Sparkles className="w-3.5 h-3.5" />
                           ) : (
                             <Bot className="w-3.5 h-3.5" />
                           )}

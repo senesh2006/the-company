@@ -196,11 +196,13 @@ export function PersonalAssistantBlob() {
                   className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
                 >
                   <div
-                    className={`max-w-[85%] px-3.5 py-2.5 rounded-2xl text-xs leading-relaxed ${
+                    className={`${
                       msg.role === "user"
-                        ? "bg-emerald-600 text-white rounded-br-lg"
-                        : "bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-bl-lg shadow-sm"
-                    }`}
+                        ? "max-w-[85%] bg-emerald-600 text-white rounded-br-lg"
+                        : msg.milestones && msg.milestones.length > 0
+                        ? "w-full max-w-[98%] bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-bl-lg shadow-sm"
+                        : "max-w-[85%] bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-bl-lg shadow-sm"
+                    } px-3.5 py-2.5 rounded-2xl text-xs leading-relaxed min-w-0`}
                   >
                     {msg.role === "assistant" ? (
                       <div className="space-y-3">

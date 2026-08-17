@@ -80,8 +80,17 @@ export default function AgentsPage() {
         if (runningTask) {
           agentStatus = "Running";
           currentTaskTitle = runningTask.description || runningTask.mandate || "Executing active mandate";
-          const elapsedSec = Math.max(0, (Date.now() - new Date(runningTask.created_at || Date.now()).getTime()) / 1000);
-          computedProgress = elapsedSec < 4 ? 35 : elapsedSec < 12 ? 68 : 88;
+          const rMilestones = runningTask.milestones || [];
+          if (rMilestones.length > 0) {
+            const compCount = rMilestones.filter((m: any) => m.status === "completed").length;
+            const inProgIdx = rMilestones.findIndex((m: any) => m.status === "in_progress");
+            computedProgress = Math.round(((compCount + (inProgIdx >= 0 ? 0.5 : 0)) / rMilestones.length) * 100);
+          } else if (runningTask.progress !== undefined && runningTask.progress !== null && runningTask.progress > 0) {
+            computedProgress = Number(runningTask.progress);
+          } else {
+            const elapsedSec = Math.max(0, (Date.now() - new Date(runningTask.created_at || Date.now()).getTime()) / 1000);
+            computedProgress = elapsedSec < 4 ? 25 : elapsedSec < 15 ? 50 : 75;
+          }
         } else if (totalCount > 0) {
           computedProgress = Math.round((completedCount / totalCount) * 100);
         } else {

@@ -36,4 +36,12 @@ Your scope:
 - Always consult Shared Memory for context and company policies.
 """
 
-    return create_react_agent(llm, langchain_tools, state_modifier=system_prompt)
+    import inspect
+    sig = inspect.signature(create_react_agent)
+    kwargs = {}
+    if 'state_modifier' in sig.parameters:
+        kwargs['state_modifier'] = system_prompt
+    else:
+        kwargs['prompt'] = system_prompt
+
+    return create_react_agent(llm, langchain_tools, **kwargs)
