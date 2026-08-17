@@ -37,5 +37,5 @@ COPY --from=frontend-builder /app/frontend/out ./app/static
 # Expose default port
 EXPOSE 8000
 
-# Start the application with dynamic PORT support for cloud hosts (Railway/Render)
-CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+# Start the application with dynamic PORT expansion
+CMD uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}
