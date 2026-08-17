@@ -1,5 +1,6 @@
 import uuid
-from typing import Literal
+import logging
+from typing import Literal, Optional, Dict, Any
 from pydantic import BaseModel, Field
 from langchain_core.messages import HumanMessage, AIMessage
 from langchain_core.prompts import ChatPromptTemplate
@@ -15,13 +16,16 @@ from app.agents.admin_tools import register_admin_tools
 from app.agents.marketing_tools import register_marketing_tools
 from app.agents.finance_tools import register_finance_tools
 from app.services.task_service import TaskService
+from app.services.cost_service import CostService, calculate_llm_cost
 from app.core.config import settings
 
+logger = logging.getLogger(__name__)
 task_service = TaskService()
+cost_service = CostService()
 
 class WorkerComplexityDecision(BaseModel):
-    thoughts: str = Field(description="Reasoning on the complexity of the task.")
-    decision: Literal["execute_directly", "spawn_subworkers"] = Field(description="Whether to execute directly using tools, or spawn a team of sub-workers.")
+    thoughts: str = Field(default="Task evaluated for direct execution.", description="Reasoning on the complexity of the task.")
+    decision: Literal["execute_directly", "spawn_subworkers"] = Field(default="execute_directly", description="Whether to execute directly using tools, or spawn a team of sub-workers.")
 
 def get_complexity_analyzer(role: str, model_id: str = None):
     llm = get_llm(model_id=model_id, role=role, temperature=0.0)
@@ -179,20 +183,43 @@ def make_specialist_worker_node(agent_data: dict):
             
         task_service.update_agent_status(agent_id, "Running")
 
+        task_cost = 0.0
+        total_input_tokens = 0
+        total_output_tokens = 0
+        tool_steps = []
+
         try:
-            decision = analyzer.invoke({"task_description": task.description})
-            
+            # Bulletproof complexity analysis extraction
+            decision_thoughts = "Task analyzed for direct specialist execution."
+            decision_choice = "execute_directly"
+
+            try:
+                decision = analyzer.invoke({"task_description": task.description})
+                if isinstance(decision, dict):
+                    decision_thoughts = decision.get("thoughts") or decision.get("reasoning") or decision_thoughts
+                    decision_choice = decision.get("decision") or decision.get("choice") or decision.get("action") or decision_choice
+                elif decision is not None:
+                    decision_thoughts = getattr(decision, "thoughts", None) or getattr(decision, "reasoning", None) or decision_thoughts
+                    decision_choice = getattr(decision, "decision", None) or getattr(decision, "choice", None) or decision_choice
+
+                total_input_tokens += max(10, len(task.description) // 4)
+                total_output_tokens += max(10, len(str(decision_thoughts)) // 4)
+            except Exception as analyze_err:
+                logger.warning(f"Complexity analyzer fallback for {role}: {analyze_err}")
+
             final_output = ""
-            if decision.decision == "spawn_subworkers" and settings.ALLOW_AUTONOMOUS_SUBWORKERS:
+            if decision_choice == "spawn_subworkers" and settings.ALLOW_AUTONOMOUS_SUBWORKERS:
                 plan = researcher.invoke({
                     "task_description": task.description, 
                     "context": str(state.get("shared_context", {}))
                 })
+                total_input_tokens += len(task.description) // 4 + 60
+                total_output_tokens += 180
                 sub_res = execute_sub_orchestration(b_id, task, plan)
                 final_output = (
                     f"<thought>\n"
                     f"Mandate Complexity Analysis: High (Level-3 sub-orchestration spawned)\n"
-                    f"{decision.thoughts}\n"
+                    f"{decision_thoughts}\n"
                     f"</thought>\n\n"
                     f"{sub_res}"
                 )
@@ -202,20 +229,43 @@ def make_specialist_worker_node(agent_data: dict):
                     config={"recursion_limit": 100}
                 )
                 raw_output = res["messages"][-1].content
-                tool_steps = []
-                for msg in res["messages"]:
-                    if hasattr(msg, "tool_calls") and msg.tool_calls:
-                        for tc in msg.tool_calls:
+                for msg in res.get("messages", []):
+                    u_meta = getattr(msg, "usage_metadata", None)
+                    if isinstance(u_meta, dict):
+                        try:
+                            total_input_tokens += int(u_meta.get("input_tokens") or 0)
+                            total_output_tokens += int(u_meta.get("output_tokens") or 0)
+                        except (TypeError, ValueError):
+                            pass
+                    else:
+                        r_meta = getattr(msg, "response_metadata", None)
+                        if isinstance(r_meta, dict):
+                            tu = r_meta.get("token_usage")
+                            if isinstance(tu, dict):
+                                try:
+                                    total_input_tokens += int(tu.get("prompt_tokens") or 0)
+                                    total_output_tokens += int(tu.get("completion_tokens") or 0)
+                                except (TypeError, ValueError):
+                                    pass
+
+                    t_calls = getattr(msg, "tool_calls", None)
+                    if isinstance(t_calls, list) and t_calls:
+                        for tc in t_calls:
                             tool_name = tc.get("name", "tool") if isinstance(tc, dict) else getattr(tc, "name", "tool")
                             tool_args = tc.get("args", {}) if isinstance(tc, dict) else getattr(tc, "args", {})
                             tool_steps.append(f"• Tool Call `{tool_name}`: {tool_args}")
-                    elif hasattr(msg, "type") and msg.type == "tool":
+                    elif getattr(msg, "type", None) == "tool":
                         content_preview = str(getattr(msg, "content", ""))[:120].replace("\n", " ")
                         tool_steps.append(f"  ↳ Observation: {content_preview}...")
 
+                if total_input_tokens == 0:
+                    total_input_tokens = max(20, sum(len(str(getattr(m, "content", ""))) for m in res.get("messages", [])[:-1]) // 4)
+                if total_output_tokens == 0:
+                    total_output_tokens = max(10, len(str(raw_output)) // 4)
+
                 if "<thought>" not in raw_output and "<think>" not in raw_output and "### Thought" not in raw_output:
                     thought_sections = [
-                        f"1. Mandate Analysis & Policy Evaluation:\n{decision.thoughts}"
+                        f"1. Mandate Analysis & Policy Evaluation:\n{decision_thoughts}"
                     ]
                     if tool_steps:
                         thought_sections.append("2. Tool Execution & Actions Taken:\n" + "\n".join(tool_steps))
@@ -229,6 +279,25 @@ def make_specialist_worker_node(agent_data: dict):
                     )
                 else:
                     final_output = raw_output
+
+            # Calculate and log real AI Worker cost
+            task_cost = calculate_llm_cost(
+                model_name=agent_model_id,
+                input_tokens=total_input_tokens,
+                output_tokens=total_output_tokens,
+                tool_calls_count=len(tool_steps)
+            )
+
+            cost_service.log_cost(
+                business_id=b_id,
+                amount=task_cost,
+                record_type="llm_inference",
+                agent_id=agent_id,
+                task_id=task.id,
+                description=f"AI Worker Execution: {name} ({role}) - {task.description[:80]}",
+                input_tokens=total_input_tokens,
+                output_tokens=total_output_tokens
+            )
                 
             task_service.update_task_result(task.id, final_output)
             
@@ -243,7 +312,7 @@ def make_specialist_worker_node(agent_data: dict):
                 trust_tier=trust_tier,
                 mandate=task.description,
                 action=f"Mandate Completed by {name}",
-                details={"result_summary": final_output[:120]}
+                details={"result_summary": final_output[:120], "cost_usd": task_cost}
             )
             
             updated_task = task.copy()
@@ -282,7 +351,8 @@ def make_specialist_worker_node(agent_data: dict):
             agent_id=agent_id,
             role=role,
             status=status_to_return,
-            output=final_output
+            output=final_output,
+            cost=task_cost
         )
         
         task_service.update_agent_status(agent_id, "Idle")

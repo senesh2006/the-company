@@ -43,13 +43,14 @@ def get_global_metrics(user = Depends(get_current_user)):
 
         total_tasks = len(tasks)
         completed_tasks = len([t for t in tasks if isinstance(t, dict) and t.get("status") == "completed"])
+        total_cost = cost_service.get_total_cost(biz_id)
 
         return {
             "totalAgents": total_agents,
             "activeAgents": active_agents,
             "totalTasks": total_tasks,
             "completedTasks": completed_tasks,
-            "totalCost": 0.0,
+            "totalCost": total_cost,
             "riskLevel": "low"
         }
     except Exception as e:

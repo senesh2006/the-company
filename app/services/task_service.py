@@ -91,6 +91,12 @@ class TaskService:
             seen_roles.add(r)
             deduped.append(a)
 
+        from app.services.cost_service import CostService
+        cost_svc = CostService()
+        for a in deduped:
+            if "cost_today_usd" not in a or a.get("cost_today_usd") is None:
+                a["cost_today_usd"] = cost_svc.get_agent_cost_today(str(a.get("id")))
+
         return deduped[:settings.MAX_FLEET_SIZE]
 
     def create_agent(
