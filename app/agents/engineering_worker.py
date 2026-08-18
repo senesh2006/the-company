@@ -7,7 +7,7 @@ from langgraph.prebuilt import create_react_agent
 import inspect
 import operator
 
-from app.agents.llm_factory import get_llm
+from app.agents.llm_factory import get_llm, get_fast_llm
 from app.agents.state import OrchestratorState, WorkerResult, TaskNode
 from app.agents.workers import execute_sub_orchestration, task_service, get_research_agent
 from app.agents.tool_registry import registry
