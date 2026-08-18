@@ -78,13 +78,17 @@ class TaskService:
 
 
     @property
-    def client(self) -> Client:
+    def client(self) -> Optional[Client]:
         if self._client:
             return self._client
         if not settings.SUPABASE_URL or not settings.SUPABASE_KEY:
-            raise ValueError("SUPABASE_URL and SUPABASE_KEY must be set in environment variables to use TaskService.")
-        self._client = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
-        return self._client
+            return None
+        try:
+            self._client = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
+            return self._client
+        except Exception as e:
+            logger.warning(f"Could not initialize Supabase client in TaskService: {e}. Operating in memory-backed mode.")
+            return None
             
     def list_agents(self, business_id: str) -> List[dict[str, Any]]:
         """List all available agents for a business, merged with PRD metadata."""

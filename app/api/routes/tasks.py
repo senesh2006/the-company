@@ -209,8 +209,16 @@ def list_all_tasks(user = Depends(get_current_user)):
     """Lists all tasks for the authenticated user's business, enriched with dynamic milestones."""
     try:
         biz_id = user.business_id or "00000000-0000-0000-0000-000000000001"
-        response = task_service.client.table("tasks").select("*").eq("business_id", biz_id).order("created_at", desc=True).execute()
-        tasks = response.data or []
+        tasks = []
+        if task_service.client:
+            try:
+                response = task_service.client.table("tasks").select("*").eq("business_id", biz_id).order("created_at", desc=True).execute()
+                tasks = response.data or []
+            except Exception as sb_err:
+                logger.warning(f"Could not fetch tasks from Supabase: {sb_err}")
+                tasks = []
+        
+        # Merge in-memory tasks
         for t in tasks:
             t_id = str(t.get("id", ""))
             t_thoughts = task_service.get_live_thoughts(t_id)

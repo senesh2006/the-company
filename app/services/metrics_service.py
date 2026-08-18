@@ -11,16 +11,22 @@ class MetricsService:
         self._client = supabase_client
 
     @property
-    def client(self) -> Client:
+    def client(self) -> Optional[Client]:
         if self._client:
             return self._client
         if not settings.SUPABASE_URL or not settings.SUPABASE_KEY:
-            raise ValueError("SUPABASE_URL and SUPABASE_KEY must be set in environment variables to use MetricsService.")
-        self._client = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
-        return self._client
+            return None
+        try:
+            self._client = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
+            return self._client
+        except Exception as e:
+            logger.warning(f"Could not initialize Supabase client in MetricsService: {e}")
+            return None
 
     def get_agent_success_rates(self, business_id: str) -> List[Dict[str, Any]]:
         """Calculates success and error rates for each agent based on terminal task statuses."""
+        if not self.client:
+            return []
         try:
             response = self.client.table("tasks")\
                 .select("agent_id, status")\
@@ -28,7 +34,7 @@ class MetricsService:
                 .execute()
                 
             agent_stats = {}
-            for task in response.data:
+            for task in (response.data or []):
                 agent_id = task.get("agent_id")
                 if not agent_id:
                     continue
@@ -56,11 +62,13 @@ class MetricsService:
                 })
             return results
         except Exception as e:
-            logger.error(f"Error getting agent success rates: {e}")
-            raise e
+            logger.warning(f"Error getting agent success rates: {e}")
+            return []
 
     def get_timeframe_metrics(self, business_id: str) -> Dict[str, int]:
         """Counts how many tasks were completed in the last 24h and 7d."""
+        if not self.client:
+            return {"completed_last_24h": 0, "completed_last_7d": 0}
         try:
             response = self.client.table("tasks")\
                 .select("updated_at")\
@@ -75,8 +83,7 @@ class MetricsService:
             count_24h = 0
             count_7d = 0
             
-            for task in response.data:
-                # Supabase returns ISO format strings like '2026-07-29T07:27:10+00:00'
+            for task in (response.data or []):
                 updated_str = task.get("updated_at")
                 if not updated_str:
                     continue
@@ -96,11 +103,13 @@ class MetricsService:
                 "completed_last_7d": count_7d
             }
         except Exception as e:
-            logger.error(f"Error getting timeframe metrics: {e}")
-            raise e
+            logger.warning(f"Error getting timeframe metrics: {e}")
+            return {"completed_last_24h": 0, "completed_last_7d": 0}
 
     def get_agent_status_snapshot(self, business_id: str) -> Dict[str, List[str]]:
         """Identifies agents currently running a task or assigned to a failed task."""
+        if not self.client:
+            return {"running_agents": [], "failed_agents": []}
         try:
             response = self.client.table("tasks")\
                 .select("agent_id, status")\
@@ -111,7 +120,7 @@ class MetricsService:
             running_agents = set()
             failed_agents = set()
             
-            for task in response.data:
+            for task in (response.data or []):
                 agent_id = task.get("agent_id")
                 if not agent_id:
                     continue
@@ -126,5 +135,5 @@ class MetricsService:
                 "failed_agents": list(failed_agents)
             }
         except Exception as e:
-            logger.error(f"Error getting agent status snapshot: {e}")
-            raise e
+            logger.warning(f"Error getting agent status snapshot: {e}")
+            return {"running_agents": [], "failed_agents": []}

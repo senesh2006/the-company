@@ -53,7 +53,11 @@ def setup_test_environment(user = Depends(get_current_user)):
         if not sb_url or not sb_key:
             return {"business_id": biz_id, "warning": "Supabase not configured"}
 
-        client = create_client(sb_url, sb_key)
+        try:
+            client = create_client(sb_url, sb_key)
+        except Exception as sb_err:
+            logger.warning(f"Setup Supabase client error: {sb_err}")
+            return {"business_id": biz_id, "warning": "Supabase connection unavailable"}
 
         # Ensure the business row exists so agent/task foreign keys are valid.
         try:
