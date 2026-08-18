@@ -251,6 +251,57 @@ def get_llm(model_id: Optional[str] = None, role: Optional[str] = None, temperat
     return primary.with_fallbacks(fallbacks, exceptions_to_handle=(Exception,))
 
 
+def get_fast_llm(temperature: float = 0.0) -> Any:
+    """
+    Returns an ultra-fast, low-latency LLM optimized for auxiliary orchestration
+    steps (routing, complexity analysis, structured JSON planning, and reflection).
+    Prefers ultra-fast instant models like llama-3.1-8b-instant, gpt-4o-mini, or gemini-2.0-flash.
+    """
+    has_groq = _is_valid_key(settings.GROQ_API_KEY)
+    has_openai = _is_valid_key(settings.OPENAI_API_KEY)
+    has_gemini = _is_valid_key(settings.GEMINI_API_KEY) or _is_valid_key(settings.GOOGLE_API_KEY)
+    has_nvidia = _is_valid_key(settings.NVIDIA_API_KEY)
+    has_fireworks = _is_valid_key(getattr(settings, "FIREWORKS_API_KEY", None))
+
+    candidates = []
+
+    def add_candidate(m_name, p_name, key, base):
+        if _is_valid_key(key):
+            try:
+                candidates.append(ChatOpenAI(
+                    model=m_name,
+                    api_key=key,
+                    base_url=base,
+                    temperature=temperature
+                ))
+            except Exception:
+                pass
+
+    # 1. Groq instant 8B (~200ms)
+    if has_groq:
+        add_candidate("llama-3.1-8b-instant", "groq", settings.GROQ_API_KEY, "https://api.groq.com/openai/v1")
+    # 2. OpenAI mini (~400ms)
+    if has_openai:
+        add_candidate("gpt-4o-mini", "openai", settings.OPENAI_API_KEY, None)
+    # 3. Gemini Flash (~400ms)
+    if has_gemini:
+        add_candidate("gemini-2.0-flash", "gemini", settings.GEMINI_API_KEY or settings.GOOGLE_API_KEY, settings.GEMINI_BASE_URL)
+    # 4. NVIDIA NIM 8B
+    if has_nvidia:
+        add_candidate("meta/llama-3.1-8b-instruct", "nvidia", settings.NVIDIA_API_KEY, settings.NVIDIA_BASE_URL)
+    # 5. Fireworks 8B
+    if has_fireworks:
+        add_candidate("accounts/fireworks/models/llama-v3p1-8b-instruct", "fireworks", getattr(settings, "FIREWORKS_API_KEY", None), "https://api.fireworks.ai/inference/v1")
+
+    if not candidates:
+        return get_llm(temperature=temperature)
+
+    fallback_msg_llm = MissingApiKeyFallbackLLM()
+    primary = candidates[0]
+    fallbacks = candidates[1:] + [fallback_msg_llm]
+    return primary.with_fallbacks(fallbacks, exceptions_to_handle=(Exception,))
+
+
 def list_available_models() -> list[dict]:
     """Return all models with metadata, suitable for frontend dropdowns."""
     has_nvidia = _is_valid_key(settings.NVIDIA_API_KEY)

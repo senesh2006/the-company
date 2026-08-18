@@ -8,7 +8,7 @@ from langgraph.graph import StateGraph, START, END
 from langgraph.prebuilt import create_react_agent
 from langgraph.constants import Send
 
-from app.agents.llm_factory import get_llm
+from app.agents.llm_factory import get_llm, get_fast_llm
 from app.agents.state import OrchestratorState, WorkerResult, SubOrchestrationState, TaskNode, AgentStatus
 from app.agents.researcher import get_research_agent
 from app.agents.tool_registry import registry
@@ -28,7 +28,7 @@ class WorkerComplexityDecision(BaseModel):
     decision: Literal["execute_directly", "spawn_subworkers"] = Field(default="execute_directly", description="Whether to execute directly using tools, or spawn a team of sub-workers.")
 
 def get_complexity_analyzer(role: str, model_id: str = None):
-    llm = get_llm(model_id=model_id, role=role, temperature=0.0)
+    llm = get_fast_llm(temperature=0.0)
     prompt = ChatPromptTemplate.from_messages([
         ("system", f"You are an in-house Specialist AI Worker ({role}). You have been assigned a mandate. Decide if it requires a team of sub-specialists or if you can do it yourself."),
         ("human", "Task / Mandate: {task_description}")

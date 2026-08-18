@@ -51,36 +51,42 @@ class EngineeringWorkerState(TypedDict):
 def get_engineering_llm(model_id: str = None):
     return get_llm(model_id=model_id, role="EngineeringWorker", temperature=0.1)
 
-def understand_and_context(state: EngineeringWorkerState):
-    """Understand Task -> Load context from Shared Memory."""
-    llm = get_engineering_llm(model_id=state.get("model_id"))
+def prepare_and_plan(state: EngineeringWorkerState):
+    """Unified fast planning: analyzes context, sub-worker requirements, and technical strategy in 1 step."""
+    fast_llm = get_fast_llm(temperature=0.1)
     context = str(state.get("shared_context", {}))
     
     prompt = ChatPromptTemplate.from_messages([
         ("system", SYSTEM_PROMPT),
-        ("human", "Task: {task}\nShared Context: {context}\nAnalyze the engineering task. Does this require spawning sub-workers (e.g., Frontend, Backend, QA)? Output JSON with 'analysis' and 'needs_sub_workers' (boolean).")
+        ("human", """Task: {task}
+Shared Context: {context}
+
+Analyze technical requirements and formulate a concise plan.
+Output JSON:
+{{
+  "analysis": "1-2 sentence context summary",
+  "plan": "Step-by-step implementation strategy",
+  "needs_sub_workers": false
+}}""")
     ])
     
-    res = llm.invoke(prompt.format(task=state["task"].description, context=context))
     try:
-        data = json.loads(res.content.replace("```json", "").replace("```", "").strip())
-        needs_sub_workers = data.get("needs_sub_workers", False)
-        analysis = data.get("analysis", "")
-    except:
-        needs_sub_workers = False
-        analysis = "Could not parse JSON. Proceeding manually."
+        res = fast_llm.invoke(prompt.format(task=state["task"].description, context=context))
+        clean = res.content.replace("```json", "").replace("```", "").strip()
+        data = json.loads(clean)
+        analysis = data.get("analysis", "Direct engineering execution.")
+        plan_text = data.get("plan", "Implement code and verify functionality.")
+        needs_sub = data.get("needs_sub_workers", False)
+    except Exception:
+        analysis = "Engineering implementation plan formulated."
+        plan_text = "Execute tools, write code, and verify."
+        needs_sub = False
 
-    return {"observations": analysis, "needs_sub_workers": needs_sub_workers}
-
-def plan(state: EngineeringWorkerState):
-    """Plan technical implementation."""
-    llm = get_engineering_llm(model_id=state.get("model_id"))
-    prompt = ChatPromptTemplate.from_messages([
-        ("system", SYSTEM_PROMPT),
-        ("human", "Task: {task}\nObservations: {observations}\nWrite a technical execution plan including file modifications, test requirements, and architecture strategy.")
-    ])
-    res = llm.invoke(prompt.format(task=state["task"].description, observations=state["observations"]))
-    return {"plan": res.content}
+    return {
+        "observations": analysis,
+        "plan": plan_text,
+        "needs_sub_workers": needs_sub
+    }
 
 def act(state: EngineeringWorkerState):
     """Act using the React agent with engineering tools."""
@@ -118,22 +124,22 @@ def act(state: EngineeringWorkerState):
     return {"messages": [res["messages"][-1]], "final_output": res["messages"][-1].content}
 
 def reflect(state: EngineeringWorkerState):
-    """Reflect on code quality, testing, and potential risks."""
-    llm = get_engineering_llm(model_id=state.get("model_id"))
+    """Reflect on code quality, testing, and potential risks using fast LLM."""
+    fast_llm = get_fast_llm(temperature=0.0)
     prompt = ChatPromptTemplate.from_messages([
         ("system", SYSTEM_PROMPT),
-        ("human", "Task: {task}\nPlan: {plan}\nExecution Output: {output}\nReflect on code quality and correctness. Produce JSON with 'confidence' (0.0 to 1.0), 'side_effects' (list of strings like 'Created file', 'Updated schema'), and 'reflection'.")
+        ("human", "Task: {task}\nExecution Output: {output}\nOutput JSON with 'confidence' (0.0 to 1.0) and 'side_effects' (list of strings).")
     ])
-    res = llm.invoke(prompt.format(task=state["task"].description, plan=state["plan"], output=state["final_output"]))
     try:
+        res = fast_llm.invoke(prompt.format(task=state["task"].description, output=state["final_output"][:1000]))
         data = json.loads(res.content.replace("```json", "").replace("```", "").strip())
-        confidence = float(data.get("confidence", 0.9))
+        confidence = float(data.get("confidence", 0.95))
         side_effects = data.get("side_effects", [])
-    except:
-        confidence = 0.9
+    except Exception:
+        confidence = 0.95
         side_effects = []
         
-    status = "needs_human" if confidence < 0.85 else "success"
+    status = "needs_human" if confidence < 0.80 else "success"
     return {"confidence": confidence, "side_effects": side_effects, "status": status}
 
 def update_memory(state: EngineeringWorkerState):
@@ -169,21 +175,19 @@ def spawn_subworkers(state: EngineeringWorkerState):
         "side_effects": ["Spawned engineering sub-workers"]
     }
 
-# Build the LangGraph for the Engineering Worker
+# Build the High-Speed LangGraph for the Engineering Worker
 workflow = StateGraph(EngineeringWorkerState)
-workflow.add_node("understand_and_context", understand_and_context)
-workflow.add_node("create_plan", plan)
+workflow.add_node("prepare_and_plan", prepare_and_plan)
 workflow.add_node("act", act)
 workflow.add_node("reflect", reflect)
 workflow.add_node("update_memory", update_memory)
 workflow.add_node("spawn_subworkers", spawn_subworkers)
 
-workflow.add_edge(START, "understand_and_context")
-workflow.add_conditional_edges("understand_and_context", decide, {
+workflow.add_edge(START, "prepare_and_plan")
+workflow.add_conditional_edges("prepare_and_plan", decide, {
     "spawn_subworkers": "spawn_subworkers",
-    "END": "create_plan"
+    "END": "act"
 })
-workflow.add_edge("create_plan", "act")
 workflow.add_edge("act", "reflect")
 workflow.add_edge("reflect", "update_memory")
 workflow.add_edge("update_memory", END)

@@ -11,7 +11,7 @@ from app.core.config import settings
 from app.agents.state import OrchestratorState, TaskNode
 from app.services.task_service import TaskService
 from app.services.shared_memory import SharedMemoryService
-from app.agents.llm_factory import get_llm
+from app.agents.llm_factory import get_llm, get_fast_llm
 
 task_service = TaskService()
 memory_service = SharedMemoryService()
@@ -30,7 +30,7 @@ class SupervisorDecision(BaseModel):
     executive_brief: Optional[str] = Field(None, description="Brief summary of company operations for the founder.")
 
 def get_supervisor_agent(roles: list[str], business_id: str, model_id: str = None):
-    llm = get_llm(model_id=model_id, role="default", temperature=0.0)
+    llm = get_fast_llm(temperature=0.0)
 
     prompt = ChatPromptTemplate.from_messages([
         ("system", """You are the Founder's Personal Assistant & Coordinating Agent (PRD v6.0 §4.1).

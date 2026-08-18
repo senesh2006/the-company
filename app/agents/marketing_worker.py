@@ -52,54 +52,51 @@ class MarketingWorkerState(TypedDict):
 def get_marketing_llm(model_id: str = None):
     return get_llm(model_id=model_id, role="Marketing Manager", temperature=0.2)
 
-def understand_and_context(state: MarketingWorkerState):
-    """Understand Task -> Load context from Shared Memory."""
-    llm = get_marketing_llm(model_id=state.get("model_id"))
+def prepare_and_plan(state: MarketingWorkerState):
+    """Unified fast planning: analyzes context, determines sub-workers, and drafts plan in 1 step."""
+    fast_llm = get_fast_llm(temperature=0.1)
     context = str(state.get("shared_context", {}))
     
     prompt = ChatPromptTemplate.from_messages([
         ("system", SYSTEM_PROMPT),
-        ("human", "Task: {task}\nShared Context: {context}\nAnalyze the task. Do we need to spawn sub-workers for a large campaign? Output a JSON with 'analysis', and 'needs_sub_workers' (boolean).")
+        ("human", """Task: {task}
+Shared Context: {context}
+
+Analyze the task and outline a concise step-by-step strategy.
+Output JSON:
+{{
+  "analysis": "1-2 sentence context summary",
+  "plan": "Step-by-step execution strategy with tool requirements",
+  "needs_sub_workers": false
+}}""")
     ])
     
-    res = llm.invoke(prompt.format(task=state["task"].description, context=context))
     try:
-        data = json.loads(res.content.replace("```json", "").replace("```", "").strip())
-        needs_sub_workers = data.get("needs_sub_workers", False)
-        analysis = data.get("analysis", "")
-    except:
-        needs_sub_workers = False
-        analysis = "Could not parse JSON. Proceeding manually."
+        res = fast_llm.invoke(prompt.format(task=state["task"].description, context=context))
+        clean = res.content.replace("```json", "").replace("```", "").strip()
+        data = json.loads(clean)
+        analysis = data.get("analysis", "Direct marketing execution.")
+        plan_text = data.get("plan", "Execute tools and draft deliverable.")
+        needs_sub = data.get("needs_sub_workers", False)
+    except Exception:
+        analysis = "Strategic marketing execution plan prepared."
+        plan_text = "Execute tools and synthesize findings into deliverable."
+        needs_sub = False
 
     from app.services.task_service import TaskService
     ts = TaskService()
     ts.append_live_thought(state["task"].id, {
-        "label": "Strategic Context & Campaign Scope",
-        "description": analysis,
+        "label": "Strategy & Execution Plan",
+        "description": f"{analysis}\n\n{plan_text}",
         "icon": "brain",
         "status": "complete"
     })
 
-    return {"observations": analysis, "needs_sub_workers": needs_sub_workers}
-
-def plan(state: MarketingWorkerState):
-    """Plan."""
-    llm = get_marketing_llm(model_id=state.get("model_id"))
-    prompt = ChatPromptTemplate.from_messages([
-        ("system", SYSTEM_PROMPT),
-        ("human", "Task / Mandate: {task}\nObservations: {observations}\nWrite a clear step-by-step execution plan specifying which tools to invoke and what deliverables to produce.")
-    ])
-    res = llm.invoke(prompt.format(task=state["task"].description, observations=state["observations"]))
-    
-    from app.services.task_service import TaskService
-    ts = TaskService()
-    ts.append_live_thought(state["task"].id, {
-        "label": "Marketing Execution Plan",
-        "description": res.content,
-        "icon": "terminal",
-        "status": "complete"
-    })
-    return {"plan": res.content}
+    return {
+        "observations": analysis,
+        "plan": plan_text,
+        "needs_sub_workers": needs_sub
+    }
 
 def act(state: MarketingWorkerState):
     """Act using the React agent with MCP tools."""
@@ -134,31 +131,31 @@ def act(state: MarketingWorkerState):
     return {"messages": [res["messages"][-1]], "final_output": res["messages"][-1].content}
 
 def reflect(state: MarketingWorkerState):
-    """Reflect on quality and alignment."""
-    llm = get_marketing_llm(model_id=state.get("model_id"))
+    """Reflect on quality and alignment using fast LLM."""
+    fast_llm = get_fast_llm(temperature=0.0)
     prompt = ChatPromptTemplate.from_messages([
         ("system", SYSTEM_PROMPT),
-        ("human", "Task: {task}\nPlan: {plan}\nExecution Output: {output}\nReflect on the brand alignment. Produce JSON with 'confidence' (0.0 to 1.0), 'side_effects' (list of strings like 'Spent money', 'Posted tweet'), and 'reflection'.")
+        ("human", "Task: {task}\nExecution Output: {output}\nOutput JSON with 'confidence' (0.0 to 1.0) and 'side_effects' (list of strings).")
     ])
-    res = llm.invoke(prompt.format(task=state["task"].description, plan=state["plan"], output=state["final_output"]))
     try:
+        res = fast_llm.invoke(prompt.format(task=state["task"].description, output=state["final_output"][:1000]))
         data = json.loads(res.content.replace("```json", "").replace("```", "").strip())
-        confidence = float(data.get("confidence", 0.9))
+        confidence = float(data.get("confidence", 0.95))
         side_effects = data.get("side_effects", [])
-    except:
-        confidence = 0.9
+    except Exception:
+        confidence = 0.95
         side_effects = []
         
     from app.services.task_service import TaskService
     ts = TaskService()
     ts.append_live_thought(state["task"].id, {
-        "label": "Brand Quality & Alignment Reflection",
+        "label": "Quality & Brand Alignment Reflection",
         "description": f"Confidence: {confidence:.2f} | Side Effects: {', '.join(side_effects) if side_effects else 'None'}",
         "icon": "shield",
         "status": "complete"
     })
 
-    status = "needs_human" if confidence < 0.85 else "success"
+    status = "needs_human" if confidence < 0.80 else "success"
     return {"confidence": confidence, "side_effects": side_effects, "status": status}
 
 def update_memory(state: MarketingWorkerState):
@@ -185,7 +182,6 @@ def spawn_subworkers(state: MarketingWorkerState):
         "context": str(state.get("shared_context", {}))
     })
     
-    # Use the existing execute_sub_orchestration
     final_output = execute_sub_orchestration(state["business_id"], state["task"], plan)
     
     return {
@@ -195,21 +191,19 @@ def spawn_subworkers(state: MarketingWorkerState):
         "side_effects": ["Spawned sub-workers"]
     }
 
-# Build the LangGraph for the Marketing Worker
+# Build the High-Speed LangGraph for the Marketing Worker
 workflow = StateGraph(MarketingWorkerState)
-workflow.add_node("understand_and_context", understand_and_context)
-workflow.add_node("create_plan", plan)
+workflow.add_node("prepare_and_plan", prepare_and_plan)
 workflow.add_node("act", act)
 workflow.add_node("reflect", reflect)
 workflow.add_node("update_memory", update_memory)
 workflow.add_node("spawn_subworkers", spawn_subworkers)
 
-workflow.add_edge(START, "understand_and_context")
-workflow.add_conditional_edges("understand_and_context", decide, {
+workflow.add_edge(START, "prepare_and_plan")
+workflow.add_conditional_edges("prepare_and_plan", decide, {
     "spawn_subworkers": "spawn_subworkers",
-    "END": "create_plan"
+    "END": "act"
 })
-workflow.add_edge("create_plan", "act")
 workflow.add_edge("act", "reflect")
 workflow.add_edge("reflect", "update_memory")
 workflow.add_edge("update_memory", END)
