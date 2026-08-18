@@ -34,8 +34,8 @@ COPY . .
 # Copy frontend static build from builder stage to FastAPI static directory
 COPY --from=frontend-builder /app/frontend/out ./app/static
 
-# Expose default port
-EXPOSE 8000
+# Expose ports for cloud routing
+EXPOSE 8080 8000
 
-# Start the application with dynamic PORT expansion
-CMD uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}
+# Start the application with automated multi-port bridging
+CMD ["python", "-m", "app.server"]
