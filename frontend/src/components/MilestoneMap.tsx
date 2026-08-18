@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { motion } from "framer-motion";
 import { 
   CheckCircle2, 
@@ -8,6 +8,7 @@ import {
   Clock, 
   AlertTriangle, 
   ChevronRight, 
+  ChevronLeft,
   MapPin, 
   Bot, 
   Megaphone, 
@@ -45,6 +46,7 @@ export function MilestoneMap({
   className = "",
 }: MilestoneMapProps) {
   const [selectedMilestone, setSelectedMilestone] = useState<string | null>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   if (!milestones || milestones.length === 0) {
     return null;
@@ -64,8 +66,20 @@ export function MilestoneMap({
     if (r.includes("market") || r.includes("growth")) return Megaphone;
     if (r.includes("finance") || r.includes("account")) return Briefcase;
     if (r.includes("engineer") || r.includes("code") || r.includes("dev")) return Code;
-    if (r.includes("check") || r.includes("audit") || r.includes("quality")) return ShieldCheck;
+    if (r.includes("check") || r.includes("audit") || r.includes("quality") || r.includes("govern")) return ShieldCheck;
     return Bot;
+  };
+
+  const scrollLeft = () => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollBy({ left: -220, behavior: "smooth" });
+    }
+  };
+
+  const scrollRight = () => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollBy({ left: 220, behavior: "smooth" });
+    }
   };
 
   // Compact Mode (for list rows or cards)
@@ -147,14 +161,16 @@ export function MilestoneMap({
         />
       </div>
 
-      {/* Stepper Node Graph */}
-      <div className="w-full min-w-0 overflow-hidden">
-        <div className="flex sm:grid sm:grid-cols-2 lg:grid-cols-4 gap-3 overflow-x-auto pb-2 pt-0.5 px-0.5 no-scrollbar snap-x snap-mandatory">
+      {/* Stepper Node Graph (Horizontal Snap Scroll with Min-Width Guarantee) */}
+      <div className="relative w-full min-w-0 group">
+        <div 
+          ref={scrollContainerRef}
+          className="flex gap-3 overflow-x-auto pb-3 pt-1 px-1 no-scrollbar snap-x snap-mandatory scroll-smooth"
+        >
           {milestones.map((m, idx) => {
             const isDone = m.status === "completed";
             const isActive = m.status === "in_progress";
             const isBlocked = m.status === "blocked";
-            const isPending = m.status === "pending";
             const isSelected = selectedMilestone === m.id || (selectedMilestone === null && isActive);
             const RoleIcon = getRoleIcon(m.assignee_role);
 
@@ -162,23 +178,23 @@ export function MilestoneMap({
               <div
                 key={m.id || idx}
                 onClick={() => setSelectedMilestone(m.id)}
-                className={`min-w-[200px] sm:min-w-0 flex-1 shrink-0 snap-start p-3.5 rounded-2xl border transition-all duration-200 cursor-pointer relative flex flex-col justify-between min-h-[175px] min-w-0 select-none ${
+                className={`min-w-[210px] max-w-[260px] flex-1 shrink-0 snap-start p-3.5 rounded-2xl border transition-all duration-200 cursor-pointer relative flex flex-col justify-between min-h-[170px] select-none ${
                   isSelected
                     ? "bg-white dark:bg-slate-900 border-emerald-500 shadow-md ring-2 ring-emerald-500/20 z-10"
                     : isDone
                     ? "bg-emerald-50/40 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900/60 hover:bg-emerald-50/80"
                     : isActive
-                    ? "bg-emerald-50/60 dark:bg-emerald-950/40 border-emerald-400 dark:border-emerald-700 hover:bg-emerald-50"
+                    ? "bg-emerald-50/70 dark:bg-emerald-950/40 border-emerald-400 dark:border-emerald-700 hover:bg-emerald-50"
                     : isBlocked
                     ? "bg-rose-50/60 dark:bg-rose-950/30 border-rose-200 dark:border-rose-800/60 hover:bg-rose-50"
-                    : "bg-white/80 dark:bg-slate-900/80 border-slate-200/90 dark:border-slate-800 hover:bg-white"
+                    : "bg-white/90 dark:bg-slate-900/90 border-slate-200/90 dark:border-slate-800 hover:bg-white"
                 }`}
               >
                 {/* Node Header */}
-                <div className="flex items-center justify-between gap-2 min-w-0 mb-2.5">
+                <div className="flex items-center justify-between gap-2 min-w-0 mb-2">
                   <div className="flex items-center gap-1.5 min-w-0 shrink-0">
                     <div
-                      className={`w-5 h-5 rounded-md flex items-center justify-center font-mono font-bold text-[10px] shrink-0 ${
+                      className={`w-6 h-6 rounded-lg flex items-center justify-center font-mono font-bold text-[11px] shrink-0 ${
                         isDone
                           ? "bg-emerald-600 text-white shadow-2xs"
                           : isActive
@@ -190,7 +206,7 @@ export function MilestoneMap({
                     >
                       {isDone ? <CheckCircle2 className="w-3.5 h-3.5" /> : idx + 1}
                     </div>
-                    <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 whitespace-nowrap shrink-0">
+                    <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300 whitespace-nowrap">
                       Step {idx + 1}
                     </span>
                   </div>
@@ -211,19 +227,19 @@ export function MilestoneMap({
                 </div>
 
                 {/* Milestone Info */}
-                <div className="space-y-1.5 min-w-0 flex-1" title={`${m.title}: ${m.description}`}>
+                <div className="space-y-1 min-w-0 flex-1 my-1" title={`${m.title}: ${m.description}`}>
                   <h5 className="text-xs font-bold text-slate-900 dark:text-slate-100 line-clamp-2 leading-snug break-words">
                     {m.title}
                   </h5>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-3 leading-relaxed break-words">
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed break-words">
                     {m.description}
                   </p>
                 </div>
 
                 {/* Assignee Badge Footer */}
-                <div className="pt-2.5 mt-2.5 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-[11px] min-w-0">
+                <div className="pt-2 mt-2 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-[11px] min-w-0">
                   <span 
-                    className="inline-flex items-center gap-1.5 text-slate-600 dark:text-slate-400 font-semibold min-w-0 truncate"
+                    className="inline-flex items-center gap-1.5 text-slate-600 dark:text-slate-400 font-semibold min-w-0 truncate bg-slate-100/80 dark:bg-slate-800/80 px-2 py-0.5 rounded-md text-[10px]"
                     title={m.assignee_role || "Specialist Worker"}
                   >
                     <RoleIcon className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
@@ -234,6 +250,28 @@ export function MilestoneMap({
             );
           })}
         </div>
+
+        {/* Optional scroll arrow helpers for larger milestone lists */}
+        {milestones.length > 2 && (
+          <div className="hidden sm:flex justify-end gap-1.5 pt-1">
+            <button
+              onClick={scrollLeft}
+              type="button"
+              className="p-1 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-50 transition-colors shadow-2xs cursor-pointer"
+              title="Scroll left"
+            >
+              <ChevronLeft className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={scrollRight}
+              type="button"
+              className="p-1 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-50 transition-colors shadow-2xs cursor-pointer"
+              title="Scroll right"
+            >
+              <ChevronRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Selected Milestone Active Details */}
