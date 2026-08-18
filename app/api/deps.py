@@ -53,45 +53,61 @@ class User(BaseModel):
     app_metadata: Optional[Dict[str, Any]] = None
 
 
+_business_cache: Dict[str, str] = {}
+
+
 def _get_or_create_business_for_user(user_id: str, email: Optional[str]) -> str:
     """
-    Resolve a business_id for this user.
-    - Prefer an existing business row where owner_id == user_id.
-    - Otherwise use the user_id itself as the business_id. This is robust even when
-      the owner_id migration has not been applied.
-    - Try to create/upsert the business row so the businesses table stays consistent.
+    Resolve a business_id for this user with in-memory caching.
+    - Check memory cache first.
+    - Check if a business with id == user_id or owner_id == user_id exists.
+    - Otherwise use user_id itself as the stable business_id.
     """
+    if user_id in _business_cache:
+        return _business_cache[user_id]
+
     try:
         client = get_supabase_client()
         if not client:
-            return "00000000-0000-0000-0000-000000000001"
-        # 1. If the owner_id migration is present, use the existing business.
+            _business_cache[user_id] = user_id or "00000000-0000-0000-0000-000000000001"
+            return _business_cache[user_id]
+
+        # 1. Check if business row already exists by id
+        try:
+            resp = client.table("businesses").select("id").eq("id", user_id).limit(1).execute()
+            if resp.data:
+                _business_cache[user_id] = str(resp.data[0]["id"])
+                return _business_cache[user_id]
+        except Exception:
+            pass
+
+        # 2. Check if business row exists by owner_id
         try:
             resp = client.table("businesses").select("id").eq("owner_id", user_id).limit(1).execute()
             if resp.data:
-                return str(resp.data[0]["id"])
-        except Exception as e:
-            logger.debug(f"owner_id lookup failed (migration may be missing): {e}")
+                _business_cache[user_id] = str(resp.data[0]["id"])
+                return _business_cache[user_id]
+        except Exception:
+            pass
 
-        # 2. Use the user's auth id as the stable business_id. This guarantees each
-        #    account is isolated even when the businesses table lacks an owner_id column.
+        # 3. Create business row if missing
         business_id = user_id
         name = email.split("@")[0] if email else "My Business"
         try:
             client.table("businesses").insert({"id": business_id, "name": name, "owner_id": user_id}).execute()
-        except Exception as e:
-            logger.debug(f"Could not insert business row with owner_id (may already exist or owner_id missing): {e}")
-            # Try without owner_id in case the migration has not been applied.
+        except Exception:
             try:
                 client.table("businesses").insert({"id": business_id, "name": name}).execute()
-            except Exception as e2:
-                logger.debug(f"Could not insert business row without owner_id (may already exist): {e2}")
+            except Exception:
+                pass
 
+        _business_cache[user_id] = business_id
         return business_id
     except Exception as e:
         logger.warning(f"Failed to resolve business for user {user_id}: {e}")
 
-    return "00000000-0000-0000-0000-000000000001"
+    _business_cache[user_id] = user_id or "00000000-0000-0000-0000-000000000001"
+    return _business_cache[user_id]
 
 
 def get_current_user(
