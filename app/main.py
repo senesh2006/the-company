@@ -142,8 +142,11 @@ async def serve_frontend(full_path: str):
 
 @app.on_event("startup")
 async def startup_event():
-    logger.info(f"Starting up {settings.PROJECT_NAME} API")
-    start_event_bus()
+    try:
+        logger.info(f"Starting up {settings.PROJECT_NAME} API")
+        start_event_bus()
+    except Exception as e:
+        logger.error(f"Error during startup_event: {e}")
 
 @app.on_event("shutdown")
 async def shutdown_event():
