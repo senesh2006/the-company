@@ -9,7 +9,7 @@ from langgraph.constants import Send, END
 
 from app.core.config import settings
 from app.agents.state import OrchestratorState, TaskNode
-from app.services.task_service import TaskService
+from app.services.task_service import TaskService, is_valid_uuid
 from app.services.shared_memory import SharedMemoryService
 from app.agents.llm_factory import get_llm, get_fast_llm
 
@@ -118,7 +118,14 @@ def global_supervisor_node(state: OrchestratorState):
         t.id = new_id
         
     for t in tasks_to_create:
-        t.dependencies = [id_mapping.get(d, d) for d in t.dependencies]
+        valid_deps = []
+        for d in (t.dependencies or []):
+            mapped = id_mapping.get(d)
+            if mapped and is_valid_uuid(mapped):
+                valid_deps.append(mapped)
+            elif is_valid_uuid(d):
+                valid_deps.append(d)
+        t.dependencies = valid_deps
         
         # --- CRITICAL: Validate and auto-correct assignee_role ---
         t.assignee_role = _resolve_assignee_role(t.assignee_role, available_roles)
