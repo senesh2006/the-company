@@ -41,27 +41,24 @@ Your mandate:
 2. Read shared business context:
 {shared_context_summary}
 3. Break down the founder's objectives into structured mandates with dependencies.
-4. Ensure cross-worker alignment (e.g., if cash flow is flagged as tight in memory, ensure marketing plans do not spend budget on paid promotion).
-5. Surface items requiring founder decisions to the Governance Gateway.
+4. Ensure cross-worker alignment.
 
 === AVAILABLE SPECIALIST ROLES (you MUST assign tasks to one of these) ===
 {roles}
 === END OF ROLES ===
 
-CRITICAL RULES FOR TASK ASSIGNMENT:
+CRITICAL RULES FOR TASK PLANNING:
+- Create ONLY 1 to 3 focused, high-impact sub-tasks (ABSOLUTE MAXIMUM 5 SUB-TASKS TOTAL).
+- If the founder's request can be fulfilled by one specialist (e.g., Finance Manager or Marketing Manager), create EXACTLY ONE (1) task for that specialist.
+- NEVER create repetitive or redundant search/review tasks.
 - The "assignee_role" field in each new_task MUST be set to EXACTLY one of the roles listed above.
 - You are a COORDINATOR. You MUST NOT assign tasks to yourself. Never use "Lead Orchestrator", "Personal Assistant", "Orchestrator", "Coordinator", "Robin", or "Supervisor" as an assignee_role.
-- For financial/accounting tasks: assign to the Accountant or Finance Manager role.
-- For marketing/social media tasks: assign to the Marketing Manager or Social Media role.
-- For admin/operations tasks: assign to the Admin/Ops role.
-- For research tasks: assign to the Researcher role.
-- If unsure which role to pick, choose the CLOSEST match from the available roles list.
 
 Analyze the current state of tasks:
 {current_tasks}
 
-If tasks are pending, output action="dispatch". 
-If you need to break down objectives into structured mandates, output action="replan" and provide new_tasks.
+If tasks are pending or executing, output action="dispatch". 
+If initial planning is needed, output action="replan" and provide at most 1-3 new_tasks (max 5).
 If all tasks are completed, output action="finish".
 """),
         ("human", "Founder instruction / Objective: {messages}")
@@ -73,9 +70,26 @@ def global_supervisor_node(state: OrchestratorState):
     agents = state.get("active_agents", {})
     roles = list({agent.role for agent in agents.values()})
     business_id = state.get("business_id", "00000000-0000-0000-0000-000000000001")
+    current_tasks = state.get("task_graph", {})
+    existing_count = len(current_tasks)
 
-    # Pick the model to use for the supervisor: prefer the model of the running agent,
-    # then any agent that has a model configured, otherwise let get_supervisor_agent fall back.
+    # HARD LIMIT: Strictly cap total subtasks to maximum 5 per mandate
+    MAX_TOTAL_SUBTASKS = min(5, getattr(settings, "MAX_SUBTASKS_PER_MANDATE", 5))
+
+    # If tasks already exist:
+    # 1. If any task is running or queued, DO NOT replan/create new tasks — allow workers to run.
+    # 2. If all tasks are completed, DO NOT create new tasks — move to executive synthesis.
+    # 3. If we have reached the max subtasks limit (>= 5), DO NOT create any more tasks.
+    has_in_flight = any(t.status in ("running", "queued") for t in current_tasks.values())
+    all_done = existing_count > 0 and all(t.status in ("completed", "success", "failed") for t in current_tasks.values())
+
+    if existing_count >= MAX_TOTAL_SUBTASKS or all_done or has_in_flight:
+        logger.info(f"[Supervisor] Skipping replan: existing_count={existing_count}, in_flight={has_in_flight}, all_done={all_done}")
+        return {
+            "iteration": state.get("iteration", 0) + 1
+        }
+
+    # Pick the model to use for the supervisor
     model_id = None
     for agent in agents.values():
         if agent.current_task_id and agent.model:
@@ -93,7 +107,6 @@ def global_supervisor_node(state: OrchestratorState):
     memory_items = memory_service.list_by_business(business_id)
     shared_context_summary = "\n".join([f"- {m['key']}: {m['value']}" for m in memory_items[:10]]) if memory_items else "No shared memory entries."
     
-    current_tasks = state.get("task_graph", {})
     last_message = state["messages"][-1].content if state.get("messages") else ""
     
     decision = supervisor.invoke({
@@ -107,8 +120,9 @@ def global_supervisor_node(state: OrchestratorState):
     id_mapping = {}
     available_roles = roles  # The real agent roles from the DB
     
-    # Cap sub-tasks to prevent over-generation
-    tasks_to_create = (decision.new_tasks or [])[:settings.MAX_SUBTASKS_PER_MANDATE]
+    # Cap sub-tasks to strictly max 5 (or remaining slots)
+    remaining_slots = max(0, MAX_TOTAL_SUBTASKS - existing_count)
+    tasks_to_create = (decision.new_tasks or [])[:remaining_slots]
     
     # Map LLM-generated IDs to real UUIDs
     for t in tasks_to_create:
