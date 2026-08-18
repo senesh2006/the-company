@@ -9,6 +9,7 @@ router = APIRouter()
 
 class HealthCheck(BaseModel):
     status: str = "ok"
+    version: str = "v1.2.0-fastpath"
 
 class MCPHealthCheck(BaseModel):
     fallback_mode: bool
@@ -19,7 +20,7 @@ def health_check() -> HealthCheck:
     """
     Health check endpoint for Docker / orchestration checks.
     """
-    return HealthCheck(status="ok")
+    return HealthCheck(status="ok", version="v1.2.0-fastpath")
 
 
 @router.get("/health/mcp", response_model=MCPHealthCheck, status_code=200)
