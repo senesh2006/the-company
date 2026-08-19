@@ -23,22 +23,6 @@ DEFAULT_CHECKLISTS: Dict[str, List[Dict[str, Any]]] = {
         {"id": 4, "title": "Define Brand Voice Guidelines", "completed": True},
         {"id": 5, "title": "Integrate Notion Content Workspace", "completed": False},
         {"id": 6, "title": "Enable Automated Lead Scoring", "completed": False}
-    ],
-    "engineering": [
-        {"id": 1, "title": "Connect GitHub Repository Pipeline", "completed": True},
-        {"id": 2, "title": "Hire Autonomous Code Architect Agent", "completed": True},
-        {"id": 3, "title": "Configure PyTest & Automated Testing", "completed": True},
-        {"id": 4, "title": "Enable Terminal Subprocess Sandbox", "completed": True},
-        {"id": 5, "title": "Configure Railway Production Deployment", "completed": True},
-        {"id": 6, "title": "Verify Pull Request Auto-Reviews", "completed": False}
-    ],
-    "operations": [
-        {"id": 1, "title": "Initialize Shared Memory Store", "completed": True},
-        {"id": 2, "title": "Hire Lead Operations Orchestrator AI", "completed": True},
-        {"id": 3, "title": "Set Up Maker-Checker Approval Gate", "completed": True},
-        {"id": 4, "title": "Configure Executive Notification Triage", "completed": True},
-        {"id": 5, "title": "Set Up Cross-Department Event Bus", "completed": False},
-        {"id": 6, "title": "Enable SOX Compliance Audit Logging", "completed": False}
     ]
 }
 
@@ -189,38 +173,20 @@ class DepartmentService:
                 {"type": "ok", "title": "Brand Voice Policy Verified", "desc": "Generated copy passes tone & compliance checks."},
                 {"type": "info", "title": "Perplexity Search Connector Ready", "desc": "Live web search enabled for market research."}
             ]
-        elif dept_id == "engineering":
-            return [
-                {"type": "ok", "title": "Subprocess Sandbox 100% Healthy", "desc": "Terminal execution engine operating cleanly."},
-                {"type": "info", "title": "FastAPI Engine Active", "desc": "Continuous deployment pipeline connected."}
-            ]
-        else:
-            return [
-                {"type": "ok", "title": "SOX Compliance Audit Logging On", "desc": "All actions recorded in PostgreSQL durable store."},
-                {"type": "info", "title": "Maker-Checker Approval Gate Active", "desc": "Human-in-the-loop threshold configured."}
-            ]
+        return []
 
     def _default_activities(self, dept_id: str) -> List[Dict[str, Any]]:
         if dept_id == "finance":
             return [
-                {"time": "10 mins ago", "text": "Lead Accountant AI performed double-entry ledger balance check.", "badge": "BALANCED", "badgeClass": "bg-emerald-50 text-emerald-800 border-emerald-200"},
+                {"time": "10 mins ago", "text": "Financial Controller AI performed double-entry ledger balance check.", "badge": "BALANCED", "badgeClass": "bg-emerald-50 text-emerald-800 border-emerald-200"},
                 {"time": "25 mins ago", "text": "Google Sheets MCP synchronized journal entries.", "badge": "SYNCED", "badgeClass": "bg-cyan-50 text-cyan-800 border-cyan-200"}
             ]
         elif dept_id == "marketing":
             return [
-                {"time": "5 mins ago", "text": "Growth Copywriter AI generated 3 social post drafts.", "badge": "DRAFTED", "badgeClass": "bg-cyan-50 text-cyan-800 border-cyan-200"},
-                {"time": "40 mins ago", "text": "Perplexity Web Search fetched latest AI Agent trends.", "badge": "SEARCHED", "badgeClass": "bg-indigo-50 text-indigo-800 border-indigo-200"}
+                {"time": "5 mins ago", "text": "Growth & Marketing Lead AI generated campaign briefs.", "badge": "DRAFTED", "badgeClass": "bg-cyan-50 text-cyan-800 border-cyan-200"},
+                {"time": "40 mins ago", "text": "Market intelligence tools fetched active keyword trends.", "badge": "SEARCHED", "badgeClass": "bg-indigo-50 text-indigo-800 border-indigo-200"}
             ]
-        elif dept_id == "engineering":
-            return [
-                {"time": "2 mins ago", "text": "Code Architect AI submitted PR #42 for review.", "badge": "PULL REQUEST", "badgeClass": "bg-indigo-50 text-indigo-800 border-indigo-200"},
-                {"time": "15 mins ago", "text": "PyTest automated suite passed static page tests.", "badge": "PASSED", "badgeClass": "bg-emerald-50 text-emerald-800 border-emerald-200"}
-            ]
-        else:
-            return [
-                {"time": "12 mins ago", "text": "Maker-Checker policy verified spending limit.", "badge": "APPROVED", "badgeClass": "bg-emerald-50 text-emerald-800 border-emerald-200"},
-                {"time": "30 mins ago", "text": "Ops Orchestrator resolved cross-department event bus message.", "badge": "RESOLVED", "badgeClass": "bg-purple-50 text-purple-800 border-purple-200"}
-            ]
+        return []
 
     def _default_attention(self, dept_id: str) -> List[Dict[str, Any]]:
         if dept_id == "finance":
@@ -229,13 +195,6 @@ class DepartmentService:
             ]
         elif dept_id == "marketing":
             return [
-                {"id": "att-1", "title": "Approve 3 Draft Posts for LinkedIn Campaign", "action": "Approve Copy", "priority": "normal"}
+                {"id": "att-1", "title": "Review Active Strategy Mandates", "action": "Review Deliverable", "priority": "normal"}
             ]
-        elif dept_id == "engineering":
-            return [
-                {"id": "att-1", "title": "1 Pull Request Pending Founder Review (#42)", "action": "Review PR", "priority": "high"}
-            ]
-        else:
-            return [
-                {"id": "att-1", "title": "1 Cross-Department Mandate Awaiting Confirmation", "action": "Confirm Mandate", "priority": "high"}
-            ]
+        return []
