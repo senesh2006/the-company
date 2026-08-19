@@ -23,7 +23,8 @@ import {
   X,
   ChevronRight,
   Sparkles,
-  CreditCard
+  CreditCard,
+  Compass
 } from "lucide-react";
 import { easings, durations } from "@/lib/motion";
 
@@ -62,6 +63,7 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
   ];
 
   const opsNavItems: NavItem[] = [
+    { name: 'Onboarding & Setup', href: '/onboarding', icon: Compass },
     { name: 'Recruit Worker', href: '/hire', icon: UserPlus },
     { name: 'Pricing & Billing', href: '/pricing', icon: CreditCard },
     { name: 'Approvals & Attention', href: '/approvals', icon: ShieldCheck, badge: pendingAttentionCount > 0 ? `${pendingAttentionCount}` : undefined, badgeColor: 'bg-amber-100 text-amber-800 border-amber-300' },

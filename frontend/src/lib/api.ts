@@ -715,4 +715,23 @@ export const api = {
     if (!res.ok) throw new Error(`Failed to send WhatsApp message (${res.status})`);
     return res.json();
   },
+
+  // --- Onboarding Survey Methods ---
+  getOnboardingStatus: async (): Promise<any> => {
+    const baseUrl = getBaseUrl();
+    const res = await authFetch(`${baseUrl}/api/v1/onboarding/status`);
+    if (!res.ok) throw new Error(`Failed to fetch onboarding status (${res.status})`);
+    return res.json();
+  },
+
+  completeOnboarding: async (payload: any): Promise<any> => {
+    const baseUrl = getBaseUrl();
+    const res = await authFetch(`${baseUrl}/api/v1/onboarding/complete`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) throw new Error(`Failed to complete onboarding (${res.status})`);
+    return res.json();
+  },
 };
