@@ -12,7 +12,7 @@ interface AuthContextType {
   isConfigured: boolean;
   signInWithPassword: (email: string, password: string) => Promise<{ error: AuthError | null }>;
   signUpWithPassword: (email: string, password: string, fullName?: string) => Promise<{ error: AuthError | null }>;
-  signInWithOAuth: (provider: "github" | "google") => Promise<{ error: AuthError | null }>;
+  signInWithOAuth: (provider: "github" | "google", redirectToPath?: string) => Promise<{ error: AuthError | null }>;
   signOut: () => Promise<void>;
 }
 
@@ -135,7 +135,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error };
   };
 
-  const signInWithOAuth = async (provider: "github" | "google") => {
+  const signInWithOAuth = async (provider: "github" | "google", redirectToPath?: string) => {
     if (typeof window !== "undefined") {
       localStorage.removeItem("companyos_logged_out");
     }
@@ -146,11 +146,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     const redirectOrigin = typeof window !== "undefined" ? window.location.origin : undefined;
+    const targetPath = redirectToPath || "/";
+    const finalRedirect = redirectOrigin ? `${redirectOrigin}${targetPath.startsWith('/') ? targetPath : `/${targetPath}`}` : undefined;
 
     const { error } = await client.auth.signInWithOAuth({
       provider,
       options: {
-        redirectTo: redirectOrigin ? `${redirectOrigin}/` : undefined,
+        redirectTo: finalRedirect,
       },
     });
     return { error };

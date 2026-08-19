@@ -48,13 +48,14 @@ export default function SignUpPage() {
       if (error) {
         setErrorMsg(error.message);
       } else {
-        // Save initial company preference in local storage for the startup wizard
+        // Save initial company preference in local storage for the onboarding wizard
         if (typeof window !== "undefined") {
-          localStorage.setItem("companyos_startup_company_name", companyName || "My Autonomous Corp");
-          localStorage.setItem("companyos_startup_industry", industry);
+          localStorage.setItem("companyos_company_name", companyName || "My Autonomous Corp");
+          localStorage.setItem("companyos_industry", industry);
+          localStorage.setItem("companyos_is_new_signup", "true");
         }
-        // Seamlessly route to the interactive startup initialization wizard
-        router.push("/startup");
+        // Seamlessly route to the interactive onboarding & knowledge ingestion wizard
+        router.push("/onboarding");
       }
     } catch (err: any) {
       setErrorMsg(err?.message || "An unexpected error occurred during registration.");
@@ -67,7 +68,12 @@ export default function SignUpPage() {
     setErrorMsg(null);
     setLoading(true);
     try {
-      const { error } = await signInWithOAuth(provider);
+      if (typeof window !== "undefined") {
+        if (companyName) localStorage.setItem("companyos_company_name", companyName);
+        if (industry) localStorage.setItem("companyos_industry", industry);
+        localStorage.setItem("companyos_is_new_signup", "true");
+      }
+      const { error } = await signInWithOAuth(provider, "/onboarding");
       if (error) {
         if (error.message.toLowerCase().includes("not enabled") || error.message.toLowerCase().includes("unsupported")) {
           setErrorMsg(`${provider === "github" ? "GitHub" : "Google"} OAuth is not enabled in your Supabase project. Register using Email & Password below, or enable it in Supabase (Authentication → Providers).`);

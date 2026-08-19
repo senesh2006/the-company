@@ -52,11 +52,14 @@ export default function LoginPage() {
         } else {
           setSuccessMsg(
             isConfigured
-              ? "Account created successfully! Redirecting to workspace..."
+              ? "Account created successfully! Redirecting to setup..."
               : "Account created successfully."
           );
+          if (typeof window !== "undefined") {
+            localStorage.setItem("companyos_is_new_signup", "true");
+          }
           setTimeout(() => {
-            router.push("/startup");
+            router.push("/onboarding");
           }, 800);
         }
       } else {
