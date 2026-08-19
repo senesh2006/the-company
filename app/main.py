@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from app.core.config import settings
-from app.api.routes import health, agents, tasks, costs, metrics, memory, attention, hierarchy, finance, departments, ui_control, whatsapp, onboarding
+from app.api.routes import health, agents, tasks, costs, metrics, memory, attention, hierarchy, finance, departments, ui_control, whatsapp, onboarding, briefing
 from app.core.logging import logger
 from app.services.event_bus import start_event_bus
 from supabase import create_client
@@ -38,6 +38,7 @@ app.include_router(departments.router, prefix=f"{settings.API_V1_STR}/department
 app.include_router(ui_control.router, prefix=f"{settings.API_V1_STR}/ui", tags=["ui"])
 app.include_router(whatsapp.router, prefix=f"{settings.API_V1_STR}/whatsapp", tags=["whatsapp"])
 app.include_router(onboarding.router, prefix=f"{settings.API_V1_STR}/onboarding", tags=["onboarding"])
+app.include_router(briefing.router, prefix=f"{settings.API_V1_STR}/briefing", tags=["briefing"])
 
 from fastapi import Depends
 from app.api.deps import get_current_user

@@ -421,4 +421,25 @@ export const useSendWhatsAppMessage = () => {
     });
 };
 
+// --- Today's Executive Briefing Hooks ---
+export const useTodayBriefing = () => {
+    return useQuery({
+        queryKey: ['today-briefing'],
+        queryFn: () => api.getTodayBriefing(false),
+        refetchInterval: 30000,
+        staleTime: 15000,
+        retry: 1,
+    });
+};
+
+export const useRefreshTodayBriefing = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: api.refreshTodayBriefing,
+        onSuccess: (data) => {
+            queryClient.setQueryData(['today-briefing'], data);
+        },
+    });
+};
+
 

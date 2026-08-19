@@ -734,4 +734,47 @@ export const api = {
     if (!res.ok) throw new Error(`Failed to complete onboarding (${res.status})`);
     return res.json();
   },
+
+  // --- Executive Briefing Methods ---
+  getTodayBriefing: async (forceRefresh: boolean = false): Promise<ExecutiveBriefing> => {
+    const baseUrl = getBaseUrl();
+    const url = forceRefresh 
+      ? `${baseUrl}/api/v1/briefing/today?force_refresh=true`
+      : `${baseUrl}/api/v1/briefing/today`;
+    const res = await authFetch(url);
+    if (!res.ok) throw new Error(`Failed to fetch today's briefing (${res.status})`);
+    return res.json();
+  },
+
+  refreshTodayBriefing: async (): Promise<ExecutiveBriefing> => {
+    const baseUrl = getBaseUrl();
+    const res = await authFetch(`${baseUrl}/api/v1/briefing/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    if (!res.ok) throw new Error(`Failed to refresh today's briefing (${res.status})`);
+    return res.json();
+  },
 };
+
+export interface ExecutiveBriefing {
+  id: string;
+  date: string;
+  period: string;
+  headline: string;
+  executive_summary: string;
+  marketing_update: string;
+  finance_update: string;
+  completed_milestones: string[];
+  todays_priorities: string[];
+  action_items_needed: string[];
+  metrics: {
+    completed_tasks_count: number;
+    running_tasks_count: number;
+    active_agents_count: number;
+    total_revenue: number;
+    total_expenses: number;
+    net_income: number;
+  };
+  generated_at: string;
+}

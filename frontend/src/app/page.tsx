@@ -22,6 +22,7 @@ import {
   Activity
 } from "lucide-react";
 import { api } from "@/lib/api";
+import { TodaysBriefing } from "@/components/dashboard/TodaysBriefing";
 
 export default function DashboardPage() {
   const { data: metrics } = useMetrics();
@@ -204,7 +205,10 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* 2. Top Stats Row (4 Metric Bento Cards) */}
+      {/* 2. Today's Executive AI Briefing */}
+      <TodaysBriefing />
+
+      {/* 3. Top Stats Row (4 Metric Bento Cards) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5">
         
         {/* Card 1: Total Workers */}
