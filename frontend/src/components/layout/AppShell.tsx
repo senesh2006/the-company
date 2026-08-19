@@ -38,11 +38,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const isAuthOrOnboardingPage = 
     pathname === "/login" || 
     pathname === "/signup" || 
-    pathname === "/startup";
+    pathname === "/startup" ||
+    pathname === "/onboarding";
 
   if (isAuthOrOnboardingPage) {
     return (
-      <main className="min-h-screen w-full flex items-center justify-center bg-slate-50 dark:bg-slate-950 p-4">
+      <main className="min-h-screen w-full bg-slate-50 dark:bg-slate-950">
         <AnimatePresence mode="wait">
           <motion.div
             key={pathname}
@@ -50,7 +51,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: durations.normal, ease: easings.easeOutExpo }}
-            className="w-full"
+            className="w-full min-h-screen"
           >
             {children}
           </motion.div>
