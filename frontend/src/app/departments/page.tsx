@@ -11,6 +11,7 @@ import {
   Bot, 
   Plus, 
   FileSpreadsheet, 
+  FileText,
   TrendingUp, 
   ShieldCheck, 
   Search, 
@@ -457,6 +458,166 @@ function DepartmentsContent() {
                       {journalEntries?.entries?.length ?? journalEntries?.total_count ?? 0}
                     </h4>
                     <p className="text-[11px] text-slate-500 dark:text-slate-400">Synchronized Ledger Records</p>
+                  </div>
+                </div>
+
+                {/* Operations & Finance Specialized Desks Suite */}
+                <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-xs space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                        <Sparkles className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                        <span>Operations & Finance Desks</span>
+                      </h3>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                        Autonomous operational capabilities active on the Financial Controller.
+                      </p>
+                    </div>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 font-bold">
+                      5 Desks Online
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 pt-1">
+                    {/* Desk 1: Contract Desk */}
+                    <div className="p-4 rounded-xl bg-slate-50/70 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800 flex flex-col justify-between space-y-3 hover:border-slate-300 dark:hover:border-slate-700 transition">
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <span className="p-2 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800">
+                            <FileText className="w-4 h-4" />
+                          </span>
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300">
+                            Contract Desk
+                          </span>
+                        </div>
+                        <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100">Contract Desk</h4>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                          See the week of paper at a glance. Summarizes by stage and owner, pulls key terms, and flags blocked reviews.
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setDirectivePrompt("Contract Desk: Review the week of paper, summarize contracts by stage and owner, extract key SLA/liability terms, and flag blocked reviews.");
+                          setIsDispatchModalOpen(true);
+                        }}
+                        className="w-full py-1.5 px-3 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-bold transition flex items-center justify-center gap-1.5 active:scale-95"
+                      >
+                        <Zap className="w-3 h-3" />
+                        <span>Run Contract Review</span>
+                      </button>
+                    </div>
+
+                    {/* Desk 2: Expense Manager */}
+                    <div className="p-4 rounded-xl bg-slate-50/70 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800 flex flex-col justify-between space-y-3 hover:border-slate-300 dark:hover:border-slate-700 transition">
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <span className="p-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
+                            <Receipt className="w-4 h-4" />
+                          </span>
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300">
+                            Expense Manager
+                          </span>
+                        </div>
+                        <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100">Expense Manager</h4>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                          Stay on top of the money. Builds weekly summaries from expense sheets, logs new receipts from email, and nudges owners on missing categories.
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setDirectivePrompt("Expense Manager: Compile weekly summary from expense manager and Google Sheets, log pending receipts, and audit missing categories.");
+                          setIsDispatchModalOpen(true);
+                        }}
+                        className="w-full py-1.5 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold transition flex items-center justify-center gap-1.5 active:scale-95"
+                      >
+                        <Zap className="w-3 h-3" />
+                        <span>Compile Weekly Expenses</span>
+                      </button>
+                    </div>
+
+                    {/* Desk 3: Invoice Coordinator */}
+                    <div className="p-4 rounded-xl bg-slate-50/70 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800 flex flex-col justify-between space-y-3 hover:border-slate-300 dark:hover:border-slate-700 transition">
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <span className="p-2 rounded-lg bg-cyan-50 dark:bg-cyan-950/60 text-cyan-700 dark:text-cyan-400 border border-cyan-200 dark:border-cyan-800">
+                            <CreditCard className="w-4 h-4" />
+                          </span>
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-cyan-50 dark:bg-cyan-950 text-cyan-700 dark:text-cyan-300">
+                            Invoice Coordinator
+                          </span>
+                        </div>
+                        <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100">Invoice Coordinator</h4>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                          Stop invoices from sitting. Forwards invoices, matches line items with POs, tracks vendor actuals, and nudges owners when human sign-off is needed.
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setDirectivePrompt("Invoice Coordinator: Run 3-way invoice matching against POs, track vendor actuals, and flag any stalled invoices.");
+                          setIsDispatchModalOpen(true);
+                        }}
+                        className="w-full py-1.5 px-3 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-[11px] font-bold transition flex items-center justify-center gap-1.5 active:scale-95"
+                      >
+                        <Zap className="w-3 h-3" />
+                        <span>Match Invoices & POs</span>
+                      </button>
+                    </div>
+
+                    {/* Desk 4: Security Questionnaire Filler */}
+                    <div className="p-4 rounded-xl bg-slate-50/70 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800 flex flex-col justify-between space-y-3 hover:border-slate-300 dark:hover:border-slate-700 transition">
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <span className="p-2 rounded-lg bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
+                            <ShieldCheck className="w-4 h-4" />
+                          </span>
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-300">
+                            Security Filler
+                          </span>
+                        </div>
+                        <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100">Security Questionnaire Filler</h4>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                          Speed through vendor security portals. Pulls answers from your trust center and past RFPs, drafts every field, and parks the submit for review.
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setDirectivePrompt("Security Questionnaire Filler: Pull verified answers from Trust Center and policies in Shared Memory, draft all questionnaire fields, and park for review.");
+                          setIsDispatchModalOpen(true);
+                        }}
+                        className="w-full py-1.5 px-3 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-[11px] font-bold transition flex items-center justify-center gap-1.5 active:scale-95"
+                      >
+                        <Zap className="w-3 h-3" />
+                        <span>Draft Questionnaire</span>
+                      </button>
+                    </div>
+
+                    {/* Desk 5: Vendor Portal Operator */}
+                    <div className="p-4 rounded-xl bg-slate-50/70 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800 flex flex-col justify-between space-y-3 hover:border-slate-300 dark:hover:border-slate-700 transition">
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <span className="p-2 rounded-lg bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-400 border border-purple-200 dark:border-purple-800">
+                            <Globe className="w-4 h-4" />
+                          </span>
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-purple-50 dark:bg-purple-950 text-purple-700 dark:text-purple-300">
+                            Vendor Operator
+                          </span>
+                        </div>
+                        <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100">Vendor Portal Operator</h4>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                          Run renewals, seats, and procurement on portals with no clean API. Clicks the same path every week and comes back with exceptions only.
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setDirectivePrompt("Vendor Portal Operator: Scan vendor renewal dates within 60 days, audit seat utilization across portals, and report exceptions only.");
+                          setIsDispatchModalOpen(true);
+                        }}
+                        className="w-full py-1.5 px-3 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-[11px] font-bold transition flex items-center justify-center gap-1.5 active:scale-95"
+                      >
+                        <Zap className="w-3 h-3" />
+                        <span>Scan Portals & Seats</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
