@@ -53,7 +53,7 @@ class TeamRunner:
         has_pa = any("assistant" in a.get("role", "").lower() or "admin" in a.get("role", "").lower() for a in agents)
         if not has_pa:
             pa_agent = {
-                "id": "personal_assistant",
+                "id": "d38bfed5-cfec-5c65-98e1-c85c03ae93ad",
                 "name": "Personal Assistant",
                 "role": "Personal Assistant",
                 "trust_tier": "operate",

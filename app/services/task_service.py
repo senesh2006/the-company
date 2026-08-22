@@ -244,10 +244,12 @@ class TaskService:
 
     def update_agent_status(self, agent_id: str, status: str) -> dict[str, Any]:
         """Updates the status of an agent."""
+        if not agent_id or not is_valid_uuid(str(agent_id)):
+            return {}
         try:
             response = self.client.table("agents")\
                 .update({"status": status})\
-                .eq("id", agent_id)\
+                .eq("id", str(agent_id))\
                 .execute()
             return response.data[0] if response.data else {}
         except Exception as e:
