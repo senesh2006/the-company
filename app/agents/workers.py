@@ -67,9 +67,13 @@ def make_level3_worker_node(role: str, model_id: str = None):
     return worker_node
 
 def execute_sub_orchestration(business_id: str, main_task: TaskNode, researcher_plan) -> str:
-    """Dynamically builds and runs a Level 3 graph based on the Research Plan."""
+    """Dynamically builds and runs a Level 3 graph based on the Research Plan (capped to max 5 sub-workers)."""
+    max_subworkers = min(5, getattr(settings, "MAX_SUBWORKERS_PER_AGENT", 5))
+    raw_subtasks = getattr(researcher_plan, "recommended_subtasks", []) or []
+    subtasks_to_run = raw_subtasks[:max_subworkers]
+
     processed_tasks = {}
-    for t in researcher_plan.recommended_subtasks:
+    for t in subtasks_to_run:
         if not t.id:
             t.id = str(uuid.uuid4())
         t.status = "queued"

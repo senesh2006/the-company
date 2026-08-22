@@ -175,12 +175,14 @@ def decide(state: MarketingWorkerState) -> Literal["spawn_subworkers", "END"]:
     return "END"
 
 def spawn_subworkers(state: MarketingWorkerState):
-    """Switch to Temporary Supervisor mode and spawn sub-workers."""
+    """Switch to Temporary Supervisor mode and spawn at most 5 sub-workers."""
     researcher = get_research_agent(model_id=state.get("model_id"))
     plan = researcher.invoke({
         "task_description": state["task"].description,
         "context": str(state.get("shared_context", {}))
     })
+    if hasattr(plan, "recommended_subtasks") and plan.recommended_subtasks:
+        plan.recommended_subtasks = plan.recommended_subtasks[:5]
     
     final_output = execute_sub_orchestration(state["business_id"], state["task"], plan)
     
@@ -188,7 +190,7 @@ def spawn_subworkers(state: MarketingWorkerState):
         "final_output": f"Spawned Sub-Workers Output:\n{final_output}",
         "status": "success",
         "confidence": 1.0,
-        "side_effects": ["Spawned sub-workers"]
+        "side_effects": ["Spawned sub-workers (capped to 5 max)"]
     }
 
 # Build the High-Speed LangGraph for the Marketing Worker

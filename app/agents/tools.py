@@ -250,16 +250,25 @@ class SpawnSubtaskInput(BaseModel):
 
 class SpawnSubtaskTool(BaseTool):
     name = "spawn_subtask"
-    description = "Delegates a subtask to another AI Worker specialist in the fleet."
+    description = "Delegates a subtask to another AI Worker specialist in the fleet (strictly limited to max 5 subtasks per mandate)."
     args_schema = SpawnSubtaskInput
     cost_estimate = 0.02
     
     def __init__(self, business_id: str, main_task_id: str = None):
+        super().__init__()
         self.business_id = business_id
         self.main_task_id = main_task_id
+        self._spawn_count = 0
 
     def _run(self, agent_id: str, instruction: str) -> str:
-        return f"Successfully delegated subtask to '{agent_id}' with instruction: '{instruction}'."
+        MAX_SUBTASK_LIMIT = 5
+        if self._spawn_count >= MAX_SUBTASK_LIMIT:
+            return (
+                f"Delegation limit reached: A maximum of {MAX_SUBTASK_LIMIT} subtasks/agents can be deployed per mandate. "
+                f"Cannot spawn additional subtasks. Please execute the instruction directly or summarize existing outputs."
+            )
+        self._spawn_count += 1
+        return f"Successfully delegated subtask ({self._spawn_count}/{MAX_SUBTASK_LIMIT}) to '{agent_id}' with instruction: '{instruction}'."
 
 # --- Financial Calculation Tool ---
 

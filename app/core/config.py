@@ -77,6 +77,7 @@ class Settings(BaseSettings):
     # Fleet and Sub-Worker Autonomy Limits
     MAX_FLEET_SIZE: int = 6
     MAX_SUBTASKS_PER_MANDATE: int = 5
+    MAX_SUBWORKERS_PER_AGENT: int = 5
     MAX_SUPERVISOR_ITERATIONS: int = 3
     ALLOW_AUTONOMOUS_HIRING: bool = False
     ALLOW_AUTONOMOUS_SUBWORKERS: bool = False

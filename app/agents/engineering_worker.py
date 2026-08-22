@@ -159,12 +159,14 @@ def decide(state: EngineeringWorkerState) -> Literal["spawn_subworkers", "END"]:
     return "END"
 
 def spawn_subworkers(state: EngineeringWorkerState):
-    """Switch to Temporary Supervisor mode and spawn engineering sub-workers."""
+    """Switch to Temporary Supervisor mode and spawn engineering sub-workers (strictly capped to 5 max)."""
     researcher = get_research_agent(model_id=state.get("model_id"))
     plan = researcher.invoke({
         "task_description": f"Break down this engineering objective for specialized sub-workers (Frontend Dev, Backend Dev, QA): {state['task'].description}",
         "context": str(state.get("shared_context", {}))
     })
+    if hasattr(plan, "recommended_subtasks") and plan.recommended_subtasks:
+        plan.recommended_subtasks = plan.recommended_subtasks[:5]
     
     final_output = execute_sub_orchestration(state["business_id"], state["task"], plan)
     
@@ -172,7 +174,7 @@ def spawn_subworkers(state: EngineeringWorkerState):
         "final_output": f"Spawned Engineering Sub-Workers Output:\n{final_output}",
         "status": "success",
         "confidence": 1.0,
-        "side_effects": ["Spawned engineering sub-workers"]
+        "side_effects": ["Spawned engineering sub-workers (capped to 5 max)"]
     }
 
 # Build the High-Speed LangGraph for the Engineering Worker
