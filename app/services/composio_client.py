@@ -70,17 +70,47 @@ class ComposioService:
         sdk = self._get_sdk()
         if sdk is not None:
             try:
-                # Attempt using SDK connected_accounts initiate
-                if hasattr(sdk, "connected_accounts") and hasattr(sdk.connected_accounts, "initiate"):
-                    initiate_res = sdk.connected_accounts.initiate(
-                        user_id=user_id,
-                        app_id=app_id,
-                        redirect_url=redirect_url
-                    )
-                    auth_url = getattr(initiate_res, "redirect_url", None) or getattr(initiate_res, "url", None)
-                    connection_id = getattr(initiate_res, "connection_id", None) or getattr(initiate_res, "id", None)
+                # 1. Prefer modern composio connected_accounts.link API
+                if hasattr(sdk, "connected_accounts") and hasattr(sdk.connected_accounts, "link"):
+                    auth_id = None
+                    if hasattr(sdk, "toolkits") and hasattr(sdk.toolkits, "_get_auth_config_id"):
+                        try:
+                            auth_id = sdk.toolkits._get_auth_config_id(toolkit=normalized_toolkit)
+                        except Exception:
+                            pass
+                    if not auth_id and hasattr(sdk, "auth_configs"):
+                        try:
+                            cfgs = sdk.auth_configs.list()
+                            for item in getattr(cfgs, "items", []):
+                                if getattr(item, "toolkit", None) and getattr(item.toolkit, "slug", "").lower() == normalized_toolkit:
+                                    auth_id = item.id
+                                    break
+                        except Exception:
+                            pass
+                    
+                    if auth_id:
+                        link_res = sdk.connected_accounts.link(
+                            user_id=user_id,
+                            auth_config_id=auth_id,
+                            callback_url=redirect_url
+                        )
+                        auth_url = getattr(link_res, "redirect_url", None) or getattr(link_res, "url", None)
+                        connection_id = getattr(link_res, "id", None) or getattr(link_res, "connection_id", None)
+
+                # 2. Fallback to connected_accounts.initiate or toolkits.authorize if link was not used
+                if not auth_url and hasattr(sdk, "connected_accounts") and hasattr(sdk.connected_accounts, "initiate"):
+                    try:
+                        initiate_res = sdk.connected_accounts.initiate(
+                            user_id=user_id,
+                            app_id=app_id,
+                            redirect_url=redirect_url
+                        )
+                        auth_url = getattr(initiate_res, "redirect_url", None) or getattr(initiate_res, "url", None)
+                        connection_id = getattr(initiate_res, "connection_id", None) or getattr(initiate_res, "id", None)
+                    except Exception:
+                        pass
             except Exception as e:
-                logger.warning(f"Composio SDK initiate failed for {toolkit}: {e}. Falling back to REST/Mock.")
+                logger.warning(f"Composio SDK initiate/link failed for {toolkit}: {e}. Falling back to REST/Mock.")
 
         if not auth_url and self.api_key:
             # Fallback to direct Composio REST API
