@@ -9,11 +9,13 @@ from app.core.config import settings
 logger = logging.getLogger(__name__)
 
 def _is_valid_key(key: Optional[str]) -> bool:
-    """Check if an API key is non-empty, not None, and not a placeholder string."""
+    """Check if an API key is non-empty, not None, not a URL, and not a placeholder string."""
     if not key or not isinstance(key, str):
         return False
     k = key.strip()
-    if not k or len(k) < 8:
+    if not k or len(k) < 6:
+        return False
+    if k.startswith("http://") or k.startswith("https://") or "/" in k:
         return False
     placeholders = (
         "sk-...", "gsk_...", "nvapi-...", "your-", "replace-",
@@ -255,13 +257,13 @@ def get_fast_llm(temperature: float = 0.0) -> Any:
     """
     Returns an ultra-fast, low-latency LLM optimized for auxiliary orchestration
     steps (routing, complexity analysis, structured JSON planning, and reflection).
-    Prefers ultra-fast instant models like llama-3.1-8b-instant, gpt-4o-mini, or gemini-2.0-flash.
+    Prefers active providers like NVIDIA NIM, Fireworks, Groq, OpenAI, or Gemini.
     """
+    has_nvidia = _is_valid_key(settings.NVIDIA_API_KEY)
+    has_fireworks = _is_valid_key(getattr(settings, "FIREWORKS_API_KEY", None))
     has_groq = _is_valid_key(settings.GROQ_API_KEY)
     has_openai = _is_valid_key(settings.OPENAI_API_KEY)
     has_gemini = _is_valid_key(settings.GEMINI_API_KEY) or _is_valid_key(settings.GOOGLE_API_KEY)
-    has_nvidia = _is_valid_key(settings.NVIDIA_API_KEY)
-    has_fireworks = _is_valid_key(getattr(settings, "FIREWORKS_API_KEY", None))
 
     candidates = []
 
@@ -277,21 +279,21 @@ def get_fast_llm(temperature: float = 0.0) -> Any:
             except Exception:
                 pass
 
-    # 1. Groq instant 8B (~200ms)
+    # 1. NVIDIA NIM (meta/llama-3.3-70b-instruct)
+    if has_nvidia:
+        add_candidate("meta/llama-3.3-70b-instruct", "nvidia", settings.NVIDIA_API_KEY, settings.NVIDIA_BASE_URL)
+    # 2. Fireworks AI Llama 70B
+    if has_fireworks:
+        add_candidate("accounts/fireworks/models/llama-v3p3-70b-instruct", "fireworks", getattr(settings, "FIREWORKS_API_KEY", None), "https://api.fireworks.ai/inference/v1")
+    # 3. Groq instant
     if has_groq:
-        add_candidate("llama-3.1-8b-instant", "groq", settings.GROQ_API_KEY, "https://api.groq.com/openai/v1")
-    # 2. OpenAI mini (~400ms)
+        add_candidate("llama-3.3-70b-versatile", "groq", settings.GROQ_API_KEY, "https://api.groq.com/openai/v1")
+    # 4. OpenAI mini
     if has_openai:
         add_candidate("gpt-4o-mini", "openai", settings.OPENAI_API_KEY, None)
-    # 3. Gemini Flash (~400ms)
+    # 5. Gemini Flash
     if has_gemini:
         add_candidate("gemini-2.0-flash", "gemini", settings.GEMINI_API_KEY or settings.GOOGLE_API_KEY, settings.GEMINI_BASE_URL)
-    # 4. NVIDIA NIM 8B
-    if has_nvidia:
-        add_candidate("meta/llama-3.1-8b-instruct", "nvidia", settings.NVIDIA_API_KEY, settings.NVIDIA_BASE_URL)
-    # 5. Fireworks 8B
-    if has_fireworks:
-        add_candidate("accounts/fireworks/models/llama-v3p1-8b-instruct", "fireworks", getattr(settings, "FIREWORKS_API_KEY", None), "https://api.fireworks.ai/inference/v1")
 
     if not candidates:
         return get_llm(temperature=temperature)

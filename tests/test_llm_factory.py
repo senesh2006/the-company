@@ -1,5 +1,6 @@
 import os
 from unittest.mock import patch
+import pytest
 
 from app.agents.llm_factory import (
     resolve_model,
@@ -9,11 +10,19 @@ from app.agents.llm_factory import (
     NVIDIA_MODEL_MAP,
 )
 
+@pytest.fixture(autouse=True)
+def clean_llm_env():
+    """Ensure tests run with predictable environment settings."""
+    with patch("app.agents.llm_factory.settings.FIREWORKS_API_KEY", None), \
+         patch("app.agents.llm_factory.settings.GEMINI_API_KEY", None), \
+         patch("app.agents.llm_factory.settings.GOOGLE_API_KEY", None):
+        yield
+
 
 def test_resolve_model_defaults_to_kimi_k3():
     """When no model is requested and Groq is configured, default to Llama 3.3 70B."""
     with patch("app.agents.llm_factory.settings.NVIDIA_API_KEY", None):
-        with patch("app.agents.llm_factory.settings.GROQ_API_KEY", "gsk-key"):
+        with patch("app.agents.llm_factory.settings.GROQ_API_KEY", "gsk-testkey"):
             with patch("app.agents.llm_factory.settings.OPENAI_API_KEY", None):
                 model_name, provider = resolve_model(None, role="default")
                 assert provider == "groq"
@@ -23,7 +32,7 @@ def test_resolve_model_defaults_to_kimi_k3():
 def test_resolve_model_unknown_id_falls_back_to_role_default():
     """Unknown model ids should resolve to the role default."""
     with patch("app.agents.llm_factory.settings.NVIDIA_API_KEY", None):
-        with patch("app.agents.llm_factory.settings.GROQ_API_KEY", "gsk-key"):
+        with patch("app.agents.llm_factory.settings.GROQ_API_KEY", "gsk-testkey"):
             with patch("app.agents.llm_factory.settings.OPENAI_API_KEY", None):
                 model_name, provider = resolve_model("nonexistent-model", role="Finance Manager")
                 assert provider == "groq"
@@ -52,20 +61,21 @@ def test_resolve_model_nvidia_custom_override():
 
 
 def test_resolve_model_openai_fallback_when_groq_and_nvidia_unavailable():
-    """If Groq and NVIDIA are not configured but OpenAI is, fall back to OpenAI."""
+    """If Groq, NVIDIA, and Fireworks are not configured but OpenAI is, fall back to OpenAI."""
     with patch("app.agents.llm_factory.settings.NVIDIA_API_KEY", None):
         with patch("app.agents.llm_factory.settings.GROQ_API_KEY", None):
-            with patch("app.agents.llm_factory.settings.OPENAI_API_KEY", "sk-key"):
-                model_name, provider = resolve_model("llama-v3-8b", role="default")
-                assert provider == "openai"
-                assert model_name == MODEL_REGISTRY["gpt-4o-mini"][0]
+            with patch("app.agents.llm_factory.settings.FIREWORKS_API_KEY", None):
+                with patch("app.agents.llm_factory.settings.OPENAI_API_KEY", "sk-testkey"):
+                    model_name, provider = resolve_model("llama-v3-8b", role="default")
+                    assert provider == "openai"
+                    assert model_name == MODEL_REGISTRY["gpt-4o-mini"][0]
 
 
 def test_resolve_model_custom_groq_override():
     """GROQ_CUSTOM_MODEL should override any Groq model name."""
     custom_model = "llama-3.1-8b-instant"
     with patch("app.agents.llm_factory.settings.NVIDIA_API_KEY", None):
-        with patch("app.agents.llm_factory.settings.GROQ_API_KEY", "gsk-key"):
+        with patch("app.agents.llm_factory.settings.GROQ_API_KEY", "gsk-testkey"):
             with patch("app.agents.llm_factory.settings.GROQ_CUSTOM_MODEL", custom_model):
                 model_name, _ = resolve_model("llama-v3-8b", role="default")
                 assert model_name == custom_model
@@ -74,7 +84,7 @@ def test_resolve_model_custom_groq_override():
 def test_list_available_models_respects_configured_keys():
     """Only models from configured providers should be listed."""
     with patch("app.agents.llm_factory.settings.NVIDIA_API_KEY", None):
-        with patch("app.agents.llm_factory.settings.GROQ_API_KEY", "gsk-key"):
+        with patch("app.agents.llm_factory.settings.GROQ_API_KEY", "gsk-testkey"):
             with patch("app.agents.llm_factory.settings.OPENAI_API_KEY", None):
                 models = list_available_models()
                 assert all(m["provider"] == "Groq" for m in models)
@@ -105,7 +115,7 @@ def test_get_llm_returns_chat_openai_instance():
 def test_resolve_model_kimi_k3_resolves_directly():
     """Default kimi-k3 alias should resolve to the Groq Llama 3.3 model when Groq is configured."""
     with patch("app.agents.llm_factory.settings.NVIDIA_API_KEY", None):
-        with patch("app.agents.llm_factory.settings.GROQ_API_KEY", "gsk-key"):
+        with patch("app.agents.llm_factory.settings.GROQ_API_KEY", "gsk-testkey"):
             with patch("app.agents.llm_factory.settings.OPENAI_API_KEY", None):
                 model_name, provider = resolve_model("kimi-k3", role="default")
                 assert provider == "groq"
@@ -115,7 +125,7 @@ def test_resolve_model_kimi_k3_resolves_directly():
 def test_resolve_model_retired_llama31_8b_remaps_to_default():
     """The retired llama-3.1-8b alias should be remapped to the default working model."""
     with patch("app.agents.llm_factory.settings.NVIDIA_API_KEY", None):
-        with patch("app.agents.llm_factory.settings.GROQ_API_KEY", "gsk-key"):
+        with patch("app.agents.llm_factory.settings.GROQ_API_KEY", "gsk-testkey"):
             with patch("app.agents.llm_factory.settings.OPENAI_API_KEY", None):
                 model_name, provider = resolve_model("llama-3.1-8b", role="default")
                 assert provider == "groq"
@@ -125,7 +135,7 @@ def test_resolve_model_retired_llama31_8b_remaps_to_default():
 def test_list_available_models_hides_broken_models():
     """Broken model IDs should not appear in the frontend model list."""
     with patch("app.agents.llm_factory.settings.NVIDIA_API_KEY", None):
-        with patch("app.agents.llm_factory.settings.GROQ_API_KEY", "gsk-key"):
+        with patch("app.agents.llm_factory.settings.GROQ_API_KEY", "gsk-testkey"):
             with patch("app.agents.llm_factory.settings.OPENAI_API_KEY", None):
                 models = list_available_models()
                 assert all(m["id"] != "llama-3.1-8b" for m in models)
