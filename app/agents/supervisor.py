@@ -17,10 +17,10 @@ task_service = TaskService()
 memory_service = SharedMemoryService()
 logger = logging.getLogger(__name__)
 
-# Roles that are coordination/system roles — never valid task assignees
+# Roles that are coordinator system markers — never valid task assignees
 _INVALID_ASSIGNEE_ROLES = {
     "lead orchestrator", "orchestrator", "coordinator", "coordinating agent",
-    "personal assistant", "robin", "supervisor", "system", "planner", "manager",
+    "system", "planner", "supervisor_node",
 }
 
 class SupervisorDecision(BaseModel):
@@ -34,25 +34,31 @@ def get_supervisor_agent(roles: list[str], business_id: str, model_id: str = Non
 
     prompt = ChatPromptTemplate.from_messages([
         ("system", """You are the Founder's Personal Assistant & Coordinating Agent (PRD v6.0 §4.1).
-You are an internal-only coordinator who reads every in-house worker's state and shared memory.
-You never touch customer-facing or money-facing tools directly.
+You coordinate and delegate work to in-house specialist workers.
 Your mandate:
-1. Coordinate the in-house team by delegating tasks to the specialist workers listed below.
+1. Coordinate the in-house team by delegating tasks to the most suitable specialist worker listed below.
 2. Read shared business context:
 {shared_context_summary}
 3. Break down the founder's objectives into structured mandates with dependencies.
 4. Ensure cross-worker alignment.
 
-=== AVAILABLE SPECIALIST ROLES (you MUST assign tasks to one of these) ===
+=== AVAILABLE SPECIALIST ROLES & DOMAINS ===
+- Personal Assistant / Operations: Triage and list received emails/inbox, draft replies, check calendar availability, schedule meetings, web search, helpdesk, and general operations.
+- Finance Manager: Double-entry bookkeeping, trial balance audits, general ledger entries, Stripe invoices, spend receipts, contract desk, vendor portals, security questionnaires.
+- Marketing Manager: Growth campaigns, content calendars, social media posts, SEO analysis.
+- EngineeringWorker / Coder: Software development, debugging, GitHub pull requests, technical code tasks.
+
+Current Active Roles:
 {roles}
 === END OF ROLES ===
 
 CRITICAL RULES FOR TASK PLANNING:
 - Create ONLY 1 to 3 focused, high-impact sub-tasks (ABSOLUTE MAXIMUM 5 SUB-TASKS TOTAL).
-- If the founder's request can be fulfilled by one specialist (e.g., Finance Manager or Marketing Manager), create EXACTLY ONE (1) task for that specialist.
-- NEVER create repetitive or redundant search/review tasks.
-- The "assignee_role" field in each new_task MUST be set to EXACTLY one of the roles listed above.
-- You are a COORDINATOR. You MUST NOT assign tasks to yourself. Never use "Lead Orchestrator", "Personal Assistant", "Orchestrator", "Coordinator", "Robin", or "Supervisor" as an assignee_role.
+- If the founder's request is an email, calendar, web research, or general operations task, assign it to "Personal Assistant".
+- If the founder's request is an accounting, ledger, invoice, tax, or financial task, assign it to "Finance Manager".
+- If the founder's request is a marketing, campaign, or social media task, assign it to "Marketing Manager".
+- If the founder's request is a coding or software engineering task, assign it to "EngineeringWorker" or "Coder".
+- The "assignee_role" field in each new_task MUST be set to EXACTLY one of the active roles listed above.
 
 Analyze the current state of tasks:
 {current_tasks}
@@ -142,7 +148,7 @@ def global_supervisor_node(state: OrchestratorState):
         t.dependencies = valid_deps
         
         # --- CRITICAL: Validate and auto-correct assignee_role ---
-        t.assignee_role = _resolve_assignee_role(t.assignee_role, available_roles)
+        t.assignee_role = _resolve_assignee_role(t.assignee_role, available_roles, t.description)
         
         new_task_dict[t.id] = t
         
@@ -173,53 +179,85 @@ def global_supervisor_node(state: OrchestratorState):
         "iteration": state.get("iteration", 0) + 1
     }
 
-def _resolve_assignee_role(llm_role: Optional[str], available_roles: list[str]) -> str:
+def _resolve_assignee_role(llm_role: Optional[str], available_roles: list[str], task_description: str = "") -> str:
     """
     Validates and auto-corrects the LLM-generated assignee_role to match
-    an actual available worker role. Prevents the supervisor from assigning
-    tasks to itself (e.g. "Lead Orchestrator").
+    an actual available worker role. Uses task description keywords for intelligent routing.
     """
-    if not llm_role or not available_roles:
-        # Fallback: assign to the first available role
-        fallback = available_roles[0] if available_roles else "Accountant"
-        logger.warning(f"Empty assignee_role, falling back to '{fallback}'")
-        return fallback
-    
-    normalized = llm_role.strip().lower()
-    
-    # Block self-assignment to coordinator roles
-    if normalized in _INVALID_ASSIGNEE_ROLES:
-        # Infer the best role from available roles based on common keywords
-        fallback = available_roles[0] if available_roles else "Accountant"
-        logger.warning(f"Blocked self-assignment to '{llm_role}', reassigning to '{fallback}'")
-        return fallback
-    
-    # Exact match
+    if not available_roles:
+        return "Personal Assistant"
+
+    desc = (task_description or "").lower()
+    raw = (llm_role or "").strip().lower()
+
+    # 1. Exact match
     for role in available_roles:
-        if role.lower() == normalized:
+        if role.lower() == raw:
             return role
-    
-    # Fuzzy match: find the closest available role
+
+    # 2. Check for coordinator markers that should be routed to appropriate specialist
+    if raw in _INVALID_ASSIGNEE_ROLES:
+        # Check task intent
+        if any(w in desc for w in ["mail", "email", "inbox", "calendar", "schedule", "meeting", "ticket", "helpdesk", "brief", "today"]):
+            for r in available_roles:
+                if "assistant" in r.lower() or "admin" in r.lower() or "operations" in r.lower():
+                    return r
+        elif any(w in desc for w in ["finance", "money", "ledger", "invoice", "accounting", "tax", "stripe", "balance", "expense", "debit", "credit", "audit"]):
+            for r in available_roles:
+                if "finance" in r.lower() or "account" in r.lower():
+                    return r
+        elif any(w in desc for w in ["marketing", "social", "campaign", "twitter", "linkedin", "seo", "content"]):
+            for r in available_roles:
+                if "market" in r.lower() or "growth" in r.lower():
+                    return r
+        elif any(w in desc for w in ["code", "bug", "git", "github", "develop", "software"]):
+            for r in available_roles:
+                if "engineer" in r.lower() or "code" in r.lower():
+                    return r
+
+    # 3. Keyword intent routing based on task description
+    if any(w in desc for w in ["mail", "email", "inbox", "calendar", "schedule", "meeting", "ticket", "helpdesk", "brief", "today"]):
+        for r in available_roles:
+            if "assistant" in r.lower() or "admin" in r.lower() or "operations" in r.lower():
+                return r
+
+    if any(w in desc for w in ["finance", "money", "ledger", "invoice", "accounting", "tax", "stripe", "balance", "expense", "debit", "credit", "audit"]):
+        for r in available_roles:
+            if "finance" in r.lower() or "account" in r.lower():
+                return r
+
+    if any(w in desc for w in ["marketing", "social", "campaign", "twitter", "linkedin", "seo", "content"]):
+        for r in available_roles:
+            if "market" in r.lower() or "growth" in r.lower():
+                return r
+
+    if any(w in desc for w in ["code", "bug", "git", "github", "develop", "software"]):
+        for r in available_roles:
+            if "engineer" in r.lower() or "code" in r.lower():
+                return r
+
+    # 4. Fuzzy match: find the closest available role
     best_match = None
     best_score = 0.0
     for role in available_roles:
         # Check substring containment first
-        if normalized in role.lower() or role.lower() in normalized:
+        if raw and (raw in role.lower() or role.lower() in raw):
             return role
         # Then use sequence matching
-        score = SequenceMatcher(None, normalized, role.lower()).ratio()
+        score = SequenceMatcher(None, raw, role.lower()).ratio()
         if score > best_score:
             best_score = score
             best_match = role
-    
+
     if best_match and best_score >= 0.4:
         logger.info(f"Fuzzy-matched assignee_role '{llm_role}' -> '{best_match}' (score={best_score:.2f})")
         return best_match
-    
-    # Ultimate fallback
-    fallback = available_roles[0]
-    logger.warning(f"Could not match assignee_role '{llm_role}' to any known role, falling back to '{fallback}'")
-    return fallback
+
+    # 5. Default fallback to Personal Assistant if available, else first role
+    for r in available_roles:
+        if "assistant" in r.lower():
+            return r
+    return available_roles[0]
 
 
 def _match_agent_to_role(agents: dict, assignee_role: str) -> Optional[object]:

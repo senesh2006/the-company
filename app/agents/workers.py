@@ -143,7 +143,7 @@ def make_specialist_worker_node(agent_data: dict):
     agent_model_id = agent_data.get("model")
     
     # Ensure role tools are registered
-    if "admin" in role.lower() or "operations" in role.lower():
+    if "admin" in role.lower() or "operations" in role.lower() or "assistant" in role.lower():
         register_admin_tools(business_id=business_id, agent_id=agent_id)
     elif "marketing" in role.lower() or "social" in role.lower():
         register_marketing_tools(business_id=business_id, agent_id=agent_id)
@@ -155,11 +155,25 @@ def make_specialist_worker_node(agent_data: dict):
     
     llm = get_llm(model_id=agent_model_id, role=role)
     tools = registry.get_langchain_tools(role)
-    system_modifier = (
-        f"You are {name}, acting as an in-house {role} at Trust Tier '{trust_tier.upper()}'. "
-        f"Always think step-by-step and structure your internal reasoning inside <thought>...</thought> "
-        f"(explain your plan, tool strategy, and policy considerations) before outputting your deliverables."
-    )
+    if not tools:
+        register_admin_tools(business_id=business_id, agent_id=agent_id)
+        tools = registry.get_langchain_tools("Personal Assistant") or registry.get_langchain_tools("assistant")
+
+    if "assistant" in role.lower() or "admin" in role.lower():
+        system_modifier = (
+            f"You are {name}, acting as the Founder's {role} at Trust Tier '{trust_tier.upper()}'.\n"
+            f"Your responsibilities: inbox triage, reading and listing received emails, drafting replies, calendar scheduling, web search, and administrative support.\n"
+            f"- When asked to list, check, or triage emails: ALWAYS execute the `inbox_triage` tool (e.g. action='fetch_unread' or 'list_today'), then present the results in a clean, beautifully formatted markdown list or table with Sender, Subject, Received Time, Snippet, and Priority.\n"
+            f"- When asked about meetings or schedule: execute the `calendar_schedule` tool.\n"
+            f"- When asked to search: execute the `search_web` tool.\n"
+            f"Always think step-by-step and structure your internal reasoning inside <thought>...</thought> before outputting your deliverables."
+        )
+    else:
+        system_modifier = (
+            f"You are {name}, acting as an in-house {role} at Trust Tier '{trust_tier.upper()}'. "
+            f"Always think step-by-step and structure your internal reasoning inside <thought>...</thought> "
+            f"(explain your plan, tool strategy, and policy considerations) before outputting your deliverables."
+        )
     import inspect
     sig = inspect.signature(create_react_agent)
     sig_kwargs = {}

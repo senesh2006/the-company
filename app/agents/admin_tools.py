@@ -25,27 +25,28 @@ class InboxTriageTool(BaseTool):
     args_schema = InboxTriageInput
     cost_estimate = 0.01
 
-    def _run(self, action: str, sender_or_subject: Optional[str] = None, reply_body: Optional[str] = None) -> str:
-        if action == "fetch_unread":
+    def _run(self, action: str = "fetch_unread", sender_or_subject: Optional[str] = None, reply_body: Optional[str] = None) -> str:
+        act = (action or "fetch_unread").lower()
+        if act in ["fetch_unread", "list_today", "list_emails", "get_emails", "read_inbox", "list"]:
             default = json.dumps([
-                {"id": "msg_01", "from": "client@partner.com", "subject": "Partnership Q3 Sync", "priority": "high"},
-                {"id": "msg_02", "from": "support@vendor.io", "subject": "Invoice Updated", "priority": "normal"},
-                {"id": "msg_03", "from": "user@customer.com", "subject": "Feature Inquiry", "priority": "normal"}
+                {"id": "msg_01", "from": "client@partner.com", "subject": "Partnership Q3 Sync", "received": "Today, 08:30 AM", "snippet": "Looking forward to confirming our Q3 milestone deliverables.", "priority": "high"},
+                {"id": "msg_02", "from": "support@vendor.io", "subject": "Invoice & Service Update", "received": "Today, 07:45 AM", "snippet": "Your monthly software subscription statement has been prepared.", "priority": "normal"},
+                {"id": "msg_03", "from": "alex@customer.com", "subject": "Feature Inquiry & Integrations", "received": "Today, 06:15 AM", "snippet": "Inquiring about automated trial balance and Composio email connector timeline.", "priority": "normal"}
             ])
-        elif action == "draft_reply":
+        elif act == "draft_reply":
             default = f"Drafted reply for {sender_or_subject}: '{reply_body or 'Acknowledged. Will review promptly.'}' (Observe/Assist tier: staged as draft)."
         else:
-            return f"Inbox action '{action}' completed."
+            default = f"Inbox action '{action}' completed."
 
         return _admin_mcp_call(
             "email",
-            action,
+            act,
             {"sender_or_subject": sender_or_subject, "reply_body": reply_body},
             default,
         )
 
 class CalendarScheduleInput(BaseModel):
-    action: str = Field(description="'check_conflicts', 'propose_slot', or 'schedule_meeting'")
+    action: str = Field(default="check_conflicts", description="'check_conflicts', 'propose_slot', or 'schedule_meeting'")
     attendees: List[str] = Field(default_factory=list, description="List of participant emails")
     time_slot: Optional[str] = Field(None, description="Proposed date/time e.g. '2026-08-05 14:00 UTC'")
     title: Optional[str] = Field("Strategic Check-in", description="Meeting title")
@@ -56,17 +57,18 @@ class CalendarScheduleTool(BaseTool):
     args_schema = CalendarScheduleInput
     cost_estimate = 0.01
 
-    def _run(self, action: str, attendees: List[str] = [], time_slot: Optional[str] = None, title: Optional[str] = None) -> str:
-        if action == "check_conflicts":
+    def _run(self, action: str = "check_conflicts", attendees: List[str] = [], time_slot: Optional[str] = None, title: Optional[str] = None) -> str:
+        act = (action or "check_conflicts").lower()
+        if act in ["check_conflicts", "check_availability", "list_events"]:
             default = f"No conflicts found for {time_slot or 'upcoming week slots'}. Founder focus time is protected."
-        elif action == "schedule_meeting":
+        elif act in ["schedule_meeting", "create_event"]:
             default = f"Meeting '{title}' booked for {time_slot} with {len(attendees)} attendees."
         else:
             return f"Calendar action '{action}' completed."
 
         return _admin_mcp_call(
             "calendar",
-            action,
+            act,
             {"attendees": attendees, "time_slot": time_slot, "title": title},
             default,
         )
@@ -102,12 +104,16 @@ class HelpdeskTicketTool(BaseTool):
 
 def register_admin_tools(business_id: str, agent_id: str = None, task_id: str = None):
     """
-    Registers allowed MCP tools for the Admin / Ops worker role.
+    Registers allowed MCP tools for Personal Assistant and Admin / Ops worker roles.
     """
+    from app.agents.tools import SearchWebTool, SendEmailTool
+
     tools = [
         InboxTriageTool(),
+        SendEmailTool(),
         CalendarScheduleTool(),
         HelpdeskTicketTool(),
+        SearchWebTool(),
         ReadSharedMemoryTool(business_id=business_id),
         WriteSharedMemoryTool(business_id=business_id),
         SpawnSubtaskTool(business_id=business_id, main_task_id=task_id),
@@ -118,6 +124,10 @@ def register_admin_tools(business_id: str, agent_id: str = None, task_id: str = 
         tool.agent_id = agent_id
         tool.task_id = task_id
         
+    registry.register_tools("Personal Assistant", tools)
     registry.register_tools("Admin/Ops", tools)
     registry.register_tools("Operations Manager", tools)
+    registry.register_tools("Admin & Operations Worker", tools)
+    registry.register_tools("assistant", tools)
+    registry.register_tools("default", tools)
     return tools

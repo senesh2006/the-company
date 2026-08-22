@@ -174,14 +174,15 @@ Context: {json.dumps(context)}
 Observations: {state.get('observations', '')}
 {revision_context}
 
-Please draft the financial output.
-If creating journal entries or categorizations, provide a structured JSON object or clear table with:
+Please draft the output for this mandate.
+If creating financial journal entries or categorizations, provide a structured JSON object or clear table with:
 - Date
 - Account Name & Code
 - Debits ($)
 - Credits ($)
 - Description & Rationale
-Ensure Debits strictly equal Credits."""
+Ensure Debits strictly equal Credits.
+If this mandate is an analytical report, policy audit, contract summary, questionnaire response, or informational query, answer directly, accurately, and concisely without inventing artificial zero-dollar journal entries."""
 
     messages = [
         SystemMessage(content=FINANCE_SYSTEM_PROMPT),

@@ -49,7 +49,19 @@ class TeamRunner:
         return {"configurable": {"thread_id": self.thread_id}}
         
     def start(self, initial_instruction: str) -> dict:
-        agents = self.task_service.list_agents(self.business_id)
+        agents = self.task_service.list_agents(self.business_id) or []
+        has_pa = any("assistant" in a.get("role", "").lower() or "admin" in a.get("role", "").lower() for a in agents)
+        if not has_pa:
+            pa_agent = {
+                "id": "personal_assistant",
+                "name": "Personal Assistant",
+                "role": "Personal Assistant",
+                "trust_tier": "operate",
+                "business_id": self.business_id,
+                "model": None
+            }
+            agents = [pa_agent] + list(agents)
+
         initial_state = {
             "business_id": self.business_id,
             "task_id": self.task_id,

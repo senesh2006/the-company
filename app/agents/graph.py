@@ -14,9 +14,20 @@ def create_team_graph(business_id: str, main_task_id: str):
     """
     Creates and compiles the LangGraph Level 1 & 2 Multi-Agent Orchestrator.
     """
-    agents = task_service.list_agents(business_id)
-    if not agents:
-        raise ValueError("No agents found for this business. Please hire agents first.")
+    agents = task_service.list_agents(business_id) or []
+    
+    # Ensure Personal Assistant is always part of the team for general operations & administrative mandates
+    has_pa = any("assistant" in a.get("role", "").lower() or "admin" in a.get("role", "").lower() for a in agents)
+    if not has_pa:
+        pa_agent = {
+            "id": "personal_assistant",
+            "name": "Personal Assistant",
+            "role": "Personal Assistant",
+            "trust_tier": "operate",
+            "business_id": business_id,
+            "model": None
+        }
+        agents = [pa_agent] + list(agents)
         
     for agent in agents:
         if agent["role"] not in ["Marketing Manager", "Finance Manager", "EngineeringWorker", "Coder", "Engineering Manager", "Software Engineer"]:
