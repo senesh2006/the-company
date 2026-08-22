@@ -14,6 +14,91 @@ def _admin_mcp_call(mcp_name: str, tool_name: str, arguments: Dict[str, Any], de
     """Call a real MCP server if configured, otherwise return the default mock result."""
     return mcp_call_or_default(mcp_name, tool_name, arguments, default_result)
 
+def _format_inbox_result(res: Any) -> str:
+    """Format Composio or MCP email output into a clean, human-and-LLM-readable markdown list/table."""
+    if not res:
+        return "No unread emails found in your inbox."
+
+    if isinstance(res, str):
+        try:
+            res = json.loads(res)
+        except Exception:
+            return res
+
+    messages = []
+    if isinstance(res, dict):
+        if "messages" in res and isinstance(res["messages"], list):
+            messages = res["messages"]
+        elif "data" in res and isinstance(res["data"], dict) and "messages" in res["data"]:
+            messages = res["data"]["messages"]
+        elif "data" in res and isinstance(res["data"], list):
+            messages = res["data"]
+        elif "response_data" in res:
+            rd = res["response_data"]
+            messages = rd.get("messages", []) if isinstance(rd, dict) else rd
+    elif isinstance(res, list):
+        messages = res
+
+    if not messages:
+        if isinstance(res, dict) and "message" in res:
+            return str(res["message"])
+        return "No unread emails found in your inbox."
+
+    formatted_items = []
+    for idx, item in enumerate(messages, 1):
+        if not isinstance(item, dict):
+            formatted_items.append(f"{idx}. {item}")
+            continue
+
+        sender = item.get("sender") or item.get("from") or item.get("from_address") or item.get("sender_email")
+        subject = item.get("subject") or item.get("title")
+        date_str = item.get("date") or item.get("received_at") or item.get("internalDate") or item.get("timestamp")
+        snippet = item.get("snippet") or item.get("body") or item.get("preview") or item.get("text")
+        link = item.get("display_url") or item.get("url") or item.get("link")
+        labels = item.get("labelIds") or item.get("labels") or []
+
+        # Parse headers if present
+        payload = item.get("payload", {})
+        if isinstance(payload, dict):
+            headers = payload.get("headers", [])
+            if isinstance(headers, list):
+                for h in headers:
+                    if isinstance(h, dict):
+                        h_name = (h.get("name") or "").lower()
+                        if h_name == "from" and not sender:
+                            sender = h.get("value")
+                        elif h_name == "subject" and not subject:
+                            subject = h.get("value")
+                        elif h_name == "date" and not date_str:
+                            date_str = h.get("value")
+
+        msg_id = item.get("messageId") or item.get("id") or item.get("threadId")
+        if not link and msg_id:
+            link = f"https://mail.google.com/mail/u/0/#inbox/{msg_id}"
+
+        lines = []
+        if subject:
+            lines.append(f"**Subject**: {subject}")
+        if sender:
+            lines.append(f"**From**: {sender}")
+        if date_str:
+            lines.append(f"**Date**: {date_str}")
+        if snippet:
+            lines.append(f"**Snippet**: {snippet}")
+        if labels and isinstance(labels, list):
+            clean_labels = [l for l in labels if l not in ["UNREAD", "INBOX"]]
+            if clean_labels:
+                lines.append(f"**Labels**: {', '.join(clean_labels)}")
+        if link:
+            lines.append(f"**Direct Link**: [Open in Gmail]({link})")
+
+        if lines:
+            formatted_items.append(f"**Email {idx}**\n" + "\n".join(f"- {l}" for l in lines))
+        else:
+            formatted_items.append(f"**Email {idx}**\n- Message ID: `{msg_id}`\n- [Open in Gmail]({link})")
+
+    return f"Found {len(messages)} unread email(s):\n\n" + "\n\n---\n\n".join(formatted_items)
+
 class InboxTriageInput(BaseModel):
     action: str = Field(default="fetch_unread", description="'fetch_unread', 'search_emails', 'search', 'draft_reply', or 'archive'")
     sender_or_subject: Optional[str] = Field(None, description="Sender email, subject query, or keyword")
@@ -54,7 +139,7 @@ class InboxTriageTool(BaseTool):
                             arguments=fetch_args
                         )
                         if res:
-                            return json.dumps(res) if isinstance(res, (dict, list)) else str(res)
+                            return _format_inbox_result(res)
                     except Exception as e:
                         logger.debug(f"Composio GMAIL_FETCH_EMAILS note: {e}")
                 elif act == "draft_reply":
@@ -79,11 +164,13 @@ class InboxTriageTool(BaseTool):
             None,
         )
         if mcp_res is not None:
+            if act in ["fetch_unread", "search_emails", "search", "list_today", "list_emails", "get_emails", "read_inbox", "list"]:
+                return _format_inbox_result(mcp_res)
             return json.dumps(mcp_res) if isinstance(mcp_res, (dict, list)) else str(mcp_res)
 
         # 3. Clean real message when no live email is present (NO FAKE HARDCODED MOCKS)
         if act in ["fetch_unread", "search_emails", "search", "list_today", "list_emails", "get_emails", "read_inbox", "list"]:
-            return json.dumps([])
+            return "No unread emails found in your inbox."
         elif act == "draft_reply":
             return f"Drafted reply for {sender_or_subject or 'recipient'}: '{reply_body or 'Acknowledged.'}'."
         else:

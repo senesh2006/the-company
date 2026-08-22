@@ -392,9 +392,16 @@ def executive_synthesis_node(state: OrchestratorState):
                     deliverables_by_role["Specialist"] = content
                     break
 
+    import re
     # Format synthesis
     if len(deliverables_by_role) == 1:
         single_role, single_output = next(iter(deliverables_by_role.items()))
+        # Check that single_output has non-empty content outside <thought>...</thought>
+        clean_body = re.sub(r"<(?:thought|think)>[\s\S]*?</(?:thought|think)>", "", single_output).strip()
+        if not clean_body:
+            m = re.search(r"<(?:thought|think)>([\s\S]*?)</(?:thought|think)>", single_output)
+            thought_inner = m.group(1).strip() if m else ""
+            single_output = f"<thought>\n{thought_inner}\n</thought>\n\n### Execution Results\n\n{thought_inner}"
         unified_output = single_output
     elif len(deliverables_by_role) > 1:
         agents = state.get("active_agents", {})
@@ -418,7 +425,7 @@ Your job is to synthesize all their individual deliverables into ONE comprehensi
 
 Guidelines:
 1. Provide a clear, high-impact Executive Summary answering the founder's objective directly.
-2. Integrate key findings, data tables, and metrics from each specialist (Marketing, Finance, Engineering, Operations) into cohesive, well-organized sections.
+2. Integrate key findings, data tables, email lists, and metrics from each specialist into cohesive, well-organized sections.
 3. If deliverables contain Generative UI blocks (```agent-ui) or markdown tables, preserve them.
 4. Conclude with prioritized Key Takeaways and Immediate Next Steps.
 5. Maintain a professional, crisp, and executive tone."""),
@@ -454,7 +461,17 @@ Synthesize these team outputs into ONE unified executive response:""")
             
         unified_output = f"<thought>\n" + "\n".join(thought_lines) + f"\n</thought>\n\n{synthesis_body}"
     else:
-        unified_output = f"Execution deliverable for: {original_objective}\n\nTask processed and verified by specialized team."
+        # Check tasks or live thoughts for fallback
+        fallback_parts = []
+        for t_id, task in tasks.items():
+            desc = getattr(task, "description", "") or (task.get("description") if isinstance(task, dict) else "")
+            res = getattr(task, "result", "") or (task.get("result") if isinstance(task, dict) else "")
+            if res:
+                fallback_parts.append(f"### {desc}\n{res}")
+        if fallback_parts:
+            unified_output = f"## Executive Deliverable\n\n" + "\n\n---\n\n".join(fallback_parts)
+        else:
+            unified_output = f"Execution deliverable for: {original_objective}\n\nTask processed and verified by specialized team."
 
     # Update main task result in DB
     if main_task_id:

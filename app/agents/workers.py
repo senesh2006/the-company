@@ -167,11 +167,13 @@ def make_specialist_worker_node(agent_data: dict):
             f"- When asked to list, check, or triage emails: ALWAYS execute the `inbox_triage` tool (e.g. action='fetch_unread' or 'list_today'), then present the results in a clean, beautifully formatted markdown list or table with Sender, Subject, Received Time, Snippet, and Priority.\n"
             f"- When asked about meetings or schedule: execute the `calendar_schedule` tool.\n"
             f"- When asked to search: execute the `search_web` tool.\n"
+            f"CRITICAL: After executing any tool, you MUST output a complete, beautifully structured final deliverable presenting all data, emails, tables, or findings clearly for the founder.\n"
             f"Always think step-by-step and structure your internal reasoning inside <thought>...</thought> before outputting your deliverables."
         )
     else:
         system_modifier = (
             f"You are {name}, acting as an in-house {role} at Trust Tier '{trust_tier.upper()}'. "
+            f"After executing tools or analyzing, you MUST output a complete, beautifully formatted final deliverable for the founder. "
             f"Always think step-by-step and structure your internal reasoning inside <thought>...</thought> "
             f"(explain your plan, tool strategy, and policy considerations) before outputting your deliverables."
         )
@@ -219,7 +221,7 @@ def make_specialist_worker_node(agent_data: dict):
                     decision_choice = decision.get("decision") or decision.get("choice") or decision.get("action") or decision_choice
                 elif decision is not None:
                     decision_thoughts = getattr(decision, "thoughts", None) or getattr(decision, "reasoning", None) or decision_thoughts
-                    decision_choice = getattr(decision, "decision", None) or getattr(decision, "choice", None) or decision_choice
+                    decision_choice = getattr(decision, "decision", None) or getattr(decision, "choice", None) or getattr(decision, "action", None) or decision_choice
 
                 total_input_tokens += max(10, len(task.description) // 4)
                 total_output_tokens += max(10, len(str(decision_thoughts)) // 4)
@@ -234,8 +236,8 @@ def make_specialist_worker_node(agent_data: dict):
                         "status": "complete"
                     }
                 )
-            except Exception as analyze_err:
-                logger.warning(f"Complexity analyzer fallback for {role}: {analyze_err}")
+            except Exception as e:
+                logger.debug(f"Complexity analysis skipped for {name}: {e}")
 
             final_output = ""
             if decision_choice == "spawn_subworkers" and settings.ALLOW_AUTONOMOUS_SUBWORKERS:
@@ -269,7 +271,16 @@ def make_specialist_worker_node(agent_data: dict):
                     {"messages": pruned_input},
                     config={"recursion_limit": 100}
                 )
-                raw_output = res["messages"][-1].content
+
+                # Extract text output from AI messages
+                raw_output = ""
+                for msg in reversed(res.get("messages", [])):
+                    if getattr(msg, "type", None) == "ai" or isinstance(msg, AIMessage):
+                        c = getattr(msg, "content", "")
+                        if isinstance(c, str) and c.strip():
+                            raw_output = c.strip()
+                            break
+
                 for msg in res.get("messages", []):
                     u_meta = getattr(msg, "usage_metadata", None)
                     if isinstance(u_meta, dict):
@@ -315,7 +326,8 @@ def make_specialist_worker_node(agent_data: dict):
                                 }
                             )
                     elif getattr(msg, "type", None) == "tool":
-                        content_preview = str(getattr(msg, "content", ""))[:200].replace("\n", " ")
+                        content_raw = str(getattr(msg, "content", "") or "")
+                        content_preview = content_raw[:200].replace("\n", " ")
                         tool_steps.append(f"  ↳ Observation: {content_preview}...")
                         task_service.append_live_thought(
                             task.id,
@@ -326,6 +338,19 @@ def make_specialist_worker_node(agent_data: dict):
                                 "status": "complete"
                             }
                         )
+
+                # Fallback: If AI returned empty raw_output, extract from tool observations
+                if not raw_output or not raw_output.strip():
+                    tool_observations = []
+                    for msg in res.get("messages", []):
+                        if getattr(msg, "type", None) == "tool":
+                            c = str(getattr(msg, "content", "") or "").strip()
+                            if c:
+                                tool_observations.append(c)
+                    if tool_observations:
+                        raw_output = "\n\n---\n\n".join(tool_observations)
+                    else:
+                        raw_output = f"Task '{task.description}' completed successfully by {name}."
 
                 if total_input_tokens == 0:
                     total_input_tokens = max(20, sum(len(str(getattr(m, "content", ""))) for m in res.get("messages", [])[:-1]) // 4)
