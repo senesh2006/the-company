@@ -156,11 +156,130 @@ class ComposioService:
             "status": "pending"
         }
 
+    def _fetch_live_composio_accounts(self) -> Dict[str, Dict[str, Any]]:
+        """
+        Queries live active accounts directly from Composio backend.
+        Returns a dictionary mapping normalized toolkit slug -> account info dict.
+        """
+        active_map: Dict[str, Dict[str, Any]] = {}
+        if not self.api_key:
+            return active_map
+
+        # 1. Try Composio SDK
+        sdk = self._get_sdk()
+        if sdk is not None:
+            try:
+                if hasattr(sdk, "connected_accounts") and hasattr(sdk.connected_accounts, "list"):
+                    res = sdk.connected_accounts.list(statuses=["ACTIVE"])
+                    items = getattr(res, "items", []) or (res if isinstance(res, list) else [])
+                    for item in items:
+                        t_slug = None
+                        if hasattr(item, "toolkit") and getattr(item.toolkit, "slug", None):
+                            t_slug = item.toolkit.slug.lower()
+                        elif hasattr(item, "app_id") and item.app_id:
+                            t_slug = str(item.app_id).lower()
+                        elif hasattr(item, "app_name") and item.app_name:
+                            t_slug = str(item.app_name).lower()
+                        elif hasattr(item, "auth_config") and hasattr(item.auth_config, "toolkit") and getattr(item.auth_config.toolkit, "slug", None):
+                            t_slug = item.auth_config.toolkit.slug.lower()
+                        elif isinstance(item, dict):
+                            t_slug = item.get("toolkit", {}).get("slug") or item.get("app_id") or item.get("appName") or ""
+                            t_slug = str(t_slug).lower()
+
+                        acc_id = getattr(item, "id", None) or (item.get("id") if isinstance(item, dict) else None)
+                        user_uuid = getattr(item, "user_id", None) or getattr(item, "userUuid", None) or (item.get("user_id") if isinstance(item, dict) else None)
+
+                        if t_slug:
+                            norm_key = self._normalize_slug(t_slug)
+                            if norm_key:
+                                active_map[norm_key] = {
+                                    "id": acc_id,
+                                    "toolkit": norm_key,
+                                    "status": "connected",
+                                    "composio_connection_id": acc_id,
+                                    "user_id": user_uuid,
+                                    "updated_at": "live"
+                                }
+            except Exception as e:
+                logger.debug(f"Composio SDK list note: {e}")
+
+        # 2. Fallback to direct Composio v3.1 REST API if SDK list is empty
+        if not active_map and self.api_key:
+            try:
+                headers = {"x-api-key": self.api_key}
+                with httpx.Client(timeout=6.0) as client:
+                    resp = client.get(
+                        "https://backend.composio.dev/api/v3.1/connected_accounts",
+                        params={"statuses": "ACTIVE"},
+                        headers=headers
+                    )
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        items = data.get("items", []) if isinstance(data, dict) else (data if isinstance(data, list) else [])
+                        for item in items:
+                            t_slug = ""
+                            if isinstance(item, dict):
+                                t_slug = item.get("toolkit", {}).get("slug") or item.get("app_id") or item.get("appName") or ""
+                                if not t_slug and "authConfig" in item:
+                                    t_slug = item["authConfig"].get("toolkit", {}).get("slug", "")
+                            acc_id = item.get("id") if isinstance(item, dict) else getattr(item, "id", None)
+                            user_uuid = item.get("userId") or item.get("user_id") if isinstance(item, dict) else None
+                            if t_slug:
+                                norm_key = self._normalize_slug(str(t_slug).lower())
+                                if norm_key:
+                                    active_map[norm_key] = {
+                                        "id": acc_id,
+                                        "toolkit": norm_key,
+                                        "status": "connected",
+                                        "composio_connection_id": acc_id,
+                                        "user_id": user_uuid,
+                                        "updated_at": "live"
+                                    }
+            except Exception as e:
+                logger.debug(f"Composio REST live accounts note: {e}")
+
+        return active_map
+
+    def _normalize_slug(self, slug: str) -> Optional[str]:
+        s = slug.lower().strip()
+        if "gmail" in s or "google_mail" in s or "mail" in s:
+            return "gmail"
+        if "slack" in s:
+            return "slack"
+        if "notion" in s:
+            return "notion"
+        if "github" in s:
+            return "github"
+        if "calendar" in s or "googlecalendar" in s:
+            return "googlecalendar"
+        if "sheet" in s or "googlesheets" in s:
+            return "googlesheets"
+        if s in self.SUPPORTED_TOOLKITS:
+            return s
+        return None
+
     def get_connection_status(self, user_id: str, toolkit: str) -> str:
         """
         Retrieves the connection status for a user and toolkit.
         """
-        normalized_toolkit = toolkit.lower().strip()
+        normalized_toolkit = self._normalize_slug(toolkit) or toolkit.lower().strip()
+        
+        # Check live Composio accounts
+        live = self._fetch_live_composio_accounts()
+        if normalized_toolkit in live:
+            return "connected"
+
+        # Check SharedMemoryService
+        try:
+            from app.services.shared_memory import SharedMemoryService
+            mem = SharedMemoryService()
+            stored = mem.get("00000000-0000-0000-0000-000000000001", f"connected_account_{normalized_toolkit}") or mem.get(user_id, f"connected_account_{normalized_toolkit}")
+            if stored and isinstance(stored.get("value"), dict) and stored["value"].get("status") == "connected":
+                return "connected"
+        except Exception:
+            pass
+
+        # Check DB if available
         client = get_supabase_client()
         if client:
             try:
@@ -180,10 +299,29 @@ class ComposioService:
     def list_user_connections(self, user_id: str) -> List[Dict[str, Any]]:
         """
         Returns all connected accounts for the given user.
+        Combines live Composio status, Shared Memory cache, and DB.
         """
-        client = get_supabase_client()
         db_records: Dict[str, Dict[str, Any]] = {}
 
+        # 1. Fetch live active accounts from Composio
+        live_accounts = self._fetch_live_composio_accounts()
+        for k, v in live_accounts.items():
+            db_records[k] = v
+
+        # 2. Check SharedMemoryService
+        try:
+            from app.services.shared_memory import SharedMemoryService
+            mem = SharedMemoryService()
+            for key in self.SUPPORTED_TOOLKITS.keys():
+                if key not in db_records:
+                    stored = mem.get("00000000-0000-0000-0000-000000000001", f"connected_account_{key}") or mem.get(user_id, f"connected_account_{key}")
+                    if stored and isinstance(stored.get("value"), dict) and stored["value"].get("status") == "connected":
+                        db_records[key] = stored["value"]
+        except Exception as e:
+            logger.debug(f"Shared memory fetch in list_user_connections note: {e}")
+
+        # 3. Check Supabase connected_accounts table if available
+        client = get_supabase_client()
         if client:
             try:
                 resp = client.table("connected_accounts") \
@@ -192,9 +330,10 @@ class ComposioService:
                     .execute()
                 if resp.data:
                     for row in resp.data:
-                        db_records[row["toolkit"]] = row
+                        if row.get("status") == "connected" or row["toolkit"] not in db_records:
+                            db_records[row["toolkit"]] = row
             except Exception as e:
-                logger.warning(f"Error fetching connected accounts from DB: {e}")
+                logger.debug(f"DB fetch in list_user_connections note (using fallback): {e}")
 
         # Assemble full list with metadata for all supported toolkits
         results = []
@@ -223,11 +362,12 @@ class ComposioService:
         """
         Updates the connection status for a user and toolkit.
         """
-        normalized_toolkit = toolkit.lower().strip()
+        normalized_toolkit = self._normalize_slug(toolkit) or toolkit.lower().strip()
+        norm_status = "connected" if status in ("success", "ACTIVE", "active", "connected") else status
         return self._upsert_account_record(
             user_id=user_id,
             toolkit=normalized_toolkit,
-            status=status,
+            status=norm_status,
             connection_id=connection_id
         )
 
@@ -235,7 +375,7 @@ class ComposioService:
         """
         Disconnects a user's toolkit in Composio and updates DB status to 'disconnected'.
         """
-        normalized_toolkit = toolkit.lower().strip()
+        normalized_toolkit = self._normalize_slug(toolkit) or toolkit.lower().strip()
         sdk = self._get_sdk()
 
         if sdk is not None and hasattr(sdk, "connected_accounts") and hasattr(sdk.connected_accounts, "delete"):
@@ -300,32 +440,33 @@ class ComposioService:
     def resolve_user_id(self, user_or_business_id: Optional[str]) -> str:
         """
         Resolves the actual user_id for a given business_id or user_id by checking
-        connected_accounts and businesses tables in Supabase.
+        Composio live accounts, businesses table, and shared memory.
         """
         if not user_or_business_id:
             return "00000000-0000-0000-0000-000000000000"
-            
+
+        # 1. Check live active Composio accounts
+        live_accounts = self._fetch_live_composio_accounts()
+        for item in live_accounts.values():
+            u = item.get("user_id")
+            if u and (u == user_or_business_id or user_or_business_id in ("00000000-0000-0000-0000-000000000000", "default")):
+                return u
+
+        # 2. Check if user_or_business_id is a business with owner_id
         client = get_supabase_client()
-        if not client:
-            return user_or_business_id
+        if client:
+            try:
+                biz = client.table("businesses").select("owner_id").eq("id", user_or_business_id).limit(1).execute()
+                if biz.data and biz.data[0].get("owner_id"):
+                    return biz.data[0]["owner_id"]
+            except Exception as e:
+                logger.debug(f"Could not resolve owner_id from businesses table: {e}")
 
-        try:
-            # 1. Check if user_or_business_id already has connected_accounts directly
-            resp = client.table("connected_accounts").select("user_id").eq("user_id", user_or_business_id).limit(1).execute()
-            if resp.data and len(resp.data) > 0:
-                return user_or_business_id
-
-            # 2. Check if it's a business ID with an owner_id
-            biz = client.table("businesses").select("owner_id").eq("id", user_or_business_id).limit(1).execute()
-            if biz.data and biz.data[0].get("owner_id"):
-                return biz.data[0]["owner_id"]
-
-            # 3. Fallback: find any connected user in this environment
-            any_acc = client.table("connected_accounts").select("user_id").eq("status", "connected").limit(1).execute()
-            if any_acc.data and any_acc.data[0].get("user_id"):
-                return any_acc.data[0]["user_id"]
-        except Exception as e:
-            logger.debug(f"Could not resolve user_id for {user_or_business_id}: {e}")
+        # 3. If any account exists in live Composio, use its user ID
+        if live_accounts:
+            for item in live_accounts.values():
+                if item.get("user_id"):
+                    return item["user_id"]
 
         return user_or_business_id
 
@@ -365,8 +506,7 @@ class ComposioService:
         status: str,
         connection_id: Optional[str] = None
     ) -> Dict[str, Any]:
-        """Upserts a record into the connected_accounts Supabase table."""
-        client = get_supabase_client()
+        """Upserts a record into SharedMemoryService and the connected_accounts table if present."""
         record = {
             "user_id": user_id,
             "toolkit": toolkit,
@@ -374,9 +514,20 @@ class ComposioService:
             "composio_connection_id": connection_id
         }
 
+        # 1. Persist to SharedMemoryService
+        try:
+            from app.services.shared_memory import SharedMemoryService
+            mem = SharedMemoryService()
+            mem.set("00000000-0000-0000-0000-000000000001", f"connected_account_{toolkit}", record, ["integration", toolkit])
+            if user_id and user_id != "00000000-0000-0000-0000-000000000000":
+                mem.set(user_id, f"connected_account_{toolkit}", record, ["integration", toolkit])
+        except Exception as e:
+            logger.debug(f"Shared memory upsert note: {e}")
+
+        # 2. Try Supabase table if available
+        client = get_supabase_client()
         if client:
             try:
-                # Upsert using unique (user_id, toolkit)
                 resp = client.table("connected_accounts").upsert(
                     record,
                     on_conflict="user_id,toolkit"
@@ -384,7 +535,7 @@ class ComposioService:
                 if resp.data and len(resp.data) > 0:
                     return resp.data[0]
             except Exception as e:
-                logger.warning(f"Could not upsert connected_accounts record in DB: {e}")
+                logger.debug(f"DB connected_accounts upsert note (using memory cache): {e}")
 
         return record
 

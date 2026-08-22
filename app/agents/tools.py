@@ -144,11 +144,25 @@ class SendEmailInput(BaseModel):
 
 class SendEmailTool(BaseTool):
     name = "send_email"
-    description = "Sends an email to a specified recipient."
+    description = "Sends an email to a specified recipient using connected live Gmail/Email accounts."
     args_schema = SendEmailInput
     cost_estimate = 0.05
 
     def _run(self, to_email: str, subject: str, body: str) -> str:
+        target_uid = getattr(self, "user_id", None) or getattr(self, "business_id", None) or "00000000-0000-0000-0000-000000000000"
+        try:
+            from app.services.composio_client import composio_service
+            if composio_service.api_key:
+                res = composio_service.execute_tool(
+                    user_id=target_uid,
+                    slug="GMAIL_SEND_EMAIL",
+                    arguments={"recipient_email": to_email, "subject": subject, "body": body}
+                )
+                if res:
+                    return f"Email successfully sent to {to_email} with subject '{subject}' via live Gmail."
+        except Exception as e:
+            logger.debug(f"Composio GMAIL_SEND_EMAIL note: {e}")
+
         default = f"Email successfully queued to {to_email} with subject '{subject}'."
         return _common_mcp_call(
             "email",

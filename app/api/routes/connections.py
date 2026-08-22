@@ -62,29 +62,41 @@ def initiate_connection(
 
 @router.get("/callback")
 def connection_callback(
-    toolkit: str = Query("gmail", description="Toolkit connected"),
-    status: str = Query("connected", description="Connection status"),
+    toolkit: Optional[str] = Query(None, description="Toolkit connected"),
+    status: Optional[str] = Query(None, description="Connection status"),
     connection_id: Optional[str] = Query(None, description="Composio connection ID"),
+    connected_account_id: Optional[str] = Query(None, description="Composio connected account ID"),
     user_id: Optional[str] = Query(None, description="User ID for callback verification")
 ) -> Any:
     """
     OAuth return callback endpoint. Updates the connection status in the database
     and redirects the user back to the frontend integrations dashboard.
     """
+    resolved_toolkit = toolkit or "gmail"
+    resolved_status = "connected" if status in ("success", "ACTIVE", "active", "connected") else (status or "connected")
+    conn_id = connection_id or connected_account_id
+
     try:
         target_user = user_id or "00000000-0000-0000-0000-000000000000"
         composio_service.set_connection_status(
             user_id=target_user,
-            toolkit=toolkit,
-            status=status if status in ("connected", "pending", "disconnected") else "connected",
-            connection_id=connection_id
+            toolkit=resolved_toolkit,
+            status=resolved_status,
+            connection_id=conn_id
         )
-        logger.info(f"Connection callback processed for user {target_user}, toolkit {toolkit}: {status}")
+        # Also store for default workspace
+        composio_service.set_connection_status(
+            user_id="00000000-0000-0000-0000-000000000001",
+            toolkit=resolved_toolkit,
+            status=resolved_status,
+            connection_id=conn_id
+        )
+        logger.info(f"Connection callback processed for user {target_user}, toolkit {resolved_toolkit}: {resolved_status} (id={conn_id})")
     except Exception as e:
         logger.error(f"Error handling connection callback: {e}")
 
     # Redirect to frontend integrations page with notification parameter
-    return RedirectResponse(url=f"/integrations?connected={toolkit}&status={status}", status_code=302)
+    return RedirectResponse(url=f"/integrations?connected={resolved_toolkit}&status={resolved_status}", status_code=302)
 
 
 @router.get("", response_model=ConnectionsListResponse)
