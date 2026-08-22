@@ -41,6 +41,8 @@ class Settings(BaseSettings):
 
     # MCP (Model Context Protocol) servers
     MCP_FALLBACK_MODE: bool = False
+    MCP_COMPRESS_THRESHOLD_TOKENS: int = 800
+    CONVERSATION_MEMORY_MAX_TOKENS: int = 2048
     STRIPE_MCP_URL: Optional[str] = None
     STRIPE_MCP_API_KEY: Optional[str] = None
     NOTION_MCP_URL: Optional[str] = None

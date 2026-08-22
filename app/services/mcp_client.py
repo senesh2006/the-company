@@ -9,6 +9,52 @@ from app.core.config import settings
 logger = logging.getLogger(__name__)
 
 
+from app.services.context_compressor import (
+    compress_tool_output,
+    count_tokens,
+    is_nvidia_provider_active,
+)
+
+
+def maybe_compress_tool_output(result: Any, tool_name: str = "") -> Any:
+    """
+    Compresses large tool outputs via LLMLingua-2 when the active LLM provider is NVIDIA NIM.
+    Bypasses compression when in fallback/mock mode or when using providers with large context windows.
+    """
+    if getattr(settings, "MCP_FALLBACK_MODE", False):
+        return result
+
+    if not is_nvidia_provider_active():
+        return result
+
+    threshold = getattr(settings, "MCP_COMPRESS_THRESHOLD_TOKENS", 800)
+
+    # Convert to string for evaluation
+    if isinstance(result, str):
+        text_content = result
+    elif isinstance(result, (dict, list)):
+        try:
+            text_content = json.dumps(result, indent=2)
+        except Exception:
+            text_content = str(result)
+    else:
+        text_content = str(result)
+
+    orig_tokens = count_tokens(text_content)
+    if orig_tokens <= threshold:
+        return result
+
+    target = min(500, threshold // 2)
+    compressed = compress_tool_output(text_content, target_tokens=target)
+    comp_tokens = count_tokens(compressed)
+
+    logger.info(
+        f"[MCP Context Reduction] Tool '{tool_name}' output exceeded {threshold} tokens ({orig_tokens} tokens). "
+        f"Compressed to {comp_tokens} tokens for NVIDIA NIM (ratio: {comp_tokens/max(1, orig_tokens):.1%})."
+    )
+    return compressed
+
+
 class MCPClientError(Exception):
     """Raised when an MCP server call fails."""
     pass
@@ -98,10 +144,11 @@ class MCPClient:
                 text_parts = [
                     item.get("text", "") for item in content if isinstance(item, dict) and item.get("type") == "text"
                 ]
-                return "\n".join(text_parts) if text_parts else content
-            return content
+                extracted = "\n".join(text_parts) if text_parts else content
+                return maybe_compress_tool_output(extracted, tool_name=tool_name)
+            return maybe_compress_tool_output(content, tool_name=tool_name)
 
-        return result
+        return maybe_compress_tool_output(result, tool_name=tool_name)
 
     def check(self) -> Dict[str, Any]:
         """
@@ -175,7 +222,8 @@ def mcp_call_or_default(
         return default_result
 
     try:
-        return client.call_tool(tool_name, arguments)
+        res = client.call_tool(tool_name, arguments)
+        return maybe_compress_tool_output(res, tool_name=tool_name)
     except MCPClientError as e:
         logger.warning(f"MCP call failed for {mcp_name}/{tool_name}: {e}. Returning default.")
         return error_result if error_result is not None else default_result

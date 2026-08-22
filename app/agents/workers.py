@@ -17,6 +17,7 @@ from app.agents.marketing_tools import register_marketing_tools
 from app.agents.finance_tools import register_finance_tools
 from app.services.task_service import TaskService
 from app.services.cost_service import CostService, calculate_llm_cost
+from app.services.conversation_memory import prune_and_summarize_messages
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -262,8 +263,10 @@ def make_specialist_worker_node(agent_data: dict):
                     f"{sub_res}"
                 )
             else:
+                input_messages = state.get("messages", []) + [HumanMessage(content=task.description)]
+                pruned_input = prune_and_summarize_messages(input_messages, business_id=b_id, task_id=task.id)
                 res = worker_agent.invoke(
-                    {"messages": state.get("messages", []) + [HumanMessage(content=task.description)]},
+                    {"messages": pruned_input},
                     config={"recursion_limit": 100}
                 )
                 raw_output = res["messages"][-1].content

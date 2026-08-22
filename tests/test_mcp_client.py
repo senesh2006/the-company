@@ -103,3 +103,25 @@ class TestPerUserComposioMCP:
                     assert client is not None
                     assert client.server_url == "http://static-slack:8080"
 
+
+class TestMCPCompression:
+    def test_large_tool_result_compressed_under_nvidia(self):
+        """When NVIDIA NIM is the active provider, large tool responses should be compressed."""
+        large_content = "Item row entry data log transaction detail. " * 150
+        mock_client = Mock()
+        mock_client.call_tool.return_value = large_content
+
+        mock_compressor = Mock()
+        mock_compressor.compress_prompt.return_value = {"compressed_prompt": "Item row entry data log transaction detail."}
+
+        with patch("app.services.mcp_client.get_mcp_client", return_value=mock_client), \
+             patch("app.services.context_compressor.ContextCompressor._get_compressor", return_value=mock_compressor), \
+             patch("app.services.mcp_client.settings.MCP_FALLBACK_MODE", False), \
+             patch("app.services.mcp_client.is_nvidia_provider_active", return_value=True), \
+             patch("app.services.mcp_client.settings.MCP_COMPRESS_THRESHOLD_TOKENS", 100):
+
+            result = mcp_call_or_default("gmail", "fetch_inbox", {}, default_result="")
+            assert len(result) < len(large_content)
+
+
+
