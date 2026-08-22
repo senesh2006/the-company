@@ -40,7 +40,7 @@ class Settings(BaseSettings):
     REDIS_URL: Optional[str] = None
 
     # MCP (Model Context Protocol) servers
-    MCP_FALLBACK_MODE: bool = True
+    MCP_FALLBACK_MODE: bool = False
     STRIPE_MCP_URL: Optional[str] = None
     STRIPE_MCP_API_KEY: Optional[str] = None
     NOTION_MCP_URL: Optional[str] = None

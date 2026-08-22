@@ -297,6 +297,33 @@ class ComposioService:
             }
         }
 
+    def execute_tool(
+        self,
+        user_id: str,
+        slug: str,
+        arguments: Optional[Dict[str, Any]] = None
+    ) -> Any:
+        """
+        Executes a Composio tool for a user using their live connected account.
+        """
+        sdk = self._get_sdk()
+        if sdk is None:
+            raise ComposioClientError("Composio SDK or API key not available")
+
+        try:
+            res = sdk.tools.execute(
+                slug=slug,
+                arguments=arguments or {},
+                user_id=user_id,
+                dangerously_skip_version_check=True
+            )
+            if hasattr(res, "data"):
+                return res.data
+            return res
+        except Exception as e:
+            logger.error(f"Composio execution error for {slug} (user={user_id}): {e}")
+            raise ComposioClientError(f"Failed to execute {slug}: {str(e)}") from e
+
     def _upsert_account_record(
         self,
         user_id: str,
