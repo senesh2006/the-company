@@ -5,7 +5,7 @@ import { useAuth } from "@/lib/auth-context";
 import { MarkdownRenderer } from '@/components/MarkdownRenderer';
 import { ThinkingProcess } from '@/components/ThinkingProcess';
 import { MilestoneMap } from '@/components/MilestoneMap';
-import { useTasks, useAgents, useCreateTask } from "@/lib/queries";
+import { useTasks, useAgents, useCreateTask, useTaskStream } from "@/lib/queries";
 import { 
   Plus, 
   SlidersHorizontal, 
@@ -48,6 +48,13 @@ export default function TasksPage() {
   const [newTaskPriority, setNewTaskPriority] = useState("P1");
   const [selectedTask, setSelectedTask] = useState<any | null>(null);
   const [copiedOutput, setCopiedOutput] = useState(false);
+
+  const { user } = useAuth();
+  const activeBusinessId = (user as any)?.user_metadata?.business_id || (user as any)?.business_id || "00000000-0000-0000-0000-000000000001";
+  const { supervisorPlan, workerResults, synthesisResult, isStreaming } = useTaskStream(
+    selectedTask ? (selectedTask.rawTask?.business_id || activeBusinessId) : undefined,
+    selectedTask?.id
+  );
 
   // Map real database tasks
   const allTasks = (dbTasks || []).map((t: any) => {
@@ -617,19 +624,91 @@ export default function TasksPage() {
                   )}
                 </div>
 
-                {/* If task has execution result, MarkdownRenderer extracts and displays the real agent thinking trace */}
-                {selectedTask.rawTask?.result ? (
-                  <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 overflow-x-auto leading-relaxed shadow-inner max-h-[500px] select-text">
-                    <MarkdownRenderer content={selectedTask.rawTask.result} />
+                {/* If task has completed or synthesized execution result */}
+                {synthesisResult || selectedTask.rawTask?.result ? (
+                  <div className="space-y-3">
+                    {isStreaming && (
+                      <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-semibold">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+                        <span>Live stream active &bull; Synthesizing final deliverables</span>
+                      </div>
+                    )}
+                    <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 overflow-x-auto leading-relaxed shadow-inner max-h-[500px] select-text">
+                      <MarkdownRenderer content={synthesisResult || selectedTask.rawTask?.result} />
+                    </div>
                   </div>
-                ) : selectedTask.statusType === "in_progress" ? (
-                  <ThinkingProcess
-                    isThinking={true}
-                    title={`${selectedTask.agentName || "AI Worker"} is Reasoning`}
-                    statusMessage={`${selectedTask.agentName || "Specialist"} is actively reasoning and executing tools in real time...`}
-                    steps={selectedTask.rawTask?.live_thoughts && selectedTask.rawTask.live_thoughts.length > 0 ? selectedTask.rawTask.live_thoughts : undefined}
-                    defaultExpanded={true}
-                  />
+                ) : isStreaming || selectedTask.statusType === "in_progress" ? (
+                  <div className="space-y-4">
+                    {/* Live Stream Status Indicator */}
+                    {isStreaming && (
+                      <div className="flex items-center justify-between px-3.5 py-2 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-semibold">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+                          <span>Streaming Live Node Execution</span>
+                        </div>
+                        <span className="font-mono text-[10px] bg-emerald-100 text-emerald-900 px-2 py-0.5 rounded-md uppercase font-bold">SSE Active</span>
+                      </div>
+                    )}
+
+                    {/* Progressive Supervisor Plan Card */}
+                    {supervisorPlan && (
+                      <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-2">
+                        <div className="flex items-center gap-2 text-xs font-bold text-slate-800 dark:text-slate-200">
+                          <Sparkles className="w-4 h-4 text-amber-500" />
+                          <span>Global Supervisor Plan</span>
+                        </div>
+                        {supervisorPlan.thoughts && (
+                          <p className="text-xs text-slate-600 dark:text-slate-400 italic">
+                            "{supervisorPlan.thoughts}"
+                          </p>
+                        )}
+                        {supervisorPlan.new_tasks && supervisorPlan.new_tasks.length > 0 && (
+                          <div className="space-y-1.5 pt-1">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Planned Sub-Tasks:</span>
+                            <div className="grid gap-1.5">
+                              {supervisorPlan.new_tasks.map((task: any, idx: number) => (
+                                <div key={idx} className="flex items-start gap-2 p-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 text-xs text-slate-800 dark:text-slate-200">
+                                  <ChevronRight className="w-3.5 h-3.5 text-emerald-600 mt-0.5 shrink-0" />
+                                  <div>
+                                    <span className="font-semibold text-emerald-700 dark:text-emerald-400">[{task.assignee_role || "Specialist"}]: </span>
+                                    <span>{task.description || task.title}</span>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Progressive Worker Results */}
+                    {workerResults && workerResults.length > 0 && (
+                      <div className="space-y-2">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Worker Deliverables:</span>
+                        {workerResults.map((res: any, idx: number) => (
+                          <div key={idx} className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs text-slate-800 dark:text-slate-200 space-y-1">
+                            {res.results?.map((r: any, rIdx: number) => (
+                              <div key={rIdx} className="space-y-1">
+                                <span className="font-bold text-emerald-700">{r.agent_role || "Worker"} Deliverable:</span>
+                                <div className="text-slate-600 dark:text-slate-300 text-xs leading-relaxed max-h-40 overflow-y-auto">
+                                  <MarkdownRenderer content={r.output || ""} />
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Real-time Thinking Process */}
+                    <ThinkingProcess
+                      isThinking={true}
+                      title={`${selectedTask.agentName || "AI Team"} is Executing`}
+                      statusMessage={`${selectedTask.agentName || "Specialist"} is reasoning and executing tools in real time...`}
+                      steps={selectedTask.rawTask?.live_thoughts && selectedTask.rawTask.live_thoughts.length > 0 ? selectedTask.rawTask.live_thoughts : undefined}
+                      defaultExpanded={true}
+                    />
+                  </div>
                 ) : selectedTask.statusType === "blocked" ? (
                   <div className="p-6 rounded-2xl bg-rose-50/70 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/60 text-center text-rose-800 dark:text-rose-300 space-y-1">
                     <AlertTriangle className="w-5 h-5 mx-auto text-rose-600 mb-1" />

@@ -47,8 +47,8 @@ class TeamRunner:
 
     def _get_config(self) -> dict:
         return {"configurable": {"thread_id": self.thread_id}}
-        
-    def start(self, initial_instruction: str) -> dict:
+
+    def _build_initial_state(self, initial_instruction: str) -> tuple[dict, list]:
         agents = self.task_service.list_agents(self.business_id) or []
         has_pa = any("assistant" in a.get("role", "").lower() or "admin" in a.get("role", "").lower() for a in agents)
         if not has_pa:
@@ -80,12 +80,23 @@ class TeamRunner:
             "status": "running",
             "active_sub_orchestrations": {}
         }
+        return initial_state, agents
+        
+    def start(self, initial_instruction: str) -> dict:
+        initial_state, agents = self._build_initial_state(initial_instruction)
 
         # Store the prompt for later use (e.g. WhatsApp reply)
         self.prompt = initial_instruction
 
         # Mark the main task as running in the DB
         self.task_service.update_task_status(self.task_id, "running")
+        
+        from app.services.task_stream_bus import task_broadcaster
+        task_broadcaster.publish_sync(self.task_id, {
+            "node": "start",
+            "status": "running",
+            "content": {"mandate": initial_instruction}
+        })
         
         try:
             with self._get_checkpointer() as checkpointer:
@@ -96,6 +107,12 @@ class TeamRunner:
                     self.task_service.complete_task(self.task_id)
                 elif result.get("status") == "failed":
                     self.task_service.fail_task(self.task_id)
+                
+                task_broadcaster.publish_sync(self.task_id, {
+                    "node": "end",
+                    "status": result.get("status", "completed"),
+                    "content": {"result": result.get("messages", [])[-1].content if result.get("messages") else ""}
+                })
                 
                 # If mandate was from WhatsApp or founder notifications enabled, send result back to WhatsApp
                 try:
@@ -140,10 +157,109 @@ class TeamRunner:
             error_msg = f"FATAL ERROR: {str(e)}\n{traceback.format_exc()}"
             self.task_service.update_task_result(self.task_id, error_msg)
             self.task_service.fail_task(self.task_id)
+            task_broadcaster.publish_sync(self.task_id, {
+                "node": "end",
+                "status": "failed",
+                "content": {"error": str(e)}
+            })
             # Mark agents back to Idle even on crash (the task failed, not the agents)
             for agent in agents:
                 self.task_service.update_agent_status(agent["id"], "Idle")
             return {"status": "failed", "error": str(e)}
+
+    async def stream(self, initial_instruction: str):
+        """
+        Executes the LangGraph pipeline asynchronously, yielding normalized SSE events
+        per node completion and broadcasting them to task_broadcaster.
+        """
+        initial_state, agents = self._build_initial_state(initial_instruction)
+        self.prompt = initial_instruction
+
+        from app.services.task_stream_bus import task_broadcaster
+
+        self.task_service.update_task_status(self.task_id, "running")
+        start_event = {
+            "node": "start",
+            "status": "running",
+            "content": {"mandate": initial_instruction}
+        }
+        await task_broadcaster.publish(self.task_id, start_event)
+        yield start_event
+
+        final_status = "completed"
+        try:
+            with self._get_checkpointer() as checkpointer:
+                app = self.graph.compile(checkpointer=checkpointer)
+                
+                async for update_dict in app.astream(initial_state, config=self._get_config(), stream_mode="updates"):
+                    for node_name, node_state in update_dict.items():
+                        event = None
+                        if node_name == "global_supervisor":
+                            thoughts = node_state.get("supervisor_thoughts", [])
+                            tasks = node_state.get("task_graph", {})
+                            event = {
+                                "node": "global_supervisor",
+                                "status": "completed",
+                                "content": {
+                                    "thoughts": thoughts[-1] if thoughts else "",
+                                    "new_tasks": [
+                                        t.model_dump() if hasattr(t, "model_dump") else t
+                                        for t in (tasks.values() if isinstance(tasks, dict) else tasks)
+                                    ]
+                                }
+                            }
+                        elif node_name.startswith("worker_"):
+                            w_results = node_state.get("worker_results", [])
+                            event = {
+                                "node": node_name,
+                                "status": "completed",
+                                "content": {
+                                    "results": [
+                                        r.model_dump() if hasattr(r, "model_dump") else r
+                                        for r in w_results
+                                    ]
+                                }
+                            }
+                        elif node_name == "executive_synthesis":
+                            msgs = node_state.get("messages", [])
+                            last_msg = msgs[-1].content if msgs else ""
+                            event = {
+                                "node": "executive_synthesis",
+                                "status": "completed",
+                                "content": {"synthesis": last_msg}
+                            }
+
+                        if event:
+                            await task_broadcaster.publish(self.task_id, event)
+                            yield event
+
+                self.task_service.complete_task(self.task_id)
+                end_event = {
+                    "node": "end",
+                    "status": "completed",
+                    "content": {"status": "completed"}
+                }
+                await task_broadcaster.publish(self.task_id, end_event)
+                yield end_event
+
+        except Exception as e:
+            import traceback
+            error_msg = f"FATAL ERROR: {str(e)}\n{traceback.format_exc()}"
+            self.task_service.update_task_result(self.task_id, error_msg)
+            self.task_service.fail_task(self.task_id)
+            err_event = {
+                "node": "end",
+                "status": "failed",
+                "content": {"error": str(e)}
+            }
+            await task_broadcaster.publish(self.task_id, err_event)
+            yield err_event
+        finally:
+            for agent in agents:
+                try:
+                    self.task_service.update_agent_status(agent["id"], "Idle")
+                except Exception:
+                    pass
 
     def pause(self):
         with self._get_checkpointer() as checkpointer:

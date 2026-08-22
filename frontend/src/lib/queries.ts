@@ -1,7 +1,8 @@
 "use client";
 
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api, AgentStatus, HireWorkerPayload, TrustTier, HiringModel, ModelOption } from './api';
+import { api, getBaseUrl, getAuthHeaders, AgentStatus, HireWorkerPayload, TrustTier, HiringModel, ModelOption } from './api';
 
 export const useAgents = () => {
     return useQuery({
@@ -472,5 +473,125 @@ export const useDisconnectConnection = () => {
         },
     });
 };
+
+// --- Live Task Execution Stream (SSE) ---
+
+export interface TaskStreamEvent {
+    node: string;
+    status: string;
+    content: any;
+    timestamp?: string;
+}
+
+export const useTaskStream = (businessId?: string, taskId?: string) => {
+    const [events, setEvents] = useState<TaskStreamEvent[]>([]);
+    const [supervisorPlan, setSupervisorPlan] = useState<any>(null);
+    const [workerResults, setWorkerResults] = useState<any[]>([]);
+    const [synthesisResult, setSynthesisResult] = useState<string | null>(null);
+    const [isStreaming, setIsStreaming] = useState<boolean>(false);
+    const [streamError, setStreamError] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (!businessId || !taskId) {
+            setIsStreaming(false);
+            return;
+        }
+
+        let isMounted = true;
+        const abortController = new AbortController();
+
+        const startStream = async () => {
+            try {
+                setIsStreaming(true);
+                setStreamError(null);
+
+                const baseUrl = getBaseUrl();
+                const url = `${baseUrl}/api/v1/tasks/${businessId}/${taskId}/stream`;
+                const headers = await getAuthHeaders();
+
+                const response = await fetch(url, {
+                    headers: {
+                        ...headers,
+                        Accept: 'text/event-stream',
+                    },
+                    signal: abortController.signal,
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Stream connection failed: ${response.statusText}`);
+                }
+
+                const reader = response.body?.getReader();
+                if (!reader) return;
+
+                const decoder = new TextDecoder();
+                let buffer = '';
+
+                while (isMounted) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split('\n\n');
+                    buffer = lines.pop() || '';
+
+                    for (const chunk of lines) {
+                        const trimmed = chunk.trim();
+                        if (trimmed.startsWith('data:')) {
+                            try {
+                                const rawJson = trimmed.slice(5).trim();
+                                if (!rawJson) continue;
+                                const eventData: TaskStreamEvent = JSON.parse(rawJson);
+                                if (!isMounted) break;
+
+                                setEvents((prev) => [...prev, eventData]);
+
+                                if (eventData.node === 'global_supervisor') {
+                                    setSupervisorPlan(eventData.content);
+                                } else if (eventData.node?.startsWith('worker_')) {
+                                    setWorkerResults((prev) => [...prev, eventData.content]);
+                                } else if (eventData.node === 'executive_synthesis') {
+                                    setSynthesisResult(eventData.content?.synthesis || null);
+                                } else if (eventData.node === 'end') {
+                                    if (eventData.content?.result) {
+                                        setSynthesisResult(eventData.content.result);
+                                    }
+                                    setIsStreaming(false);
+                                }
+                            } catch (parseErr) {
+                                console.debug('Error parsing SSE event chunk:', parseErr);
+                            }
+                        }
+                    }
+                }
+            } catch (err: any) {
+                if (err.name !== 'AbortError' && isMounted) {
+                    setStreamError(err.message || 'Stream connection error');
+                }
+            } finally {
+                if (isMounted) {
+                    setIsStreaming(false);
+                }
+            }
+        };
+
+        startStream();
+
+        return () => {
+            isMounted = false;
+            abortController.abort();
+        };
+    }, [businessId, taskId]);
+
+    return {
+        events,
+        supervisorPlan,
+        workerResults,
+        synthesisResult,
+        isStreaming,
+        streamError,
+    };
+};
+
 
 

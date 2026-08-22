@@ -90,9 +90,6 @@ class ContextCompressor:
                     [text],
                     rate=computed_rate,
                     target_token=target_tokens if rate is None else -1,
-                    use_sentence_level_filter=False,
-                    condition_compare=True,
-                    condition_in_sub_meeting=True,
                 )
                 compressed = res.get("compressed_prompt", text)
                 comp_tokens = count_tokens(compressed)

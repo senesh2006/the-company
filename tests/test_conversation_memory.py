@@ -1,7 +1,8 @@
 import pytest
 from unittest.mock import patch
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
-from langchain_core.language_models.fake_chat_models import FakeListChatModel
+from langchain_core.language_models.chat_models import BaseChatModel
+from langchain_core.outputs import ChatResult, ChatGeneration
 
 from app.services.conversation_memory import (
     get_conversation_memory,
@@ -10,6 +11,15 @@ from app.services.conversation_memory import (
 )
 from app.services.shared_memory import SharedMemoryService
 from app.services.context_compressor import count_tokens
+
+
+class DummyChatModel(BaseChatModel):
+    def _generate(self, messages, stop=None, run_manager=None, **kwargs):
+        return ChatResult(generations=[ChatGeneration(message=AIMessage(content="Summary of prior conversation."))])
+
+    @property
+    def _llm_type(self):
+        return "dummy"
 
 
 @pytest.fixture(autouse=True)
@@ -45,10 +55,10 @@ def test_prune_and_summarize_preserves_active_turn():
     b_id = "test-business-uuid"
     t_id = "test-task-uuid"
 
-    fake_llm = FakeListChatModel(responses=["Summary of 25 historical questions and reports." for _ in range(50)])
+    dummy_llm = DummyChatModel()
 
     with patch("app.services.conversation_memory.is_nvidia_provider_active", return_value=True), \
-         patch("app.services.conversation_memory.get_llm", return_value=fake_llm), \
+         patch("app.services.conversation_memory.get_llm", return_value=dummy_llm), \
          patch("app.services.conversation_memory.settings.CONVERSATION_MEMORY_MAX_TOKENS", 200):
         
         pruned = prune_and_summarize_messages(all_messages, business_id=b_id, task_id=t_id)
@@ -75,10 +85,10 @@ def test_prune_and_summarize_persists_to_shared_memory():
     t_id = "persisted-task-uuid"
 
     memory_service = SharedMemoryService()
-    fake_llm = FakeListChatModel(responses=["Prior audit verified ledger accounts and matched vendor invoices." for _ in range(50)])
+    dummy_llm = DummyChatModel()
 
     with patch("app.services.conversation_memory.is_nvidia_provider_active", return_value=True), \
-         patch("app.services.conversation_memory.get_llm", return_value=fake_llm), \
+         patch("app.services.conversation_memory.get_llm", return_value=dummy_llm), \
          patch("app.services.conversation_memory.settings.CONVERSATION_MEMORY_MAX_TOKENS", 30):
         
         pruned = prune_and_summarize_messages(long_history, business_id=b_id, task_id=t_id)

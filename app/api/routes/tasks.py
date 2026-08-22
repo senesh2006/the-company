@@ -1,10 +1,13 @@
-from fastapi import APIRouter, HTTPException, Query, BackgroundTasks, Depends
+from fastapi import APIRouter, HTTPException, Query, BackgroundTasks, Depends, Request
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import Optional, List, Any, Dict
+import json
 
 from app.services.task_service import TaskService
 from app.services.governance_service import GovernanceService
 from app.services.task_decomposer import generate_task_milestones, calculate_milestone_progress
+from app.services.task_stream_bus import task_broadcaster
 from app.core.logging import logger
 from app.api.deps import get_current_user
 
@@ -280,6 +283,62 @@ def get_task_thoughts(task_id: str, user = Depends(get_current_user)):
     except Exception as e:
         logger.error(f"Error fetching live thoughts for {task_id}: {e}")
         return {"task_id": task_id, "thoughts": [], "count": 0}
+
+
+@router.get("/{business_id}/{task_id}/stream")
+async def stream_task_events(
+    business_id: str,
+    task_id: str,
+    request: Request,
+    user = Depends(get_current_user)
+):
+    """
+    Streams LangGraph node execution events (supervisor plan, worker results, executive synthesis)
+    in real time via Server-Sent Events (SSE).
+    """
+    task = task_service.get_task(task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    async def event_generator():
+        try:
+            status = (task.get("status") or "").lower()
+            if status in ("completed", "failed", "rejected"):
+                final_event = {
+                    "node": "end",
+                    "status": status,
+                    "content": {
+                        "result": task.get("result"),
+                        "mandate": task.get("description") or task.get("mandate")
+                    },
+                    "timestamp": task.get("updated_at") or task.get("created_at")
+                }
+                yield f"data: {json.dumps(final_event)}\n\n"
+                return
+
+            async for event in task_broadcaster.subscribe(task_id):
+                if await request.is_disconnected():
+                    logger.info(f"Client disconnected from SSE stream for task {task_id}")
+                    break
+                yield f"data: {json.dumps(event)}\n\n"
+        except Exception as e:
+            logger.error(f"Error in SSE stream for task {task_id}: {e}")
+            err_event = {
+                "node": "error",
+                "status": "error",
+                "content": {"error": str(e)}
+            }
+            yield f"data: {json.dumps(err_event)}\n\n"
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no"
+        }
+    )
 
 
 @router.get("/{business_id}")

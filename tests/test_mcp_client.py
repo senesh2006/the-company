@@ -118,6 +118,7 @@ class TestMCPCompression:
              patch("app.services.context_compressor.ContextCompressor._get_compressor", return_value=mock_compressor), \
              patch("app.services.mcp_client.settings.MCP_FALLBACK_MODE", False), \
              patch("app.services.mcp_client.is_nvidia_provider_active", return_value=True), \
+             patch("app.services.context_compressor.is_nvidia_provider_active", return_value=True), \
              patch("app.services.mcp_client.settings.MCP_COMPRESS_THRESHOLD_TOKENS", 100):
 
             result = mcp_call_or_default("gmail", "fetch_inbox", {}, default_result="")
