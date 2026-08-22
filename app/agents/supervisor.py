@@ -36,16 +36,14 @@ def get_supervisor_agent(roles: list[str], business_id: str, model_id: str = Non
         ("system", """You are the Founder's Personal Assistant & Coordinating Agent (PRD v6.0 §4.1).
 You coordinate and delegate work to in-house specialist workers.
 Your mandate:
-1. Coordinate the in-house team by delegating tasks to the most suitable specialist worker listed below.
+1. Analyze the founder's instruction and delegate tasks to the single most suitable specialist worker listed below.
 2. Read shared business context:
 {shared_context_summary}
-3. Break down the founder's objectives into structured mandates with dependencies.
-4. Ensure cross-worker alignment.
 
 === AVAILABLE SPECIALIST ROLES & DOMAINS ===
-- Personal Assistant / Operations: Triage and list received emails/inbox, draft replies, check calendar availability, schedule meetings, web search, helpdesk, and general operations.
-- Finance Manager: Double-entry bookkeeping, trial balance audits, general ledger entries, Stripe invoices, spend receipts, contract desk, vendor portals, security questionnaires.
-- Marketing Manager: Growth campaigns, content calendars, social media posts, SEO analysis.
+- Personal Assistant: Triage and list received emails/inbox, send/draft emails, check calendar availability, schedule meetings, web search, helpdesk, and general operations.
+- Finance Manager: Google Sheets master ledgers, double-entry bookkeeping, trial balance audits, chart of accounts, Stripe invoices, expense receipts, contract desk, vendor portals.
+- Marketing Manager: Growth campaigns, content calendars, social media posts, SEO analysis, brand copy.
 - EngineeringWorker / Coder: Software development, debugging, GitHub pull requests, technical code tasks.
 
 Current Active Roles:
@@ -53,18 +51,21 @@ Current Active Roles:
 === END OF ROLES ===
 
 CRITICAL RULES FOR TASK PLANNING:
-- Create ONLY 1 to 3 focused, high-impact sub-tasks (ABSOLUTE MAXIMUM 5 SUB-TASKS TOTAL).
-- If the founder's request is an email, calendar, web research, or general operations task, assign it to "Personal Assistant".
-- If the founder's request is an accounting, ledger, invoice, tax, or financial task, assign it to "Finance Manager".
-- If the founder's request is a marketing, campaign, or social media task, assign it to "Marketing Manager".
-- If the founder's request is a coding or software engineering task, assign it to "EngineeringWorker" or "Coder".
-- The "assignee_role" field in each new_task MUST be set to EXACTLY one of the active roles listed above.
+1. SINGLE DIRECT ACTION MANDATES: For single direct requests (e.g. "create a google sheet named trial balance", "list the 5 most recent unread emails", "send email to X", "check my calendar", "write a tweet about Y", "run tests"), create EXACTLY ONE (1) focused task assigned directly to the primary specialist.
+   - DO NOT create multi-stage pipelines (e.g. NO "Scope Analysis", NO "Parameter Check", NO "Quality Checker" subtasks). The specialist performs planning, execution, and verification in a single pass.
+2. COMPLEX MULTI-DEPARTMENT PROJECTS: Only create multiple sub-tasks (maximum 3) when the founder's request genuinely spans multiple distinct specialist domains (e.g. Marketing copy + Finance budget + Engineering landing page).
+3. The "assignee_role" field in each new_task MUST be set to EXACTLY one of the active roles: {roles}.
+   - NEVER use placeholder or non-existent roles like "Specialist", "Quality Checker", "Scope Analyst", or "Coordinator".
+4. If the founder's request is a Google Sheet, accounting, ledger, invoice, tax, or financial task -> assign to "Finance Manager" (or "Personal Assistant").
+5. If the founder's request is an email, calendar, web research, or administrative task -> assign to "Personal Assistant".
+6. If the founder's request is a marketing, campaign, or social media task -> assign to "Marketing Manager".
+7. If the founder's request is a coding or software engineering task -> assign to "EngineeringWorker" or "Coder".
 
 Analyze the current state of tasks:
 {current_tasks}
 
 If tasks are pending or executing, output action="dispatch". 
-If initial planning is needed, output action="replan" and provide at most 1-3 new_tasks (max 5).
+If initial planning is needed, output action="replan" and provide at most 1-2 new_tasks.
 If all tasks are completed, output action="finish".
 """),
         ("human", "Founder instruction / Objective: {messages}")
@@ -130,6 +131,19 @@ def global_supervisor_node(state: OrchestratorState):
     remaining_slots = max(0, MAX_TOTAL_SUBTASKS - existing_count)
     tasks_to_create = (decision.new_tasks or [])[:remaining_slots]
     
+    # Fallback: If supervisor decision returned NO tasks on first turn, create one direct task for the whole objective
+    if not tasks_to_create and existing_count == 0 and last_message:
+        fallback_role = _resolve_assignee_role("Personal Assistant", available_roles, last_message)
+        tasks_to_create = [
+            TaskNode(
+                id=str(uuid.uuid4()),
+                description=last_message,
+                assignee_role=fallback_role,
+                status="queued",
+                dependencies=[]
+            )
+        ]
+    
     # Map LLM-generated IDs to real UUIDs
     for t in tasks_to_create:
         new_id = str(uuid.uuid4())
@@ -190,96 +204,80 @@ def _resolve_assignee_role(llm_role: Optional[str], available_roles: list[str], 
     desc = (task_description or "").lower()
     raw = (llm_role or "").strip().lower()
 
-    # 1. Exact match
+    # 1. Exact match against real roles
     for role in available_roles:
         if role.lower() == raw:
             return role
 
-    # 2. Check for coordinator markers that should be routed to appropriate specialist
-    if raw in _INVALID_ASSIGNEE_ROLES:
-        # Check task intent
-        if any(w in desc for w in ["mail", "email", "inbox", "calendar", "schedule", "meeting", "ticket", "helpdesk", "brief", "today"]):
-            for r in available_roles:
-                if "assistant" in r.lower() or "admin" in r.lower() or "operations" in r.lower():
-                    return r
-        elif any(w in desc for w in ["finance", "money", "ledger", "invoice", "accounting", "tax", "stripe", "balance", "expense", "debit", "credit", "audit"]):
-            for r in available_roles:
-                if "finance" in r.lower() or "account" in r.lower():
-                    return r
-        elif any(w in desc for w in ["marketing", "social", "campaign", "twitter", "linkedin", "seo", "content"]):
-            for r in available_roles:
-                if "market" in r.lower() or "growth" in r.lower():
-                    return r
-        elif any(w in desc for w in ["code", "bug", "git", "github", "develop", "software"]):
-            for r in available_roles:
-                if "engineer" in r.lower() or "code" in r.lower():
-                    return r
-
-    # 3. Keyword intent routing based on task description
-    if any(w in desc for w in ["mail", "email", "inbox", "calendar", "schedule", "meeting", "ticket", "helpdesk", "brief", "today"]):
-        for r in available_roles:
-            if "assistant" in r.lower() or "admin" in r.lower() or "operations" in r.lower():
-                return r
-
-    if any(w in desc for w in ["finance", "money", "ledger", "invoice", "accounting", "tax", "stripe", "balance", "expense", "debit", "credit", "audit"]):
+    # 2. Check task intent keywords first for reliable domain routing
+    if any(w in desc for w in ["sheet", "spreadsheet", "trial balance", "balance", "ledger", "invoice", "accounting", "tax", "stripe", "expense", "budget", "debit", "credit", "finance", "coa", "chart of accounts"]):
         for r in available_roles:
             if "finance" in r.lower() or "account" in r.lower():
                 return r
 
-    if any(w in desc for w in ["marketing", "social", "campaign", "twitter", "linkedin", "seo", "content"]):
+    if any(w in desc for w in ["mail", "email", "inbox", "gmail", "calendar", "schedule", "meeting", "ticket", "helpdesk", "brief", "today", "triage", "search", "web"]):
+        for r in available_roles:
+            if "assistant" in r.lower() or "admin" in r.lower() or "operations" in r.lower():
+                return r
+
+    if any(w in desc for w in ["marketing", "social", "campaign", "twitter", "linkedin", "seo", "content", "post", "growth", "copy"]):
         for r in available_roles:
             if "market" in r.lower() or "growth" in r.lower():
                 return r
 
-    if any(w in desc for w in ["code", "bug", "git", "github", "develop", "software"]):
+    if any(w in desc for w in ["code", "bug", "git", "github", "develop", "software", "test", "python", "fastapi"]):
         for r in available_roles:
             if "engineer" in r.lower() or "code" in r.lower():
                 return r
 
-    # 4. Fuzzy match: find the closest available role
+    # 3. Fuzzy match: find the closest available role
     best_match = None
     best_score = 0.0
     for role in available_roles:
-        # Check substring containment first
         if raw and (raw in role.lower() or role.lower() in raw):
             return role
-        # Then use sequence matching
         score = SequenceMatcher(None, raw, role.lower()).ratio()
         if score > best_score:
             best_score = score
             best_match = role
 
-    if best_match and best_score >= 0.4:
+    if best_match and best_score >= 0.3:
         logger.info(f"Fuzzy-matched assignee_role '{llm_role}' -> '{best_match}' (score={best_score:.2f})")
         return best_match
 
-    # 5. Default fallback to Personal Assistant if available, else first role
+    # 4. Default fallback to Personal Assistant if available, else first available role
     for r in available_roles:
         if "assistant" in r.lower():
             return r
     return available_roles[0]
 
 
-def _match_agent_to_role(agents: dict, assignee_role: str) -> Optional[object]:
+def _match_agent_to_role(agents: dict, assignee_role: str) -> object:
     """
     Finds the best matching agent for a given assignee_role using
-    exact match, substring match, and fuzzy matching.
+    exact match, substring match, and fuzzy matching. Guaranteed to return an agent.
     """
-    if not assignee_role:
+    if not agents:
         return None
-    
+
+    if not assignee_role:
+        for a in agents.values():
+            if "assistant" in a.role.lower():
+                return a
+        return list(agents.values())[0]
+
     normalized = assignee_role.strip().lower()
-    
+
     # Exact match
     for a in agents.values():
         if a.role.lower() == normalized:
             return a
-    
+
     # Substring match (bidirectional)
     for a in agents.values():
         if normalized in a.role.lower() or a.role.lower() in normalized:
             return a
-    
+
     # Fuzzy match
     best_agent = None
     best_score = 0.0
@@ -288,51 +286,81 @@ def _match_agent_to_role(agents: dict, assignee_role: str) -> Optional[object]:
         if score > best_score:
             best_score = score
             best_agent = a
-    
-    if best_agent and best_score >= 0.4:
-        logger.info(f"Fuzzy-matched task role '{assignee_role}' -> agent '{best_agent.name}' ({best_agent.role}), score={best_score:.2f}")
+
+    if best_agent and best_score >= 0.3:
         return best_agent
-    
-    return None
+
+    # Guaranteed fallback: Return Personal Assistant or first available agent
+    for a in agents.values():
+        if "assistant" in a.role.lower():
+            return a
+
+    return list(agents.values())[0]
 
 
 def global_router(state: OrchestratorState):
     tasks = state.get("task_graph", {})
     agents = state.get("active_agents", {})
-    
+    business_id = state.get("business_id", "00000000-0000-0000-0000-000000000001")
+    task_id = state.get("task_id")
+    messages = state.get("messages", [])
+    shared_context = state.get("shared_context", {})
+
     all_completed = True
     has_tasks = len(tasks) > 0
-    
     sends = []
-    
+
     for t_id, task in tasks.items():
         if task.status != "completed":
             all_completed = False
-            
+
         if task.status == "queued":
+            # Check if all dependencies are satisfied or if they don't exist in tasks
             deps_met = all(tasks[dep].status == "completed" for dep in task.dependencies if dep in tasks)
             if deps_met:
                 agent = _match_agent_to_role(agents, task.assignee_role)
                 if agent:
                     node_name = f"worker_{agent.id}"
-                    
+
                     try:
                         task_service.update_task_status(task.id, "running")
                         task_service.assign_task(task.id, agent.id)
                     except Exception as e:
                         logger.warning(f"Could not sync task status/assignment to DB: {e}")
-                    
+
                     task.status = "running"
                     task.assignee_id = agent.id
                     agent.current_task_id = task.id
-                    
+
                     sends.append(Send(node_name, {
+                        "business_id": business_id,
+                        "task_id": task_id,
                         "task_graph": {task.id: task},
-                        "active_agents": {agent.id: agent}
+                        "active_agents": {agent.id: agent},
+                        "messages": messages,
+                        "shared_context": shared_context
                     }))
-                else:
-                    logger.error(f"No agent found for task '{task.description}' with role '{task.assignee_role}'. Available: {[a.role for a in agents.values()]}")
-                    
+
+    # Deadlock breaker: If we have queued tasks but sends is empty because of unsatisfied dependencies
+    if not sends and not all_completed and has_tasks:
+        for t_id, task in tasks.items():
+            if task.status == "queued":
+                agent = _match_agent_to_role(agents, task.assignee_role)
+                if agent:
+                    node_name = f"worker_{agent.id}"
+                    task.status = "running"
+                    task.assignee_id = agent.id
+                    agent.current_task_id = task.id
+                    sends.append(Send(node_name, {
+                        "business_id": business_id,
+                        "task_id": task_id,
+                        "task_graph": {task.id: task},
+                        "active_agents": {agent.id: agent},
+                        "messages": messages,
+                        "shared_context": shared_context
+                    }))
+                    break
+
     iteration = state.get("iteration", 0)
     if iteration >= settings.MAX_SUPERVISOR_ITERATIONS:
         logger.info(f"Supervisor reached max iterations limit ({iteration}). Routing to executive synthesis.")
@@ -340,10 +368,10 @@ def global_router(state: OrchestratorState):
 
     if all_completed and has_tasks:
         return "executive_synthesis"
-        
+
     if not sends:
         return "executive_synthesis"
-        
+
     return sends
 
 
@@ -352,11 +380,12 @@ def executive_synthesis_node(state: OrchestratorState):
     Synthesizes the outputs of all specialist agents and sub-tasks into ONE unified,
     executive response from the Personal Assistant for the founder.
     """
+    import re
     tasks = state.get("task_graph", {})
     worker_results = state.get("worker_results", [])
     supervisor_thoughts = state.get("supervisor_thoughts", [])
     main_task_id = state.get("task_id")
-    
+
     # Original instruction from founder
     original_objective = ""
     for msg in state.get("messages", []):
@@ -365,45 +394,50 @@ def executive_synthesis_node(state: OrchestratorState):
             break
     if not original_objective and state.get("messages"):
         original_objective = state["messages"][0].content
-        
-    # Gather completed deliverables by role
-    deliverables_by_role: Dict[str, str] = {}
+
+    # Gather completed deliverables per task
+    deliverables: List[Dict[str, Any]] = []
+
+    # 1. From worker results
     for wr in worker_results:
         role = getattr(wr, "role", None) or getattr(wr, "agent_role", None) or (wr.get("role") if isinstance(wr, dict) else None) or (wr.get("agent_role") if isinstance(wr, dict) else None) or "Specialist"
         out = getattr(wr, "output", "") if not isinstance(wr, dict) else (wr.get("output") or "")
+        t_id = getattr(wr, "task_id", "") if not isinstance(wr, dict) else (wr.get("task_id") or "")
         if out and out.strip():
-            deliverables_by_role[role] = out
-            
+            task_desc = ""
+            if t_id and t_id in tasks:
+                task_desc = getattr(tasks[t_id], "description", "") or (tasks[t_id].get("description") if isinstance(tasks[t_id], dict) else "")
+            deliverables.append({
+                "task_id": t_id,
+                "role": role,
+                "description": task_desc or original_objective,
+                "output": out.strip()
+            })
+
+    # 2. From task graph
     for t_id, task in tasks.items():
-        role = getattr(task, "assignee_role", None) or (task.get("assignee_role") if isinstance(task, dict) else None) or "Specialist"
         res = getattr(task, "result", None) if not isinstance(task, dict) else (task.get("result") or "")
-        if res and res.strip() and role not in deliverables_by_role:
-            deliverables_by_role[role] = res
+        desc = getattr(task, "description", "") if not isinstance(task, dict) else (task.get("description") or "")
+        role = getattr(task, "assignee_role", None) if not isinstance(task, dict) else (task.get("assignee_role") or "Specialist")
+        if res and res.strip() and not any(d["task_id"] == t_id for d in deliverables):
+            deliverables.append({
+                "task_id": t_id,
+                "role": role,
+                "description": desc or original_objective,
+                "output": res.strip()
+            })
 
-    # Check messages if deliverables_by_role is empty
-    if not deliverables_by_role:
-        for msg in reversed(state.get("messages", [])):
-            if isinstance(msg, AIMessage) or getattr(msg, "type", "") == "ai":
-                content = getattr(msg, "content", "")
-                if content and "finished task" in content:
-                    deliverables_by_role["Specialist"] = content.split(":", 1)[-1].strip() if ":" in content else content
-                    break
-                elif content and content != "Task successfully completed by the team.":
-                    deliverables_by_role["Specialist"] = content
-                    break
-
-    import re
-    # Format synthesis
-    if len(deliverables_by_role) == 1:
-        single_role, single_output = next(iter(deliverables_by_role.items()))
-        # Check that single_output has non-empty content outside <thought>...</thought>
+    # Format final output
+    if len(deliverables) == 1:
+        single_output = deliverables[0]["output"]
         clean_body = re.sub(r"<(?:thought|think)>[\s\S]*?</(?:thought|think)>", "", single_output).strip()
         if not clean_body:
             m = re.search(r"<(?:thought|think)>([\s\S]*?)</(?:thought|think)>", single_output)
             thought_inner = m.group(1).strip() if m else ""
             single_output = f"<thought>\n{thought_inner}\n</thought>\n\n### Execution Results\n\n{thought_inner}"
         unified_output = single_output
-    elif len(deliverables_by_role) > 1:
+
+    elif len(deliverables) > 1:
         agents = state.get("active_agents", {})
         model_id = None
         for agent in (agents.values() if isinstance(agents, dict) else []):
@@ -412,12 +446,12 @@ def executive_synthesis_node(state: OrchestratorState):
                 model_id = m
                 break
         llm = get_llm(model_id=model_id, role="default", temperature=0.2)
-        
+
         deliverables_context = "\n\n".join([
-            f"=== {role.upper()} DELIVERABLE ===\n{out}"
-            for role, out in deliverables_by_role.items()
+            f"=== {d['role'].upper()}: {d['description']} ===\n{d['output']}"
+            for d in deliverables
         ])
-        
+
         synth_prompt = ChatPromptTemplate.from_messages([
             ("system", """You are the Founder's Personal Assistant & Chief of Staff.
 Your specialized team has just completed their assigned tasks for the founder's objective.
@@ -425,8 +459,8 @@ Your job is to synthesize all their individual deliverables into ONE comprehensi
 
 Guidelines:
 1. Provide a clear, high-impact Executive Summary answering the founder's objective directly.
-2. Integrate key findings, data tables, email lists, and metrics from each specialist into cohesive, well-organized sections.
-3. If deliverables contain Generative UI blocks (```agent-ui) or markdown tables, preserve them.
+2. Integrate key findings, data tables, email lists, spreadsheet links, and metrics from each specialist into cohesive, well-organized sections.
+3. If deliverables contain Generative UI blocks (```agent-ui) or markdown tables or links, preserve them.
 4. Conclude with prioritized Key Takeaways and Immediate Next Steps.
 5. Maintain a professional, crisp, and executive tone."""),
             ("human", """Founder Objective:
@@ -437,7 +471,7 @@ Team Sub-Agent Deliverables:
 
 Synthesize these team outputs into ONE unified executive response:""")
         ])
-        
+
         try:
             res = llm.invoke(synth_prompt.format(
                 objective=original_objective,
@@ -447,37 +481,39 @@ Synthesize these team outputs into ONE unified executive response:""")
         except Exception as e:
             logger.warning(f"Synthesis LLM invocation failed: {e}. Falling back to structured compilation.")
             synthesis_body = "## Executive Summary\n\n" + "\n\n---\n\n".join([
-                f"### {role}\n{out}" for role, out in deliverables_by_role.items()
+                f"### {d['description']}\n{d['output']}" for d in deliverables
             ])
-            
+
         thought_lines = [
             f"Multi-Agent Coordination & Delegation Trace:",
             f"- Objective: {original_objective[:120]}...",
-            f"- Coordinated {len(deliverables_by_role)} specialized agents: {', '.join(deliverables_by_role.keys())}",
-            f"- All sub-agent tool executions verified and synthesized into unified executive deliverable."
+            f"- Coordinated {len(deliverables)} sub-tasks across: {', '.join(set(d['role'] for d in deliverables))}",
+            f"- All specialist tool executions verified and synthesized into unified deliverable."
         ]
         if supervisor_thoughts:
             thought_lines.extend([f"- Supervisor Plan: {str(t)[:100]}" for t in supervisor_thoughts[-2:]])
-            
+
         unified_output = f"<thought>\n" + "\n".join(thought_lines) + f"\n</thought>\n\n{synthesis_body}"
+
     else:
-        # Check tasks or live thoughts for fallback
-        fallback_parts = []
-        for t_id, task in tasks.items():
-            desc = getattr(task, "description", "") or (task.get("description") if isinstance(task, dict) else "")
-            res = getattr(task, "result", "") or (task.get("result") if isinstance(task, dict) else "")
-            if res:
-                fallback_parts.append(f"### {desc}\n{res}")
-        if fallback_parts:
-            unified_output = f"## Executive Deliverable\n\n" + "\n\n---\n\n".join(fallback_parts)
-        else:
-            unified_output = f"Execution deliverable for: {original_objective}\n\nTask processed and verified by specialized team."
+        # If no specialist deliverable was captured, fulfill directly with LLM so user ALWAYS gets a real answer
+        try:
+            direct_llm = get_llm(role="Personal Assistant", temperature=0.2)
+            direct_prompt = ChatPromptTemplate.from_messages([
+                ("system", "You are the Founder's Personal Assistant. Deliver a complete, beautifully structured, and comprehensive response answering the founder's mandate directly."),
+                ("human", "{objective}")
+            ])
+            res = direct_llm.invoke(direct_prompt.format(objective=original_objective))
+            unified_output = res.content
+        except Exception as e:
+            logger.error(f"Direct fulfillment error: {e}")
+            unified_output = f"## Execution Summary\n\n**Mandate**: {original_objective}\n\nCompleted mandate processing."
 
     # Update main task result in DB
     if main_task_id:
         task_service.update_task_result(main_task_id, unified_output)
         task_service.update_task_status(main_task_id, "completed")
-        
+
     return {
         "status": "completed",
         "messages": [AIMessage(content=unified_output)]

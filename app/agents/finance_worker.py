@@ -3,7 +3,6 @@ import logging
 from datetime import datetime
 from typing import TypedDict, Annotated, List, Literal, Optional, Any, Dict
 from langchain_core.messages import AnyMessage, HumanMessage, AIMessage, SystemMessage
-from langchain_core.messages import SystemMessage, HumanMessage
 from langgraph.graph import StateGraph, START, END
 from langgraph.prebuilt import create_react_agent
 import operator
@@ -170,12 +169,27 @@ def maker_node(state: FinanceWorkerState):
 
     revision_context = f"\nPREVIOUS AUDIT REVISION FEEDBACK (FIX THESE):\n{revisions}\n" if revisions else ""
 
+    sheet_context = ""
+    if any(w in task_desc.lower() for w in ["sheet", "spreadsheet", "trial balance", "balance", "ledger", "chart of accounts", "coa"]):
+        try:
+            from app.agents.google_sheets_tool import GoogleSheetsTool
+            gs_tool = GoogleSheetsTool()
+            setattr(gs_tool, "business_id", state.get("business_id", "00000000-0000-0000-0000-000000000001"))
+            if any(w in task_desc.lower() for w in ["create", "new", "make", "initialize"]):
+                sheet_res = gs_tool._run(action="create_sheet", sheet_name="Trial Balance")
+            else:
+                sheet_res = gs_tool._run(action="get_trial_balance")
+            sheet_context = f"\nLIVE GOOGLE SHEETS SYSTEM DATA & URL:\n{sheet_res}\n"
+        except Exception as e:
+            logger.debug(f"Google sheets live query note: {e}")
+
     human_content = f"""Task: {task_desc}
 Context: {json.dumps(context)}
 Observations: {state.get('observations', '')}
+{sheet_context}
 {revision_context}
 
-Please draft the output for this mandate.
+Please draft the complete deliverable for this mandate.
 If creating financial journal entries or categorizations, provide a structured JSON object or clear table with:
 - Date
 - Account Name & Code
@@ -183,7 +197,7 @@ If creating financial journal entries or categorizations, provide a structured J
 - Credits ($)
 - Description & Rationale
 Ensure Debits strictly equal Credits.
-If this mandate is an analytical report, policy audit, contract summary, questionnaire response, or informational query, answer directly, accurately, and concisely without inventing artificial zero-dollar journal entries."""
+If this mandate involves Google Sheets or reports, provide the full structured table and direct Google Sheets link."""
 
     messages = [
         SystemMessage(content=FINANCE_SYSTEM_PROMPT),
@@ -593,6 +607,7 @@ def make_finance_worker_node(agent_data: dict):
             updated_task.status = "failed"
             updated_task.result = f"Worker error: {str(e)}"
             final_output = updated_task.result
+            full_deliverable = final_output
             status = "failed"
             confidence = 0.0
             risk_level = "critical"
@@ -603,7 +618,7 @@ def make_finance_worker_node(agent_data: dict):
             agent_id=agent_id,
             role=role,
             status=status,
-            output=final_output,
+            output=full_deliverable,
             cost=final_state.get("cost", 0.0) if 'final_state' in locals() else 0.0
         )
 
@@ -612,7 +627,7 @@ def make_finance_worker_node(agent_data: dict):
         return {
             "task_graph": {task.id: updated_task},
             "worker_results": [worker_result],
-            "messages": [AIMessage(content=f"Finance Manager finished task '{task.description}': {final_output[:200]}...")]
+            "messages": [AIMessage(content=f"Finance Manager finished task '{task.description}': {full_deliverable[:200]}...")]
         }
 
     return node_func

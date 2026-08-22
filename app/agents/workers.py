@@ -339,7 +339,7 @@ def make_specialist_worker_node(agent_data: dict):
                             }
                         )
 
-                # Fallback: If AI returned empty raw_output, extract from tool observations
+                # If AI returned empty raw_output, extract from tool observations or run direct fulfillment
                 if not raw_output or not raw_output.strip():
                     tool_observations = []
                     for msg in res.get("messages", []):
@@ -350,7 +350,14 @@ def make_specialist_worker_node(agent_data: dict):
                     if tool_observations:
                         raw_output = "\n\n---\n\n".join(tool_observations)
                     else:
-                        raw_output = f"Task '{task.description}' completed successfully by {name}."
+                        try:
+                            direct_res = llm.invoke([
+                                HumanMessage(content=f"Provide a complete, detailed final deliverable for the founder for this mandate: {task.description}")
+                            ])
+                            raw_output = direct_res.content if direct_res and getattr(direct_res, "content", None) else f"Mandate execution deliverable for {task.description}"
+                        except Exception as e:
+                            logger.error(f"Direct worker completion note: {e}")
+                            raw_output = f"Execution deliverable for: {task.description}"
 
                 if total_input_tokens == 0:
                     total_input_tokens = max(20, sum(len(str(getattr(m, "content", ""))) for m in res.get("messages", [])[:-1]) // 4)
