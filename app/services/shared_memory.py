@@ -105,6 +105,54 @@ class SharedMemoryService:
         # Cache locally
         local_key = f"{business_id}:{key}"
         self._local_kv[local_key] = record
+
+        # Emit Memory Updated audit event for the Company Feed
+        try:
+            from app.services.task_service import TaskService
+            ts = TaskService()
+            
+            trigger_msgs = []
+            if isinstance(value, dict):
+                if "messages" in value and isinstance(value["messages"], list):
+                    trigger_msgs = [str(m) for m in value["messages"][:3]]
+                elif "context" in value:
+                    trigger_msgs = [str(value["context"])[:160]]
+                elif "summary" in value:
+                    trigger_msgs = [str(value["summary"])[:160]]
+                elif "thought" in value or "text" in value:
+                    trigger_msgs = [str(value.get("thought") or value.get("text"))[:160]]
+                elif "brand_voice" in value:
+                    trigger_msgs = [str(value.get("brand_voice"))[:160]]
+                else:
+                    trigger_msgs = [f"Context stored for key: {key}"]
+            elif isinstance(value, list):
+                trigger_msgs = [str(item)[:120] for item in value[:2]]
+            elif isinstance(value, str):
+                trigger_msgs = [value[:160]]
+            else:
+                trigger_msgs = [f"Updated memory state for {key}"]
+                
+            agent_label = updated_by or "Personal Assistant"
+            ts.log_audit_event(
+                business_id=business_id,
+                role=agent_label,
+                agent_name=agent_label,
+                trust_tier="operate",
+                mandate=f"Updated shared memory key: {key}",
+                action="Memory Updated",
+                details={
+                    "agent_id": business_id,
+                    "agent_name": agent_label,
+                    "role": agent_label,
+                    "memory_key": key,
+                    "trigger_messages": trigger_msgs,
+                    "summary": f"Context updated for {key}"
+                },
+                shared_memory_refs=[key]
+            )
+        except Exception as audit_err:
+            logger.debug(f"Memory update audit event skipped: {audit_err}")
+
         return record
 
     def delete(self, business_id: str, key: str) -> bool:

@@ -176,6 +176,28 @@ def global_supervisor_node(state: OrchestratorState):
             id=t.id,
             dependencies=t.dependencies
         )
+
+        # Emit Handoff audit event for inter-agent delegation indicator
+        task_service.log_audit_event(
+            business_id=business_id,
+            role="Personal Assistant",
+            agent_name="Personal Assistant",
+            trust_tier="operate",
+            mandate=t.description,
+            action="Handoff",
+            details={
+                "from_agent": {
+                    "name": "Personal Assistant",
+                    "role": "Personal Assistant"
+                },
+                "to_agent": {
+                    "name": t.assignee_role,
+                    "role": t.assignee_role
+                },
+                "target_role": t.assignee_role,
+                "task_description": t.description
+            }
+        )
     
     # Log Personal Assistant coordination pulse to Company Feed
     task_service.log_audit_event(

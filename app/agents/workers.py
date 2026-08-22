@@ -539,6 +539,28 @@ def dispatch_worker_direct(business_id: str, role: str, description: str) -> Dic
     task_id = task_record["id"] if isinstance(task_record, dict) else getattr(task_record, "id", str(uuid.uuid4()))
     task_service.assign_task(task_id, matched_agent["id"])
 
+    # Emit Handoff audit event
+    task_service.log_audit_event(
+        business_id=business_id,
+        role="Personal Assistant",
+        agent_name="Personal Assistant",
+        trust_tier="operate",
+        mandate=description,
+        action="Handoff",
+        details={
+            "from_agent": {
+                "name": "Founder",
+                "role": "Founder"
+            },
+            "to_agent": {
+                "name": matched_agent.get("name", canonical_role),
+                "role": canonical_role
+            },
+            "target_role": canonical_role,
+            "task_description": description
+        }
+    )
+
     # Register default tools if needed
     if canonical_role not in ["Marketing Manager", "Finance Manager", "EngineeringWorker", "Coder", "Engineering Manager", "Software Engineer"]:
         from app.agents.tools import register_default_tools

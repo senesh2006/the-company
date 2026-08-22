@@ -7,6 +7,8 @@ import {
   Send, CheckCircle2, XCircle, RotateCcw, AlertTriangle, 
   Clock, Cpu, Sparkles, Terminal, Layers
 } from "lucide-react";
+import { HandoffPill } from "@/components/activity/HandoffPill";
+import { MemoryUpdateCard } from "@/components/activity/MemoryUpdateCard";
 
 export function CompanyFeed() {
   const { data: agents } = useAgents();
@@ -241,6 +243,37 @@ export function CompanyFeed() {
             </div>
           ) : (
             feedItems.map((item) => {
+              const actionLower = (item.action || "").toLowerCase();
+              const isHandoff = actionLower === "handoff" || actionLower.startsWith("handoff");
+              const isMemoryUpdate = actionLower === "memory updated" || actionLower.includes("memory update");
+
+              if (isHandoff) {
+                return (
+                  <HandoffPill
+                    key={item.id}
+                    fromAgent={item.details?.from_agent || { name: item.agent_name || "Personal Assistant", role: item.role || "Personal Assistant" }}
+                    toAgent={item.details?.to_agent || { name: item.details?.target_role || "Chief of Staff", role: item.details?.target_role || "Chief of Staff" }}
+                    targetRole={item.details?.target_role}
+                    taskDescription={item.details?.task_description || item.mandate}
+                    timestamp={formatTimestamp(item.created_at)}
+                  />
+                );
+              }
+
+              if (isMemoryUpdate) {
+                return (
+                  <MemoryUpdateCard
+                    key={item.id}
+                    agentName={item.details?.agent_name || item.agent_name}
+                    role={item.details?.role || item.role}
+                    triggerMessages={item.details?.trigger_messages}
+                    memoryKey={item.details?.memory_key}
+                    summary={item.details?.summary}
+                    timestamp={formatTimestamp(item.created_at)}
+                  />
+                );
+              }
+
               const tier = item.trust_tier || "observe";
               const isNeedsReview = item.review_status === "pending" || item.review_status === "observe_gate";
               const isReviewingThis = reviewingId === item.id;

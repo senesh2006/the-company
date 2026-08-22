@@ -17,6 +17,7 @@ import {
   UserPlus, 
   ShieldCheck, 
   Network,
+  Activity,
   MessageSquare,
   LogOut,
   Menu,
@@ -56,9 +57,10 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
 
   const mainNavItems: NavItem[] = [
     { name: 'Dashboard', href: '/', icon: LayoutDashboard },
-    { name: 'Departments', href: '/departments', icon: Building2 },
+    { name: 'Live Operations', href: '/activity', icon: Activity },
+    { name: 'Departments Hub', href: '/departments', icon: Building2 },
     { name: 'AI Workers', href: '/agents', icon: Bot, badge: activeWorkerCount > 0 ? `${activeWorkerCount}` : undefined },
-    { name: 'Tasks & Operations', href: '/tasks', icon: ClipboardList },
+    { name: 'Tasks & Milestones', href: '/tasks', icon: ClipboardList },
     { name: 'Shared Memory', href: '/memory', icon: Database },
     { name: 'Cost & Analytics', href: '/analytics', icon: BarChart3 },
   ];

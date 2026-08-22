@@ -155,7 +155,19 @@ export interface CompanyFeedItem {
   mandate?: string;
   trust_tier?: TrustTier;
   action: string;
-  details?: Record<string, any>;
+  details?: {
+    from_agent?: { name?: string; role?: string; avatar?: string };
+    to_agent?: { name?: string; role?: string; avatar?: string };
+    target_role?: string;
+    task_description?: string;
+    trigger_messages?: string[];
+    memory_key?: string;
+    memory_summary?: string;
+    summary?: string;
+    thoughts?: string;
+    brief?: string;
+    [key: string]: any;
+  };
   review_status?: string;
   shared_memory_refs?: string[];
   created_at: string;
