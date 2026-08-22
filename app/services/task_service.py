@@ -111,6 +111,23 @@ class TaskService:
             if str(la.get("id")) not in seen_ids:
                 agents.append(dict(la))
 
+        # Ensure Personal Assistant exists in Supabase agents table for this business
+        has_pa = any("assistant" in (a.get("role") or "").lower() or "admin" in (a.get("role") or "").lower() for a in agents)
+        if not has_pa and settings.SUPABASE_URL and settings.SUPABASE_KEY and is_valid_uuid(business_id):
+            try:
+                pa_data = {
+                    "business_id": str(business_id),
+                    "name": "Personal Assistant",
+                    "role": "Personal Assistant",
+                    "status": "Idle"
+                }
+                insert_resp = self.client.table("agents").insert(pa_data).execute()
+                if insert_resp.data:
+                    pa_agent = insert_resp.data[0]
+                    agents.insert(0, pa_agent)
+            except Exception as e:
+                logger.warning(f"Could not auto-seed Personal Assistant in agents table: {e}")
+
         # Merge in-memory extra fields (trust_tier, clean_cycles, etc.)
         for a in agents:
             if not isinstance(a, dict):
@@ -435,16 +452,26 @@ class TaskService:
             raise e
 
     def assign_task(self, task_id: str, agent_id: str) -> dict[str, Any]:
-        """Assigns an agent to a task."""
+        """Assigns an agent to a task safely."""
         try:
+            update_payload: Dict[str, Any] = {"status": "assigned"}
+            if agent_id and is_valid_uuid(str(agent_id)):
+                # Verify that agent_id actually exists in the agents table to avoid foreign key violation
+                try:
+                    agent_check = self.client.table("agents").select("id").eq("id", str(agent_id)).execute()
+                    if agent_check.data:
+                        update_payload["agent_id"] = str(agent_id)
+                except Exception:
+                    pass
+
             response = self.client.table("tasks")\
-                .update({"agent_id": agent_id, "status": "assigned"})\
-                .eq("id", task_id)\
+                .update(update_payload)\
+                .eq("id", str(task_id))\
                 .execute()
             return response.data[0] if response.data else {}
         except Exception as e:
-            logger.error(f"Error assigning task {task_id} to agent {agent_id}: {e}")
-            raise e
+            logger.warning(f"Warning assigning task {task_id} to agent {agent_id}: {e}")
+            return {}
 
     def get_active_task_for_agent(self, agent_id: str) -> Optional[dict[str, Any]]:
         """Finds the currently running task for a given agent_id."""

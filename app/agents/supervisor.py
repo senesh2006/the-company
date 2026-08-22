@@ -316,8 +316,11 @@ def global_router(state: OrchestratorState):
                 if agent:
                     node_name = f"worker_{agent.id}"
                     
-                    task_service.update_task_status(task.id, "running")
-                    task_service.assign_task(task.id, agent.id)
+                    try:
+                        task_service.update_task_status(task.id, "running")
+                        task_service.assign_task(task.id, agent.id)
+                    except Exception as e:
+                        logger.warning(f"Could not sync task status/assignment to DB: {e}")
                     
                     task.status = "running"
                     task.assignee_id = agent.id
