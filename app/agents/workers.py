@@ -476,3 +476,137 @@ def make_specialist_worker_node(agent_data: dict):
         }
         
     return node_func
+
+
+def dispatch_worker_direct(business_id: str, role: str, description: str) -> Dict[str, Any]:
+    """
+    Directly invokes a single named specialist worker (e.g. 'finance', 'marketing', 'engineering')
+    for testing or isolated execution using its existing worker node function, tool registry,
+    and cost/audit logging, without going through global supervisor decomposition.
+    Returns the raw WorkerResult dictionary directly.
+    """
+    agents = task_service.list_agents(business_id) or []
+    normalized_role = (role or "").strip().lower()
+    matched_agent = None
+    for a in agents:
+        a_role = (a.get("role") or "").lower()
+        if a_role == normalized_role or normalized_role in a_role or a_role in normalized_role:
+            matched_agent = a
+            break
+
+    if not matched_agent:
+        if "finance" in normalized_role or "account" in normalized_role:
+            canonical_role = "Finance Manager"
+        elif "market" in normalized_role or "social" in normalized_role:
+            canonical_role = "Marketing Manager"
+        elif "engineer" in normalized_role or "code" in normalized_role or "dev" in normalized_role:
+            canonical_role = "EngineeringWorker"
+        else:
+            canonical_role = "Personal Assistant"
+
+        matched_agent = {
+            "id": str(uuid.uuid4()),
+            "name": canonical_role,
+            "role": canonical_role,
+            "trust_tier": "operate",
+            "business_id": business_id,
+            "model": None
+        }
+
+    canonical_role = matched_agent.get("role", role)
+
+    # Choose appropriate worker node constructor matching graph.py wiring
+    if canonical_role == "Marketing Manager" or "market" in canonical_role.lower():
+        from app.agents.marketing_worker import make_marketing_worker_node
+        node_factory = make_marketing_worker_node
+    elif canonical_role == "Finance Manager" or "finance" in canonical_role.lower() or "account" in canonical_role.lower():
+        from app.agents.finance_worker import make_finance_worker_node
+        node_factory = make_finance_worker_node
+    elif canonical_role in ["EngineeringWorker", "Coder", "Engineering Manager", "Software Engineer"] or "engineer" in canonical_role.lower() or "code" in canonical_role.lower():
+        from app.agents.engineering_worker import make_engineering_worker_node
+        node_factory = make_engineering_worker_node
+    else:
+        node_factory = make_specialist_worker_node
+
+    # Create task in DB
+    task_record = task_service.create_task(
+        business_id=business_id,
+        description=description,
+        mandate=description,
+        status="running",
+        assignee_role=canonical_role
+    )
+    task_id = task_record["id"] if isinstance(task_record, dict) else getattr(task_record, "id", str(uuid.uuid4()))
+    task_service.assign_task(task_id, matched_agent["id"])
+
+    # Register default tools if needed
+    if canonical_role not in ["Marketing Manager", "Finance Manager", "EngineeringWorker", "Coder", "Engineering Manager", "Software Engineer"]:
+        from app.agents.tools import register_default_tools
+        register_default_tools(business_id, canonical_role, matched_agent["id"], task_id)
+
+    task_node = TaskNode(
+        id=task_id,
+        description=description,
+        assignee_role=canonical_role,
+        assignee_id=matched_agent["id"],
+        status="running",
+        dependencies=[]
+    )
+
+    initial_state: OrchestratorState = {
+        "business_id": business_id,
+        "task_id": task_id,
+        "messages": [HumanMessage(content=description)],
+        "active_agents": {
+            matched_agent["id"]: AgentStatus(
+                id=matched_agent["id"],
+                role=canonical_role,
+                name=matched_agent.get("name", canonical_role),
+                status="running",
+                current_task_id=task_id,
+                model=matched_agent.get("model")
+            )
+        },
+        "task_graph": {task_id: task_node},
+        "shared_context": {},
+        "pending_approvals": [],
+        "execution_mode": "autonomous",
+        "supervisor_thoughts": [],
+        "worker_results": [],
+        "risk_flags": [],
+        "cost_tracker": {},
+        "iteration": 0,
+        "max_iterations": 1,
+        "status": "running",
+        "active_sub_orchestrations": {}
+    }
+
+    worker_node_fn = node_factory(matched_agent)
+    res_state = worker_node_fn(initial_state)
+
+    worker_results = res_state.get("worker_results", [])
+    if worker_results:
+        wr = worker_results[0]
+        if isinstance(wr, WorkerResult):
+            return wr.model_dump()
+        elif isinstance(wr, dict):
+            return wr
+        else:
+            return {
+                "task_id": getattr(wr, "task_id", task_id),
+                "agent_id": getattr(wr, "agent_id", matched_agent["id"]),
+                "role": getattr(wr, "role", canonical_role),
+                "status": getattr(wr, "status", "completed"),
+                "output": getattr(wr, "output", ""),
+                "cost": getattr(wr, "cost", 0.0)
+            }
+
+    updated_task = res_state.get("task_graph", {}).get(task_id)
+    return {
+        "task_id": task_id,
+        "agent_id": matched_agent["id"],
+        "role": canonical_role,
+        "status": updated_task.status if updated_task else "completed",
+        "output": updated_task.result if updated_task else "",
+        "cost": 0.0
+    }

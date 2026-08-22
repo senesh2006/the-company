@@ -126,8 +126,9 @@ class TeamRunner:
                             target_chat = last_active["value"].get("chat_id")
                         
                         if target_chat:
+                            from app.agents.state import DEFAULT_TEAM_COMPLETION_FALLBACK
                             worker_results = result.get("worker_results", [])
-                            summary_text = "\n\n".join([f"• *{r.get('agent_role', 'Agent')}*: {r.get('output', '')[:300]}" for r in worker_results[-3:]]) if worker_results else "Task successfully completed by your team."
+                            summary_text = "\n\n".join([f"• *{r.get('agent_role', 'Agent')}*: {r.get('output', '')[:300]}" for r in worker_results[-3:]]) if worker_results else DEFAULT_TEAM_COMPLETION_FALLBACK
                             reply_msg = (
                                 f"✅ *Task Completed!*\n\n"
                                 f"📋 *Mandate*: {self.prompt.split(']:')[-1].strip()}\n\n"

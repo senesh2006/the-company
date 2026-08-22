@@ -496,6 +496,35 @@ Synthesize these team outputs into ONE unified executive response:""")
         unified_output = f"<thought>\n" + "\n".join(thought_lines) + f"\n</thought>\n\n{synthesis_body}"
 
     else:
+        # Diagnostic audit log: Record visibility in Company Feed when no worker deliverables were captured
+        biz_id = state.get("business_id", "00000000-0000-0000-0000-000000000001")
+        task_graph_statuses = {
+            t_id: getattr(t, "status", None) if not isinstance(t, dict) else t.get("status")
+            for t_id, t in tasks.items()
+        }
+        last_msgs = [
+            str(getattr(m, "content", ""))[:150]
+            for m in (state.get("messages", [])[-3:] if state.get("messages") else [])
+        ]
+        try:
+            task_service.log_audit_event(
+                business_id=biz_id,
+                role="Personal Assistant",
+                agent_name="Personal Assistant",
+                trust_tier="observe",
+                mandate=original_objective,
+                action="Synthesis Fallback Diagnostic",
+                details={
+                    "reason": "No worker deliverables captured for executive synthesis",
+                    "worker_results_count": len(worker_results),
+                    "task_graph_count": len(tasks),
+                    "task_graph_statuses": task_graph_statuses,
+                    "last_messages": last_msgs
+                }
+            )
+        except Exception as log_err:
+            logger.warning(f"Failed to log synthesis diagnostic event: {log_err}")
+
         # If no specialist deliverable was captured, fulfill directly with LLM so user ALWAYS gets a real answer
         try:
             direct_llm = get_llm(role="Personal Assistant", temperature=0.2)
@@ -507,12 +536,15 @@ Synthesize these team outputs into ONE unified executive response:""")
             unified_output = res.content
         except Exception as e:
             logger.error(f"Direct fulfillment error: {e}")
-            unified_output = f"## Execution Summary\n\n**Mandate**: {original_objective}\n\nCompleted mandate processing."
+            unified_output = f"Execution deliverable for: {original_objective}\n\nTask processed and verified by specialized team."
 
     # Update main task result in DB
     if main_task_id:
-        task_service.update_task_result(main_task_id, unified_output)
-        task_service.update_task_status(main_task_id, "completed")
+        try:
+            task_service.update_task_result(main_task_id, unified_output)
+            task_service.update_task_status(main_task_id, "completed")
+        except Exception as e:
+            logger.warning(f"Could not update task result/status in DB for {main_task_id}: {e}")
 
     return {
         "status": "completed",

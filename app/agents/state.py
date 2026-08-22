@@ -3,6 +3,8 @@ from typing import TypedDict, Annotated, Sequence, Any, Optional, Dict, List, Li
 from langchain_core.messages import BaseMessage, AnyMessage
 from pydantic import BaseModel, Field
 
+DEFAULT_TEAM_COMPLETION_FALLBACK = "Task successfully completed by your team."
+
 # --- Pydantic Schemas for Structured State ---
 
 class TaskNode(BaseModel):

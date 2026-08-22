@@ -36,6 +36,9 @@ class ReviewPayload(BaseModel):
     verdict: str  # "approved" | "rejected" | "revise"
     feedback: Optional[str] = None
 
+class DirectDispatchPayload(BaseModel):
+    description: str
+
 @router.get("/feed")
 def get_company_feed(limit: int = 50, user = Depends(get_current_user)):
     """Retrieves the chronological audit log for the authenticated user's Company Feed."""
@@ -146,6 +149,29 @@ def review_task_action(task_id: str, payload: ReviewPayload, user = Depends(get_
         raise
     except Exception as e:
         logger.error(f"Review error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/{business_id}/dispatch/{role}")
+def dispatch_worker_direct_route(
+    business_id: str,
+    role: str,
+    payload: DirectDispatchPayload,
+    user = Depends(get_current_user)
+):
+    """
+    Directly dispatches a mandate to a single named specialist worker (e.g. 'finance', 'marketing')
+    bypassing the global supervisor decomposition and returning the raw WorkerResult.
+    """
+    try:
+        from app.agents.workers import dispatch_worker_direct
+        result = dispatch_worker_direct(
+            business_id=business_id,
+            role=role,
+            description=payload.description
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Direct worker dispatch error for role '{role}': {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/{business_id}/queue")
