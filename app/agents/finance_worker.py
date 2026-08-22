@@ -9,6 +9,7 @@ from langgraph.prebuilt import create_react_agent
 import operator
 
 from app.agents.llm_factory import get_llm
+from app.core.config import settings
 from app.agents.state import OrchestratorState, WorkerResult, TaskNode
 from app.agents.workers import task_service, get_research_agent
 from app.agents.finance_tools import register_finance_tools, register_subworker_tools
