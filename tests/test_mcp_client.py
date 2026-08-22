@@ -78,3 +78,28 @@ class TestMCPFallback:
 
         assert result == {"charges": []}
         mock_client.call_tool.assert_called_once_with("read_charges", {"customer_id": "cus_123"})
+
+
+class TestPerUserComposioMCP:
+    def test_get_mcp_client_uses_composio_session_when_available(self):
+        """When user_id is provided and Composio session exists, get_mcp_client should use it."""
+        mock_session = {
+            "url": "https://connect.composio.dev/mcp",
+            "headers": {"x-api-key": "comp_key", "x-user-id": "user_abc"}
+        }
+
+        with patch("app.services.composio_client.composio_service.get_mcp_session", return_value=mock_session):
+            with patch("app.services.mcp_client.settings.MCP_FALLBACK_MODE", False):
+                client = get_mcp_client("gmail", user_id="user_abc")
+                assert client is not None
+                assert client.server_url == "https://connect.composio.dev/mcp"
+
+    def test_get_mcp_client_falls_back_to_static_when_no_user_session(self):
+        """When no Composio session exists for user, falls back to static env MCP server."""
+        with patch("app.services.composio_client.composio_service.get_mcp_session", return_value=None):
+            with patch("app.services.mcp_client.settings.MCP_FALLBACK_MODE", False):
+                with patch("app.services.mcp_client.settings.SLACK_MCP_URL", "http://static-slack:8080"):
+                    client = get_mcp_client("slack", user_id="user_abc")
+                    assert client is not None
+                    assert client.server_url == "http://static-slack:8080"
+

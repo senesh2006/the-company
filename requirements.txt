@@ -303,3 +303,5 @@ yarl==1.24.5
     #   storage3
     #   supabase
     #   supabase-functions
+composio>=0.6.0
+    # via the-company (pyproject.toml)

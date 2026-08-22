@@ -442,4 +442,35 @@ export const useRefreshTodayBriefing = () => {
     });
 };
 
+// --- Integrations & Composio Connections Hooks ---
+export const useConnections = () => {
+    return useQuery({
+        queryKey: ['connections'],
+        queryFn: api.getConnections,
+        refetchInterval: 15000,
+        staleTime: 5000,
+    });
+};
+
+export const useInitiateConnection = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (payload: { toolkit: string; redirect_url?: string }) =>
+            api.initiateConnection(payload),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['connections'] });
+        },
+    });
+};
+
+export const useDisconnectConnection = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (toolkit: string) => api.disconnectConnection(toolkit),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['connections'] });
+        },
+    });
+};
+
 

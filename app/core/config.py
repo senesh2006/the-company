@@ -66,6 +66,7 @@ class Settings(BaseSettings):
 
     # Direct API integrations
     STRIPE_API_KEY: Optional[str] = None
+    COMPOSIO_API_KEY: Optional[str] = None
 
     # WhatsApp API (WAHA - WhatsApp HTTP API)
     WAHA_BASE_URL: Optional[str] = None

@@ -50,11 +50,12 @@ class TestFinanceToolsFallback:
         assert "Assets (1000s)" in data
 
     def test_stripe_finance_read_charges(self):
-        tool = StripeFinanceTool()
-        result = tool.run(action="read_charges", customer_id="cus_test")
-        data = json.loads(result)
-        assert len(data) == 2
-        assert data[0]["customer"] == "cus_test"
+        with patch("app.agents.finance_tools.settings.STRIPE_API_KEY", None):
+            tool = StripeFinanceTool()
+            result = tool.run(action="read_charges", customer_id="cus_test")
+            data = json.loads(result)
+            assert len(data) == 2
+            assert data[0]["customer"] == "cus_test"
 
     def test_google_workspace_sheets(self):
         tool = GoogleWorkspaceTool()
@@ -194,10 +195,11 @@ class TestRealMCPPaths:
 
     def test_stripe_finance_uses_mcp_client_when_no_api_key(self):
         """Without STRIPE_API_KEY configured, StripeFinanceTool should use the MCP/mock path."""
-        with patch("app.agents.finance_tools.mcp_call_or_default") as mock_mcp:
-            mock_mcp.return_value = json.dumps([{"charge_id": "ch_real"}])
-            tool = StripeFinanceTool()
-            result = tool.run(action="read_charges", customer_id="cus_real")
+        with patch("app.agents.finance_tools.settings.STRIPE_API_KEY", None):
+            with patch("app.agents.finance_tools.mcp_call_or_default") as mock_mcp:
+                mock_mcp.return_value = json.dumps([{"charge_id": "ch_real"}])
+                tool = StripeFinanceTool()
+                result = tool.run(action="read_charges", customer_id="cus_real")
 
         assert "ch_real" in result
         mock_mcp.assert_called_once()

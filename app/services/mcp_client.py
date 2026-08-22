@@ -37,6 +37,7 @@ class MCPClient:
         self,
         server_url: str,
         api_key: Optional[str] = None,
+        custom_headers: Optional[Dict[str, str]] = None,
         timeout: float = 30.0,
     ):
         self.server_url = server_url.rstrip("/")
@@ -46,6 +47,8 @@ class MCPClient:
         headers: Dict[str, str] = {"Content-Type": "application/json"}
         if self.api_key:
             headers["Authorization"] = f"Bearer {self.api_key}"
+        if custom_headers:
+            headers.update(custom_headers)
 
         self.client = httpx.Client(base_url=self.server_url, headers=headers, timeout=timeout)
 
@@ -120,14 +123,33 @@ class MCPClient:
 
 # --- Per-tool MCP client factory helpers ---
 
-def get_mcp_client(name: str) -> Optional[MCPClient]:
+def get_mcp_client(name: str, user_id: Optional[str] = None) -> Optional[MCPClient]:
     """
-    Build an MCPClient for a named external service if configured.
-    Returns None if MCP fallback mode is enabled or the server is not configured.
+    Build an MCPClient for a named external service.
+    
+    1. If user_id is provided and MCP_FALLBACK_MODE is False:
+       First checks if a per-user Composio MCP session is available.
+       If active, returns an MCPClient pointed to the user's Composio session.
+    2. Otherwise, falls back to the static env-var-configured MCP server.
+    3. Returns None if MCP fallback mode is enabled or no server is configured.
     """
     if getattr(settings, "MCP_FALLBACK_MODE", True):
         return None
 
+    # Try per-user Composio MCP session if user_id is given
+    if user_id:
+        try:
+            from app.services.composio_client import composio_service
+            session = composio_service.get_mcp_session(user_id=user_id)
+            if session and session.get("url"):
+                return MCPClient(
+                    server_url=session["url"],
+                    custom_headers=session.get("headers")
+                )
+        except Exception as e:
+            logger.debug(f"Per-user Composio MCP lookup note for {user_id}: {e}")
+
+    # Static / shared MCP server fallback
     server_url: Optional[str] = getattr(settings, f"{name.upper()}_MCP_URL", None)
     api_key: Optional[str] = getattr(settings, f"{name.upper()}_MCP_API_KEY", None)
 
@@ -143,11 +165,12 @@ def mcp_call_or_default(
     arguments: Dict[str, Any],
     default_result: Any,
     error_result: Any = None,
+    user_id: Optional[str] = None,
 ) -> Any:
     """
     Convenience wrapper: call an MCP tool if configured, otherwise return the default.
     """
-    client = get_mcp_client(mcp_name)
+    client = get_mcp_client(mcp_name, user_id=user_id)
     if client is None:
         return default_result
 

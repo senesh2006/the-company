@@ -755,7 +755,57 @@ export const api = {
     if (!res.ok) throw new Error(`Failed to refresh today's briefing (${res.status})`);
     return res.json();
   },
+
+  // --- Integrations & Composio Connections ---
+  getConnections: async (): Promise<ConnectionsResponse> => {
+    const baseUrl = getBaseUrl();
+    const res = await authFetch(`${baseUrl}/api/v1/connections`);
+    if (!res.ok) throw new Error(`Failed to fetch connections (${res.status})`);
+    return res.json();
+  },
+
+  initiateConnection: async (payload: { toolkit: string; redirect_url?: string }): Promise<InitiateConnectionResponse> => {
+    const baseUrl = getBaseUrl();
+    const res = await authFetch(`${baseUrl}/api/v1/connections/initiate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) throw new Error(`Failed to initiate connection (${res.status})`);
+    return res.json();
+  },
+
+  disconnectConnection: async (toolkit: string): Promise<any> => {
+    const baseUrl = getBaseUrl();
+    const res = await authFetch(`${baseUrl}/api/v1/connections/${toolkit}`, {
+      method: 'DELETE',
+    });
+    if (!res.ok) throw new Error(`Failed to disconnect ${toolkit} (${res.status})`);
+    return res.json();
+  },
 };
+
+export interface ConnectedAccount {
+  id?: string;
+  toolkit: string;
+  name: string;
+  category: string;
+  status: 'connected' | 'pending' | 'disconnected';
+  composio_connection_id?: string;
+  updated_at?: string;
+}
+
+export interface ConnectionsResponse {
+  connections: ConnectedAccount[];
+  total_count: number;
+}
+
+export interface InitiateConnectionResponse {
+  redirect_url: string;
+  connection_id?: string;
+  toolkit: string;
+  status: string;
+}
 
 export interface ExecutiveBriefing {
   id: string;

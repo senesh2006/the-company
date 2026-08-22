@@ -51,21 +51,44 @@ To run the entire stack (API, Postgres, Redis) using Docker Compose:
    docker-compose down
    ```
 
-## MCP (Model Context Protocol) Integrations
+## MCP (Model Context Protocol) & App Integrations
 
-The backend tools can connect to real external MCP servers instead of returning mock data.
+The system supports two complementary integration models:
+1. **Per-User Composio Connectors (Multi-Tenant, User-Scoped)**: Each authenticated user connects their own workspace accounts (Gmail, Slack, Notion, GitHub, Google Calendar, Google Sheets) via OAuth. Agents automatically execute MCP tool calls scoped to the active user's credentials.
+2. **Static Shared MCP Servers (Single-Tenant, Founder-Level)**: Global MCP endpoints configured via environment variables for fleet-wide infrastructure and fallback operations.
 
-### Configuration
+---
 
-All MCP integrations are disabled by default (`MCP_FALLBACK_MODE=true`).  Set the environment variables for the services you want to use, then set `MCP_FALLBACK_MODE=false` to enable real calls.
+### 1. Per-User Composio Connectors
+
+Users connect their accounts directly in the Web UI at `/integrations`. The FastAPI backend coordinates OAuth via Composio and generates dynamic, short-lived user MCP sessions.
+
+#### Setup:
+- Set `COMPOSIO_API_KEY` in your `.env` or deployment variables.
+- When an AI agent executes a tool call for an authenticated user, `get_mcp_client(name, user_id=user_id)` resolves the user's active Composio session.
+
+| Toolkit | Scoped Specialist Agents | Key Actions Enabled |
+|---------|--------------------------|---------------------|
+| **Gmail** (`gmail`) | Marketing Manager, Personal Assistant | Search inbox, draft emails, triage unread threads |
+| **Slack** (`slack`) | Marketing Manager, Finance Manager, PA | Post channel updates, cross-department notifications |
+| **Notion** (`notion`) | Marketing Manager, Research Specialist | Read/update content calendar, documentation export |
+| **GitHub** (`github`) | Engineering Worker, Coder | Repository inspection, pull request drafting |
+| **Google Calendar** (`googlecalendar`) | Personal Assistant | Availability checks, scheduling operational syncs |
+| **Google Sheets** (`googlesheets`) | Finance Manager, Bookkeeper | Real-time trial balance sync, ledger queries |
+
+---
+
+### 2. Static / Shared MCP Server Configuration
+
+When a tool is not connected via per-user Composio or when running fleet-wide tasks without a user context, the system falls back to static MCP servers or local simulated responses (`MCP_FALLBACK_MODE=true` by default).
 
 | Service | Environment Variable | Credential |
 |---------|---------------------|------------|
 | Supabase Ledger | `SUPABASE_MCP_URL` | `SUPABASE_MCP_KEY` |
-| Stripe | `STRIPE_API_KEY` | Official Stripe SDK (`STRIPE_MCP_URL` still works as fallback) |
+| Stripe | `STRIPE_API_KEY` | Official Stripe SDK (`STRIPE_MCP_URL` as fallback) |
 | Google Workspace | `GOOGLE_MCP_URL` | `GOOGLE_MCP_CREDENTIALS` |
 | Notion | `NOTION_MCP_URL` | `NOTION_MCP_TOKEN` |
-| Brave Search | *(none required)* | Uses free DuckDuckGo HTML search by default. `BRAVE_MCP_URL` / `BRAVE_MCP_API_KEY` optional fallback. |
+| Brave Search | *(none required)* | Free web search by default; `BRAVE_MCP_URL` optional fallback |
 | Slack/WhatsApp | `SLACK_MCP_URL` | `SLACK_MCP_BOT_TOKEN` |
 | Browser (Playwright) | `BROWSER_MCP_URL` | `BROWSER_MCP_API_KEY` |
 | Email | `EMAIL_MCP_URL` | `EMAIL_MCP_API_KEY` |
@@ -75,13 +98,13 @@ All MCP integrations are disabled by default (`MCP_FALLBACK_MODE=true`).  Set th
 
 ### Direct API Integrations
 
-Some tools call the official provider SDK directly instead of going through an MCP bridge:
-
-- **Stripe**: Set `STRIPE_API_KEY` to use the official `stripe` Python SDK.  Read-only actions (`read_charges`, `read_invoices`) call Stripe directly.  Write actions (`issue_refund`, `transfer_funds`) are staged for founder approval by default.  If `STRIPE_API_KEY` is not set, the tool falls back to the MCP/mock path.
+Some tools call official provider SDKs directly:
+- **Stripe**: Set `STRIPE_API_KEY` to use the official `stripe` Python SDK. Read-only actions (`read_charges`, `read_invoices`) call Stripe directly. Write actions (`issue_refund`, `transfer_funds`) require founder approval.
+- **Composio**: Set `COMPOSIO_API_KEY` for user-level OAuth connector lifecycles and MCP sessions.
 
 ### Health Check
 
-Check the configured MCP servers:
+Check the configured MCP servers and fallback mode status:
 
 ```bash
 curl http://localhost:8000/api/v1/health/mcp
@@ -89,7 +112,7 @@ curl http://localhost:8000/api/v1/health/mcp
 
 ### Fallback Mode
 
-When `MCP_FALLBACK_MODE=true` (default), every tool returns the original mock response so the app works without any external credentials.
+When `MCP_FALLBACK_MODE=true` (default), every tool returns realistic simulated responses, allowing local development and testing without live external credentials.
 
 ### Inter-Agent Collaboration
 
