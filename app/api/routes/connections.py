@@ -84,13 +84,6 @@ def connection_callback(
             status=resolved_status,
             connection_id=conn_id
         )
-        # Also store for default workspace
-        composio_service.set_connection_status(
-            user_id="00000000-0000-0000-0000-000000000001",
-            toolkit=resolved_toolkit,
-            status=resolved_status,
-            connection_id=conn_id
-        )
         logger.info(f"Connection callback processed for user {target_user}, toolkit {resolved_toolkit}: {resolved_status} (id={conn_id})")
     except Exception as e:
         logger.error(f"Error handling connection callback: {e}")

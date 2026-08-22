@@ -56,6 +56,55 @@ class TestComposioClientService(unittest.TestCase):
                 connection_id=None
             )
 
+    def test_cross_user_connection_isolation(self):
+        """
+        Regression test: Connected accounts for User A must NEVER leak into or influence
+        User B's connection list or status, and vice versa.
+        """
+        user_a = "user_aaaa-1111-2222-3333-444444444444"
+        user_b = "user_bbbb-5555-6666-7777-888888888888"
+
+        # Mock live composio accounts to avoid external network calls during unit test
+        with patch.object(self.service, "_fetch_live_composio_accounts", return_value={}):
+            # 1. Connect Gmail for User A only
+            self.service.set_connection_status(
+                user_id=user_a,
+                toolkit="gmail",
+                status="connected",
+                connection_id="ca_user_a_gmail"
+            )
+
+            # 2. Check User A connections
+            conns_a = {c["toolkit"]: c for c in self.service.list_user_connections(user_id=user_a)}
+            self.assertEqual(conns_a["gmail"]["status"], "connected")
+            self.assertEqual(conns_a["gmail"]["composio_connection_id"], "ca_user_a_gmail")
+
+            # 3. Check User B connections - must be strictly disconnected for Gmail
+            conns_b = {c["toolkit"]: c for c in self.service.list_user_connections(user_id=user_b)}
+            self.assertEqual(conns_b["gmail"]["status"], "disconnected")
+            self.assertIsNone(conns_b["gmail"]["composio_connection_id"])
+            self.assertEqual(self.service.get_connection_status(user_id=user_b, toolkit="gmail"), "disconnected")
+
+            # 4. Connect Slack for User B only
+            self.service.set_connection_status(
+                user_id=user_b,
+                toolkit="slack",
+                status="connected",
+                connection_id="ca_user_b_slack"
+            )
+
+            # 5. Re-verify User A: has Gmail connected, but Slack disconnected
+            conns_a2 = {c["toolkit"]: c for c in self.service.list_user_connections(user_id=user_a)}
+            self.assertEqual(conns_a2["gmail"]["status"], "connected")
+            self.assertEqual(conns_a2["slack"]["status"], "disconnected")
+            self.assertIsNone(conns_a2["slack"]["composio_connection_id"])
+
+            # 6. Re-verify User B: has Slack connected, but Gmail disconnected
+            conns_b2 = {c["toolkit"]: c for c in self.service.list_user_connections(user_id=user_b)}
+            self.assertEqual(conns_b2["slack"]["status"], "connected")
+            self.assertEqual(conns_b2["slack"]["composio_connection_id"], "ca_user_b_slack")
+            self.assertEqual(conns_b2["gmail"]["status"], "disconnected")
+
 
 if __name__ == "__main__":
     unittest.main()
