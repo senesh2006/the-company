@@ -15,30 +15,43 @@ def _admin_mcp_call(mcp_name: str, tool_name: str, arguments: Dict[str, Any], de
     return mcp_call_or_default(mcp_name, tool_name, arguments, default_result)
 
 class InboxTriageInput(BaseModel):
-    action: str = Field(description="'fetch_unread', 'draft_reply', or 'archive'")
-    sender_or_subject: Optional[str] = Field(None, description="Sender email or subject query")
+    action: str = Field(default="fetch_unread", description="'fetch_unread', 'search_emails', 'search', 'draft_reply', or 'archive'")
+    sender_or_subject: Optional[str] = Field(None, description="Sender email, subject query, or keyword")
+    query: Optional[str] = Field(None, description="Search keyword or filter e.g. 'invoice', 'is:unread'")
     reply_body: Optional[str] = Field(None, description="Drafted reply text")
+    max_results: Optional[int] = Field(5, description="Maximum number of emails to retrieve")
 
 class InboxTriageTool(BaseTool):
     name = "inbox_triage"
-    description = "Triage incoming business emails, organize priority queues, and draft replies using connected live Gmail/Email accounts."
+    description = "Triage incoming business emails, search for keywords (like 'invoice'), organize priority queues, and draft replies using connected live Gmail/Email accounts."
     args_schema = InboxTriageInput
     cost_estimate = 0.01
 
-    def _run(self, action: str = "fetch_unread", sender_or_subject: Optional[str] = None, reply_body: Optional[str] = None) -> str:
+    def _run(
+        self,
+        action: str = "fetch_unread",
+        sender_or_subject: Optional[str] = None,
+        query: Optional[str] = None,
+        reply_body: Optional[str] = None,
+        max_results: Optional[int] = 5
+    ) -> str:
         act = (action or "fetch_unread").lower()
-        user_id = getattr(self, "user_id", None) or "00000000-0000-0000-0000-000000000000"
+        target_uid = getattr(self, "user_id", None) or getattr(self, "business_id", None) or "00000000-0000-0000-0000-000000000000"
 
         # 1. Direct Composio execution if available
         try:
             from app.services.composio_client import composio_service
             if composio_service.api_key:
-                if act in ["fetch_unread", "list_today", "list_emails", "get_emails", "read_inbox", "list"]:
+                if act in ["fetch_unread", "search_emails", "search", "list_today", "list_emails", "get_emails", "read_inbox", "list"]:
                     try:
+                        search_q = query or sender_or_subject
+                        fetch_args = {"max_results": max_results or 5}
+                        if search_q:
+                            fetch_args["query"] = search_q
                         res = composio_service.execute_tool(
-                            user_id=user_id,
+                            user_id=target_uid,
                             slug="GMAIL_FETCH_EMAILS",
-                            arguments={"max_results": 10}
+                            arguments=fetch_args
                         )
                         if res:
                             return json.dumps(res) if isinstance(res, (dict, list)) else str(res)
@@ -47,7 +60,7 @@ class InboxTriageTool(BaseTool):
                 elif act == "draft_reply":
                     try:
                         res = composio_service.execute_tool(
-                            user_id=user_id,
+                            user_id=target_uid,
                             slug="GMAIL_CREATE_EMAIL_DRAFT",
                             arguments={"recipient_email": sender_or_subject or "", "body": reply_body or ""}
                         )
@@ -62,14 +75,14 @@ class InboxTriageTool(BaseTool):
         mcp_res = _admin_mcp_call(
             "email",
             act,
-            {"sender_or_subject": sender_or_subject, "reply_body": reply_body},
+            {"sender_or_subject": sender_or_subject or query, "reply_body": reply_body, "max_results": max_results},
             None,
         )
         if mcp_res is not None:
             return json.dumps(mcp_res) if isinstance(mcp_res, (dict, list)) else str(mcp_res)
 
         # 3. Clean real message when no live email is present (NO FAKE HARDCODED MOCKS)
-        if act in ["fetch_unread", "list_today", "list_emails", "get_emails", "read_inbox", "list"]:
+        if act in ["fetch_unread", "search_emails", "search", "list_today", "list_emails", "get_emails", "read_inbox", "list"]:
             return json.dumps([])
         elif act == "draft_reply":
             return f"Drafted reply for {sender_or_subject or 'recipient'}: '{reply_body or 'Acknowledged.'}'."

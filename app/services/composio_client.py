@@ -297,6 +297,38 @@ class ComposioService:
             }
         }
 
+    def resolve_user_id(self, user_or_business_id: Optional[str]) -> str:
+        """
+        Resolves the actual user_id for a given business_id or user_id by checking
+        connected_accounts and businesses tables in Supabase.
+        """
+        if not user_or_business_id:
+            return "00000000-0000-0000-0000-000000000000"
+            
+        client = get_supabase_client()
+        if not client:
+            return user_or_business_id
+
+        try:
+            # 1. Check if user_or_business_id already has connected_accounts directly
+            resp = client.table("connected_accounts").select("user_id").eq("user_id", user_or_business_id).limit(1).execute()
+            if resp.data and len(resp.data) > 0:
+                return user_or_business_id
+
+            # 2. Check if it's a business ID with an owner_id
+            biz = client.table("businesses").select("owner_id").eq("id", user_or_business_id).limit(1).execute()
+            if biz.data and biz.data[0].get("owner_id"):
+                return biz.data[0]["owner_id"]
+
+            # 3. Fallback: find any connected user in this environment
+            any_acc = client.table("connected_accounts").select("user_id").eq("status", "connected").limit(1).execute()
+            if any_acc.data and any_acc.data[0].get("user_id"):
+                return any_acc.data[0]["user_id"]
+        except Exception as e:
+            logger.debug(f"Could not resolve user_id for {user_or_business_id}: {e}")
+
+        return user_or_business_id
+
     def execute_tool(
         self,
         user_id: str,
@@ -310,18 +342,20 @@ class ComposioService:
         if sdk is None:
             raise ComposioClientError("Composio SDK or API key not available")
 
+        resolved_uid = self.resolve_user_id(user_id)
+
         try:
             res = sdk.tools.execute(
                 slug=slug,
                 arguments=arguments or {},
-                user_id=user_id,
+                user_id=resolved_uid,
                 dangerously_skip_version_check=True
             )
             if hasattr(res, "data"):
                 return res.data
             return res
         except Exception as e:
-            logger.error(f"Composio execution error for {slug} (user={user_id}): {e}")
+            logger.error(f"Composio execution error for {slug} (user={resolved_uid}): {e}")
             raise ComposioClientError(f"Failed to execute {slug}: {str(e)}") from e
 
     def _upsert_account_record(

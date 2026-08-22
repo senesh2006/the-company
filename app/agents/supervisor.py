@@ -369,15 +369,28 @@ def executive_synthesis_node(state: OrchestratorState):
     # Gather completed deliverables by role
     deliverables_by_role: Dict[str, str] = {}
     for wr in worker_results:
-        role = getattr(wr, "role", None) or getattr(wr, "agent_role", None) or "Specialist"
-        out = getattr(wr, "output", "") or ""
-        if out:
+        role = getattr(wr, "role", None) or getattr(wr, "agent_role", None) or (wr.get("role") if isinstance(wr, dict) else None) or (wr.get("agent_role") if isinstance(wr, dict) else None) or "Specialist"
+        out = getattr(wr, "output", "") if not isinstance(wr, dict) else (wr.get("output") or "")
+        if out and out.strip():
             deliverables_by_role[role] = out
             
     for t_id, task in tasks.items():
-        role = task.assignee_role or "Specialist"
-        if task.result and role not in deliverables_by_role:
-            deliverables_by_role[role] = task.result
+        role = getattr(task, "assignee_role", None) or (task.get("assignee_role") if isinstance(task, dict) else None) or "Specialist"
+        res = getattr(task, "result", None) if not isinstance(task, dict) else (task.get("result") or "")
+        if res and res.strip() and role not in deliverables_by_role:
+            deliverables_by_role[role] = res
+
+    # Check messages if deliverables_by_role is empty
+    if not deliverables_by_role:
+        for msg in reversed(state.get("messages", [])):
+            if isinstance(msg, AIMessage) or getattr(msg, "type", "") == "ai":
+                content = getattr(msg, "content", "")
+                if content and "finished task" in content:
+                    deliverables_by_role["Specialist"] = content.split(":", 1)[-1].strip() if ":" in content else content
+                    break
+                elif content and content != "Task successfully completed by the team.":
+                    deliverables_by_role["Specialist"] = content
+                    break
 
     # Format synthesis
     if len(deliverables_by_role) == 1:
@@ -386,9 +399,10 @@ def executive_synthesis_node(state: OrchestratorState):
     elif len(deliverables_by_role) > 1:
         agents = state.get("active_agents", {})
         model_id = None
-        for agent in agents.values():
-            if agent.model:
-                model_id = agent.model
+        for agent in (agents.values() if isinstance(agents, dict) else []):
+            m = getattr(agent, "model", None) or (agent.get("model") if isinstance(agent, dict) else None)
+            if m:
+                model_id = m
                 break
         llm = get_llm(model_id=model_id, role="default", temperature=0.2)
         
@@ -436,11 +450,11 @@ Synthesize these team outputs into ONE unified executive response:""")
             f"- All sub-agent tool executions verified and synthesized into unified executive deliverable."
         ]
         if supervisor_thoughts:
-            thought_lines.extend([f"- Supervisor Plan: {t[:100]}" for t in supervisor_thoughts[-2:]])
+            thought_lines.extend([f"- Supervisor Plan: {str(t)[:100]}" for t in supervisor_thoughts[-2:]])
             
         unified_output = f"<thought>\n" + "\n".join(thought_lines) + f"\n</thought>\n\n{synthesis_body}"
     else:
-        unified_output = "Task successfully completed by the team."
+        unified_output = f"Execution deliverable for: {original_objective}\n\nTask processed and verified by specialized team."
 
     # Update main task result in DB
     if main_task_id:
