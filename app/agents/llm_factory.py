@@ -212,7 +212,9 @@ def get_llm(model_id: Optional[str] = None, role: Optional[str] = None, temperat
                     model=m_name,
                     api_key=key,
                     base_url=base,
-                    temperature=temperature
+                    temperature=temperature,
+                    timeout=60,
+                    max_retries=2,
                 ))
                 logger.info(f"[LLM Factory] Added candidate: {p_name} ({m_name})")
             except Exception as e:
@@ -274,7 +276,9 @@ def get_fast_llm(temperature: float = 0.0) -> Any:
                     model=m_name,
                     api_key=key,
                     base_url=base,
-                    temperature=temperature
+                    temperature=temperature,
+                    timeout=60,
+                    max_retries=2,
                 ))
             except Exception:
                 pass
