@@ -226,24 +226,29 @@ def get_llm(model_id: Optional[str] = None, role: Optional[str] = None, temperat
         add_candidate(model_name, "nvidia", settings.NVIDIA_API_KEY, settings.NVIDIA_BASE_URL)
     elif provider == "groq":
         add_candidate(model_name, "groq", settings.GROQ_API_KEY, "https://api.groq.com/openai/v1")
+        if model_name != "llama-3.1-8b-instant":
+            add_candidate("llama-3.1-8b-instant", "groq-instant", settings.GROQ_API_KEY, "https://api.groq.com/openai/v1")
     elif provider == "fireworks":
         add_candidate(model_name, "fireworks", getattr(settings, "FIREWORKS_API_KEY", None), "https://api.fireworks.ai/inference/v1")
     elif provider == "openai":
         add_candidate(model_name, "openai", settings.OPENAI_API_KEY, None)
     elif provider == "gemini":
         add_candidate("gemini-2.0-flash", "gemini", settings.GEMINI_API_KEY or settings.GOOGLE_API_KEY, settings.GEMINI_BASE_URL)
+        add_candidate("gemini-1.5-flash", "gemini-1.5", settings.GEMINI_API_KEY or settings.GOOGLE_API_KEY, settings.GEMINI_BASE_URL)
 
     # Add remaining valid API keys as secondary fallbacks
     if provider != "nvidia" and _is_valid_key(settings.NVIDIA_API_KEY):
         add_candidate(_nvidia_model_name(model_id or "kimi-k3"), "nvidia", settings.NVIDIA_API_KEY, settings.NVIDIA_BASE_URL)
     if provider != "groq" and _is_valid_key(settings.GROQ_API_KEY):
         add_candidate(_groq_model_name(model_id or "kimi-k3"), "groq", settings.GROQ_API_KEY, "https://api.groq.com/openai/v1")
+        add_candidate("llama-3.1-8b-instant", "groq-instant", settings.GROQ_API_KEY, "https://api.groq.com/openai/v1")
     if provider != "fireworks" and _is_valid_key(getattr(settings, "FIREWORKS_API_KEY", None)):
         add_candidate("accounts/fireworks/models/llama-v3p3-70b-instruct", "fireworks", getattr(settings, "FIREWORKS_API_KEY", None), "https://api.fireworks.ai/inference/v1")
     if provider != "openai" and _is_valid_key(settings.OPENAI_API_KEY):
         add_candidate("gpt-4o-mini", "openai", settings.OPENAI_API_KEY, None)
     if provider != "gemini" and (_is_valid_key(settings.GEMINI_API_KEY) or _is_valid_key(settings.GOOGLE_API_KEY)):
         add_candidate("gemini-2.0-flash", "gemini", settings.GEMINI_API_KEY or settings.GOOGLE_API_KEY, settings.GEMINI_BASE_URL)
+        add_candidate("gemini-1.5-flash", "gemini-1.5", settings.GEMINI_API_KEY or settings.GOOGLE_API_KEY, settings.GEMINI_BASE_URL)
 
     fallback_msg_llm = MissingApiKeyFallbackLLM()
 
@@ -295,12 +300,14 @@ def get_fast_llm(temperature: float = 0.0) -> Any:
     # 3. Groq instant
     if has_groq:
         add_candidate("llama-3.3-70b-versatile", "groq", settings.GROQ_API_KEY, "https://api.groq.com/openai/v1")
+        add_candidate("llama-3.1-8b-instant", "groq-instant", settings.GROQ_API_KEY, "https://api.groq.com/openai/v1")
     # 4. OpenAI mini
     if has_openai:
         add_candidate("gpt-4o-mini", "openai", settings.OPENAI_API_KEY, None)
     # 5. Gemini Flash
     if has_gemini:
         add_candidate("gemini-2.0-flash", "gemini", settings.GEMINI_API_KEY or settings.GOOGLE_API_KEY, settings.GEMINI_BASE_URL)
+        add_candidate("gemini-1.5-flash", "gemini-1.5", settings.GEMINI_API_KEY or settings.GOOGLE_API_KEY, settings.GEMINI_BASE_URL)
 
     if not candidates:
         return get_llm(temperature=temperature)
