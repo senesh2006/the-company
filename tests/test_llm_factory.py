@@ -140,3 +140,14 @@ def test_list_available_models_hides_broken_models():
                 models = list_available_models()
                 assert all(m["id"] != "llama-3.1-8b" for m in models)
                 assert any(m["id"] == "kimi-k3" for m in models)
+
+
+def test_resolve_model_openrouter_priority():
+    """OpenRouter should be priority 1 and resolve to dots-studio/dots-3-note-preview:free."""
+    with patch("app.agents.llm_factory.settings.OPENROUTER_API_KEY", "sk-or-v1-testkey1234567890"), \
+         patch("app.agents.llm_factory.settings.GROQ_API_KEY", "gsk-testkey"), \
+         patch("app.agents.llm_factory.settings.NVIDIA_API_KEY", "nvapi-testkey"):
+        model_name, provider = resolve_model("dots-3-note", role="default")
+        assert provider == "openrouter"
+        assert model_name == "dots-studio/dots-3-note-preview:free"
+

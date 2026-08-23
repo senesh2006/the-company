@@ -80,6 +80,17 @@ def llm_health_check():
 
     providers = [
         {
+            "name": "openrouter",
+            "display_name": "OpenRouter (dots-studio/dots-3-note-preview:free)",
+            "key": getattr(settings, "OPENROUTER_API_KEY", None),
+            "base_url": getattr(settings, "OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1"),
+            "models": [
+                getattr(settings, "OPENROUTER_MODEL", "dots-studio/dots-3-note-preview:free") or "dots-studio/dots-3-note-preview:free",
+                "meta-llama/llama-3.3-70b-instruct:free"
+            ],
+            "headers": {"HTTP-Referer": "https://thecompany.ai", "X-Title": "The Company OS"}
+        },
+        {
             "name": "groq",
             "display_name": "Groq (Llama 3.3 70B & 3.1 8B)",
             "key": settings.GROQ_API_KEY,
@@ -137,14 +148,17 @@ def llm_health_check():
 
         for m in p["models"]:
             t0 = time.time()
+            kwargs = {
+                "model": m,
+                "api_key": clean_key,
+                "base_url": p["base_url"],
+                "timeout": 10,
+                "max_retries": 0
+            }
+            if p.get("headers"):
+                kwargs["default_headers"] = p["headers"]
             try:
-                chat = ChatOpenAI(
-                    model=m,
-                    api_key=clean_key,
-                    base_url=p["base_url"],
-                    timeout=10,
-                    max_retries=0
-                )
+                chat = ChatOpenAI(**kwargs)
                 resp = chat.invoke([HumanMessage(content="Ping. Reply with OK.")])
                 latency = round((time.time() - t0) * 1000, 1)
                 tested_models.append({

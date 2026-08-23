@@ -67,6 +67,8 @@ class MissingApiKeyFallbackLLM(SimpleChatModel):
 
 # Model registry: public display id -> (provider_model_id, provider)
 MODEL_REGISTRY = {
+    "dots-3-note": ("dots-studio/dots-3-note-preview:free", "openrouter"),
+    "dots-studio/dots-3-note-preview:free": ("dots-studio/dots-3-note-preview:free", "openrouter"),
     "kimi-k3": ("llama-3.3-70b-versatile", "groq"),
     "gpt-4o": ("gpt-4o", "openai"),
     "gpt-4o-mini": ("gpt-4o-mini", "openai"),
@@ -78,6 +80,7 @@ MODEL_REGISTRY = {
 }
 
 NVIDIA_MODEL_MAP = {
+    "dots-3-note": "meta/llama-3.3-70b-instruct",
     "kimi-k3": "meta/llama-3.3-70b-instruct",
     "llama-3.1-70b": "meta/llama-3.3-70b-instruct",
     "llama-v3-8b": "meta/llama-3.1-8b-instruct",
@@ -86,10 +89,11 @@ NVIDIA_MODEL_MAP = {
     "mistral-small-24b": "mistralai/mixtral-8x7b-instruct-v0.1",
 }
 
-DEFAULT_AGENT_MODEL_ID = "kimi-k3"
+DEFAULT_AGENT_MODEL_ID = "dots-3-note"
 BROKEN_MODEL_IDS = {"llama-3.1-8b"}
 
 MODEL_DISPLAY = {
+    "dots-3-note": {"name": "Dots 3 Note (Preview)", "provider": "OpenRouter", "tier": "power"},
     "kimi-k3": {"name": "Llama 3.3 70B", "provider": "Groq", "tier": "power"},
     "gpt-4o": {"name": "GPT-4o", "provider": "OpenAI", "tier": "standard"},
     "gpt-4o-mini": {"name": "GPT-4o Mini", "provider": "OpenAI", "tier": "fast"},
@@ -101,23 +105,36 @@ MODEL_DISPLAY = {
 }
 
 DEFAULT_MODEL_BY_ROLE = {
-    "Finance Manager": "kimi-k3",
-    "Marketing Manager": "kimi-k3",
-    "Admin & Operations Worker": "kimi-k3",
-    "Research Specialist": "kimi-k3",
-    "EngineeringWorker": "kimi-k3",
-    "Coder": "kimi-k3",
-    "Engineering Manager": "kimi-k3",
-    "Software Engineer": "kimi-k3",
-    "default": "kimi-k3",
+    "Finance Manager": "dots-3-note",
+    "Marketing Manager": "dots-3-note",
+    "Admin & Operations Worker": "dots-3-note",
+    "Research Specialist": "dots-3-note",
+    "EngineeringWorker": "dots-3-note",
+    "Coder": "dots-3-note",
+    "Engineering Manager": "dots-3-note",
+    "Software Engineer": "dots-3-note",
+    "default": "dots-3-note",
 }
+
+
+def _openrouter_model_name(model_id: str) -> str:
+    custom = getattr(settings, "OPENROUTER_MODEL", None)
+    if custom:
+        return custom
+    reg = MODEL_REGISTRY.get(model_id)
+    if reg and reg[1] == "openrouter":
+        return reg[0]
+    return "dots-studio/dots-3-note-preview:free"
 
 
 def _groq_model_name(model_id: str) -> str:
     custom = getattr(settings, "GROQ_CUSTOM_MODEL", None)
     if custom:
         return custom
-    return MODEL_REGISTRY.get(model_id, ("llama-3.3-70b-versatile", "groq"))[0]
+    reg = MODEL_REGISTRY.get(model_id)
+    if reg and reg[1] == "groq":
+        return reg[0]
+    return "llama-3.3-70b-versatile"
 
 
 def _nvidia_model_name(model_id: str) -> str:
@@ -132,19 +149,22 @@ def resolve_model(model_id: Optional[str], role: Optional[str] = None) -> tuple[
     Resolve requested model to known provider with valid API keys.
     Returns (model_name, provider_name). If no valid key is found for any provider, provider is None.
     """
+    has_openrouter = _is_valid_key(settings.OPENROUTER_API_KEY)
     has_groq = _is_valid_key(settings.GROQ_API_KEY)
     has_openai = _is_valid_key(settings.OPENAI_API_KEY)
     has_nvidia = _is_valid_key(settings.NVIDIA_API_KEY)
     has_gemini = _is_valid_key(settings.GEMINI_API_KEY) or _is_valid_key(settings.GOOGLE_API_KEY)
     has_fireworks = _is_valid_key(getattr(settings, "FIREWORKS_API_KEY", None))
 
-    logger.info(f"[LLM Resolve] Keys available: NVIDIA={has_nvidia}, Groq={has_groq}, Fireworks={has_fireworks}, OpenAI={has_openai}, Gemini={has_gemini}")
+    logger.info(f"[LLM Resolve] Keys available: OpenRouter={has_openrouter}, NVIDIA={has_nvidia}, Groq={has_groq}, Fireworks={has_fireworks}, OpenAI={has_openai}, Gemini={has_gemini}")
 
     # Forced provider override (only if that provider's key is valid)
     forced = (getattr(settings, "LLM_PROVIDER", None) or "").strip().lower()
     if forced:
         logger.info(f"[LLM Resolve] LLM_PROVIDER forced to: '{forced}'")
-        if forced == "groq" and has_groq:
+        if forced == "openrouter" and has_openrouter:
+            return _openrouter_model_name(model_id or "dots-3-note"), "openrouter"
+        elif forced == "groq" and has_groq:
             return _groq_model_name(model_id or "kimi-k3"), "groq"
         elif forced == "openai" and has_openai:
             return "gpt-4o-mini", "openai"
@@ -160,32 +180,38 @@ def resolve_model(model_id: Optional[str], role: Optional[str] = None) -> tuple[
     if not model_id or model_id not in MODEL_REGISTRY or model_id in BROKEN_MODEL_IDS:
         model_id = DEFAULT_MODEL_BY_ROLE.get(role or "default", DEFAULT_MODEL_BY_ROLE["default"])
 
-    model_name, default_provider = MODEL_REGISTRY[model_id]
+    model_name, default_provider = MODEL_REGISTRY.get(model_id, ("dots-studio/dots-3-note-preview:free", "openrouter"))
 
-    # Priority 1: NVIDIA NIM
+    # Priority 1: OpenRouter (Main provider)
+    if has_openrouter:
+        chosen = _openrouter_model_name(model_id), "openrouter"
+        logger.info(f"[LLM Resolve] Selected OpenRouter: {chosen[0]}")
+        return chosen
+
+    # Priority 2: NVIDIA NIM
     if has_nvidia:
         chosen = _nvidia_model_name(model_id), "nvidia"
         logger.info(f"[LLM Resolve] Selected NVIDIA: {chosen[0]}")
         return chosen
 
-    # Priority 2: Groq
+    # Priority 3: Groq
     if has_groq:
         chosen = _groq_model_name(model_id), "groq"
         logger.info(f"[LLM Resolve] Selected Groq: {chosen[0]}")
         return chosen
 
-    # Priority 3: Fireworks AI
+    # Priority 4: Fireworks AI
     if has_fireworks:
         logger.info("[LLM Resolve] Selected Fireworks AI")
         return "accounts/fireworks/models/llama-v3p3-70b-instruct", "fireworks"
 
-    # Priority 4: OpenAI
+    # Priority 5: OpenAI
     if has_openai:
         fallback_model = MODEL_REGISTRY["gpt-4o-mini"][0] if "gpt-4o-mini" in MODEL_REGISTRY else "gpt-4o"
         logger.info(f"[LLM Resolve] Selected OpenAI: {fallback_model}")
         return fallback_model, "openai"
 
-    # Priority 5: Gemini
+    # Priority 6: Gemini
     if has_gemini:
         logger.info("[LLM Resolve] Selected Gemini")
         return "gemini-2.0-flash", "gemini"
@@ -205,24 +231,34 @@ def get_llm(model_id: Optional[str] = None, role: Optional[str] = None, temperat
 
     candidates = []
 
+    or_headers = {"HTTP-Referer": "https://thecompany.ai", "X-Title": "The Company OS"}
+
     # Helper to append candidate ChatOpenAI instance
-    def add_candidate(m_name, p_name, key, base):
+    def add_candidate(m_name, p_name, key, base, headers=None):
         k = (key or "").strip().strip('"').strip("'")
         if _is_valid_key(k):
             try:
-                candidates.append(ChatOpenAI(
-                    model=m_name,
-                    api_key=k,
-                    base_url=base,
-                    temperature=temperature,
-                    timeout=60,
-                    max_retries=2,
-                ))
+                kwargs = {
+                    "model": m_name,
+                    "api_key": k,
+                    "base_url": base,
+                    "temperature": temperature,
+                    "timeout": 60,
+                    "max_retries": 2,
+                }
+                if headers:
+                    kwargs["default_headers"] = headers
+                candidates.append(ChatOpenAI(**kwargs))
                 logger.info(f"[LLM Factory] Added candidate: {p_name} ({m_name})")
             except Exception as e:
                 logger.warning(f"Failed to create ChatOpenAI for provider {p_name}: {e}")
 
-    if provider == "nvidia":
+    if provider == "openrouter":
+        or_model = getattr(settings, "OPENROUTER_MODEL", "dots-studio/dots-3-note-preview:free") or "dots-studio/dots-3-note-preview:free"
+        add_candidate(or_model, "openrouter", settings.OPENROUTER_API_KEY, settings.OPENROUTER_BASE_URL, headers=or_headers)
+        add_candidate("meta-llama/llama-3.3-70b-instruct:free", "openrouter-llama", settings.OPENROUTER_API_KEY, settings.OPENROUTER_BASE_URL, headers=or_headers)
+        add_candidate("google/gemini-2.0-flash-exp:free", "openrouter-gemini", settings.OPENROUTER_API_KEY, settings.OPENROUTER_BASE_URL, headers=or_headers)
+    elif provider == "nvidia":
         add_candidate(model_name, "nvidia", settings.NVIDIA_API_KEY, settings.NVIDIA_BASE_URL)
     elif provider == "groq":
         add_candidate(model_name, "groq", settings.GROQ_API_KEY, "https://api.groq.com/openai/v1")
@@ -237,6 +273,10 @@ def get_llm(model_id: Optional[str] = None, role: Optional[str] = None, temperat
         add_candidate("gemini-1.5-flash", "gemini-1.5", settings.GEMINI_API_KEY or settings.GOOGLE_API_KEY, settings.GEMINI_BASE_URL)
 
     # Add remaining valid API keys as secondary fallbacks
+    if provider != "openrouter" and _is_valid_key(settings.OPENROUTER_API_KEY):
+        or_model = getattr(settings, "OPENROUTER_MODEL", "dots-studio/dots-3-note-preview:free") or "dots-studio/dots-3-note-preview:free"
+        add_candidate(or_model, "openrouter", settings.OPENROUTER_API_KEY, settings.OPENROUTER_BASE_URL, headers=or_headers)
+        add_candidate("meta-llama/llama-3.3-70b-instruct:free", "openrouter-llama", settings.OPENROUTER_API_KEY, settings.OPENROUTER_BASE_URL, headers=or_headers)
     if provider != "nvidia" and _is_valid_key(settings.NVIDIA_API_KEY):
         add_candidate(_nvidia_model_name(model_id or "kimi-k3"), "nvidia", settings.NVIDIA_API_KEY, settings.NVIDIA_BASE_URL)
     if provider != "groq" and _is_valid_key(settings.GROQ_API_KEY):
@@ -266,8 +306,9 @@ def get_fast_llm(temperature: float = 0.0) -> Any:
     """
     Returns an ultra-fast, low-latency LLM optimized for auxiliary orchestration
     steps (routing, complexity analysis, structured JSON planning, and reflection).
-    Prefers active providers like NVIDIA NIM, Fireworks, Groq, OpenAI, or Gemini.
+    Prefers active providers like OpenRouter, NVIDIA NIM, Fireworks, Groq, OpenAI, or Gemini.
     """
+    has_openrouter = _is_valid_key(settings.OPENROUTER_API_KEY)
     has_nvidia = _is_valid_key(settings.NVIDIA_API_KEY)
     has_fireworks = _is_valid_key(getattr(settings, "FIREWORKS_API_KEY", None))
     has_groq = _is_valid_key(settings.GROQ_API_KEY)
@@ -276,35 +317,45 @@ def get_fast_llm(temperature: float = 0.0) -> Any:
 
     candidates = []
 
-    def add_candidate(m_name, p_name, key, base):
+    def add_candidate(m_name, p_name, key, base, headers=None):
         k = (key or "").strip().strip('"').strip("'")
         if _is_valid_key(k):
             try:
-                candidates.append(ChatOpenAI(
-                    model=m_name,
-                    api_key=k,
-                    base_url=base,
-                    temperature=temperature,
-                    timeout=60,
-                    max_retries=2,
-                ))
+                kwargs = {
+                    "model": m_name,
+                    "api_key": k,
+                    "base_url": base,
+                    "temperature": temperature,
+                    "timeout": 60,
+                    "max_retries": 2,
+                }
+                if headers:
+                    kwargs["default_headers"] = headers
+                candidates.append(ChatOpenAI(**kwargs))
             except Exception:
                 pass
 
-    # 1. NVIDIA NIM (meta/llama-3.3-70b-instruct)
+    or_headers = {"HTTP-Referer": "https://thecompany.ai", "X-Title": "The Company OS"}
+
+    # 1. OpenRouter (dots-studio/dots-3-note-preview:free & llama-3.3-70b:free)
+    if has_openrouter:
+        or_model = getattr(settings, "OPENROUTER_MODEL", "dots-studio/dots-3-note-preview:free") or "dots-studio/dots-3-note-preview:free"
+        add_candidate(or_model, "openrouter", settings.OPENROUTER_API_KEY, settings.OPENROUTER_BASE_URL, headers=or_headers)
+        add_candidate("meta-llama/llama-3.3-70b-instruct:free", "openrouter-llama", settings.OPENROUTER_API_KEY, settings.OPENROUTER_BASE_URL, headers=or_headers)
+    # 2. NVIDIA NIM (meta/llama-3.3-70b-instruct)
     if has_nvidia:
         add_candidate("meta/llama-3.3-70b-instruct", "nvidia", settings.NVIDIA_API_KEY, settings.NVIDIA_BASE_URL)
-    # 2. Fireworks AI Llama 70B
+    # 3. Fireworks AI Llama 70B
     if has_fireworks:
         add_candidate("accounts/fireworks/models/llama-v3p3-70b-instruct", "fireworks", getattr(settings, "FIREWORKS_API_KEY", None), "https://api.fireworks.ai/inference/v1")
-    # 3. Groq instant
+    # 4. Groq instant
     if has_groq:
         add_candidate("llama-3.3-70b-versatile", "groq", settings.GROQ_API_KEY, "https://api.groq.com/openai/v1")
         add_candidate("llama-3.1-8b-instant", "groq-instant", settings.GROQ_API_KEY, "https://api.groq.com/openai/v1")
-    # 4. OpenAI mini
+    # 5. OpenAI mini
     if has_openai:
         add_candidate("gpt-4o-mini", "openai", settings.OPENAI_API_KEY, None)
-    # 5. Gemini Flash
+    # 6. Gemini Flash
     if has_gemini:
         add_candidate("gemini-2.0-flash", "gemini", settings.GEMINI_API_KEY or settings.GOOGLE_API_KEY, settings.GEMINI_BASE_URL)
         add_candidate("gemini-1.5-flash", "gemini-1.5", settings.GEMINI_API_KEY or settings.GOOGLE_API_KEY, settings.GEMINI_BASE_URL)
@@ -320,6 +371,7 @@ def get_fast_llm(temperature: float = 0.0) -> Any:
 
 def list_available_models() -> list[dict]:
     """Return all models with metadata, suitable for frontend dropdowns."""
+    has_openrouter = _is_valid_key(settings.OPENROUTER_API_KEY)
     has_nvidia = _is_valid_key(settings.NVIDIA_API_KEY)
     has_groq = _is_valid_key(settings.GROQ_API_KEY)
     has_openai = _is_valid_key(settings.OPENAI_API_KEY)
@@ -328,9 +380,12 @@ def list_available_models() -> list[dict]:
     for model_id, meta in MODEL_DISPLAY.items():
         if model_id in BROKEN_MODEL_IDS:
             continue
-        model_name, default_provider = MODEL_REGISTRY[model_id]
+        model_name, default_provider = MODEL_REGISTRY.get(model_id, (model_id, "openrouter"))
 
-        if has_nvidia:
+        if has_openrouter and default_provider == "openrouter":
+            provider_display = "OpenRouter"
+            actual_model = _openrouter_model_name(model_id)
+        elif has_nvidia:
             provider_display = "NVIDIA NIM"
             actual_model = _nvidia_model_name(model_id)
         elif has_groq:
@@ -339,6 +394,9 @@ def list_available_models() -> list[dict]:
         elif has_openai:
             provider_display = "OpenAI"
             actual_model = model_name
+        elif has_openrouter:
+            provider_display = "OpenRouter"
+            actual_model = _openrouter_model_name(model_id)
         else:
             continue
 

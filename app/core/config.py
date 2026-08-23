@@ -8,6 +8,9 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "The Company"
     API_V1_STR: str = "/api/v1"
     OPENAI_API_KEY: Optional[str] = None
+    OPENROUTER_API_KEY: Optional[str] = None
+    OPENROUTER_BASE_URL: str = "https://openrouter.ai/api/v1"
+    OPENROUTER_MODEL: str = "dots-studio/dots-3-note-preview:free"
     GROQ_API_KEY: Optional[str] = None
     NVIDIA_API_KEY: Optional[str] = None
     NVIDIA_BASE_URL: str = "https://integrate.api.nvidia.com/v1"
@@ -116,6 +119,10 @@ if not settings.NVIDIA_API_KEY:
     settings.NVIDIA_API_KEY = os.getenv("NVIDIA_API_KEY")
 if not settings.OPENAI_API_KEY:
     settings.OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+if not settings.OPENROUTER_API_KEY:
+    settings.OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
+if not settings.OPENROUTER_MODEL:
+    settings.OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL") or "dots-studio/dots-3-note-preview:free"
 if not settings.FIREWORKS_API_KEY:
     settings.FIREWORKS_API_KEY = os.getenv("FIREWORKS_API_KEY")
 if not settings.GEMINI_API_KEY:
