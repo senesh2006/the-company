@@ -116,8 +116,12 @@ if not settings.NVIDIA_API_KEY:
     settings.NVIDIA_API_KEY = os.getenv("NVIDIA_API_KEY")
 if not settings.OPENAI_API_KEY:
     settings.OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+if not settings.FIREWORKS_API_KEY:
+    settings.FIREWORKS_API_KEY = os.getenv("FIREWORKS_API_KEY")
 if not settings.GEMINI_API_KEY:
     settings.GEMINI_API_KEY = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
 if not settings.GOOGLE_API_KEY:
     settings.GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
+if not settings.LLM_PROVIDER:
+    settings.LLM_PROVIDER = os.getenv("LLM_PROVIDER")
 

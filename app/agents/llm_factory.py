@@ -12,7 +12,7 @@ def _is_valid_key(key: Optional[str]) -> bool:
     """Check if an API key is non-empty, not None, not a URL, and not a placeholder string."""
     if not key or not isinstance(key, str):
         return False
-    k = key.strip()
+    k = key.strip().strip('"').strip("'")
     if not k or len(k) < 6:
         return False
     if k.startswith("http://") or k.startswith("https://") or "/" in k:
@@ -28,12 +28,13 @@ def _is_valid_key(key: Optional[str]) -> bool:
 
 
 class MissingApiKeyFallbackLLM(SimpleChatModel):
-    """Fallback LLM returned when no valid API key is present or when all API keys fail authentication."""
+    """Fallback LLM returned when no valid API key is present or when all API keys fail authentication/rate-limits."""
     
     def _call(self, messages: List[BaseMessage], stop: Optional[List[str]] = None, **kwargs) -> str:
         return (
-            "⚠️ Configuration Required: No valid LLM API Key was found in your deployment environment variables. "
-            "Please configure GROQ_API_KEY, OPENAI_API_KEY, NVIDIA_API_KEY, FIREWORKS_API_KEY, or GEMINI_API_KEY."
+            "⚠️ LLM Invocation Error: No active LLM provider responded successfully. "
+            "If your keys are configured in your deployment dashboard, please ensure the service was Redeployed/Restarted, "
+            "and check that your provider accounts (Groq, NVIDIA, Fireworks, Gemini) have remaining quota and are not rate-limited (429)."
         )
 
     @property
@@ -50,10 +51,10 @@ class MissingApiKeyFallbackLLM(SimpleChatModel):
             try:
                 if hasattr(schema, "model_construct"):
                     return schema.model_construct(
-                        thoughts="⚠️ Invalid or Missing LLM API Key. Please add GROQ_API_KEY, OPENAI_API_KEY, NVIDIA_API_KEY, or GEMINI_API_KEY to your environment variables.",
+                        thoughts="⚠️ LLM Invocation Alert: No active LLM provider responded. If keys are set in deployment variables, please ensure the service container was redeployed/restarted and check provider rate-limits/quotas.",
                         action="finish",
                         new_tasks=[],
-                        executive_brief="Operational Warning: No valid LLM API key configured in environment variables."
+                        executive_brief="Operational Warning: All configured LLM providers failed or the service needs a redeploy to load new environment variables."
                     )
             except Exception:
                 pass
@@ -206,11 +207,12 @@ def get_llm(model_id: Optional[str] = None, role: Optional[str] = None, temperat
 
     # Helper to append candidate ChatOpenAI instance
     def add_candidate(m_name, p_name, key, base):
-        if _is_valid_key(key):
+        k = (key or "").strip().strip('"').strip("'")
+        if _is_valid_key(k):
             try:
                 candidates.append(ChatOpenAI(
                     model=m_name,
-                    api_key=key,
+                    api_key=k,
                     base_url=base,
                     temperature=temperature,
                     timeout=60,
@@ -270,11 +272,12 @@ def get_fast_llm(temperature: float = 0.0) -> Any:
     candidates = []
 
     def add_candidate(m_name, p_name, key, base):
-        if _is_valid_key(key):
+        k = (key or "").strip().strip('"').strip("'")
+        if _is_valid_key(k):
             try:
                 candidates.append(ChatOpenAI(
                     model=m_name,
-                    api_key=key,
+                    api_key=k,
                     base_url=base,
                     temperature=temperature,
                     timeout=60,
