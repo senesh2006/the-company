@@ -78,12 +78,31 @@ def get_trial_balance(user = Depends(get_current_user)):
     service = GoogleSheetsService(business_id=biz_id)
     return service.get_trial_balance()
 
+class SheetsConfigUpdate(BaseModel):
+    spreadsheet_id: str = Field(..., description="Google Sheets Spreadsheet ID or full Google Docs URL")
+    spreadsheet_title: Optional[str] = Field(None, description="Optional custom spreadsheet title")
+
 @router.get("/sheets-config", response_model=Dict[str, Any])
 def get_sheets_config(user = Depends(get_current_user)):
     """Get the active Google Sheets connection configuration and sheet link."""
     biz_id = getattr(user, "business_id", "00000000-0000-0000-0000-000000000001") or "00000000-0000-0000-0000-000000000001"
     service = GoogleSheetsService(business_id=biz_id)
     return service.get_config()
+
+@router.post("/sheets-config", response_model=Dict[str, Any])
+def update_sheets_config(payload: SheetsConfigUpdate, user = Depends(get_current_user)):
+    """Update the target Google Sheets Spreadsheet ID or URL for this business."""
+    biz_id = getattr(user, "business_id", "00000000-0000-0000-0000-000000000001") or "00000000-0000-0000-0000-000000000001"
+    service = GoogleSheetsService(business_id=biz_id)
+    try:
+        updated_cfg = service.set_spreadsheet_id(
+            spreadsheet_id_or_url=payload.spreadsheet_id,
+            custom_title=payload.spreadsheet_title
+        )
+        return updated_cfg
+    except Exception as e:
+        logger.error(f"Failed to update sheets config: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
 
 @router.post("/sync-sheets", response_model=Dict[str, Any])
 def sync_with_google_sheets(user = Depends(get_current_user)):

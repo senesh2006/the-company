@@ -279,6 +279,18 @@ export const useSheetsConfig = () => {
     });
 };
 
+export const useUpdateSheetsConfig = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: api.updateSheetsConfig,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['finance-sheets-config'] });
+            queryClient.invalidateQueries({ queryKey: ['finance-accounts'] });
+            queryClient.invalidateQueries({ queryKey: ['finance-journal'] });
+        },
+    });
+};
+
 export const useSyncSheets = () => {
     const queryClient = useQueryClient();
     return useMutation({

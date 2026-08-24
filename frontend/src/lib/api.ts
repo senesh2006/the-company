@@ -616,6 +616,17 @@ export const api = {
     return res.json();
   },
 
+  updateSheetsConfig: async (payload: { spreadsheet_id: string; spreadsheet_title?: string }): Promise<SheetsConfig> => {
+    const baseUrl = getBaseUrl();
+    const res = await authFetch(`${baseUrl}/api/v1/finance/sheets-config`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) throw new Error(`Failed to update sheets config (${res.status})`);
+    return res.json();
+  },
+
   syncGoogleSheets: async (): Promise<any> => {
     const baseUrl = getBaseUrl();
     const res = await authFetch(`${baseUrl}/api/v1/finance/sync-sheets`, {

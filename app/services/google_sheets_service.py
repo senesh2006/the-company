@@ -50,8 +50,50 @@ class GoogleSheetsService:
     def __init__(self, business_id: str = "00000000-0000-0000-0000-000000000001"):
         self.business_id = business_id
         self.memory = SharedMemoryService()
-        self.spreadsheet_id = os.getenv("GOOGLE_SHEETS_SPREADSHEET_ID") or "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
+        
+        # Check custom spreadsheet ID saved in shared memory for this business first
+        saved_id = None
+        try:
+            mem_rec = self.memory.get(self.business_id, "google_sheets_spreadsheet_id")
+            if mem_rec and isinstance(mem_rec, dict) and mem_rec.get("value"):
+                saved_id = str(mem_rec["value"]).strip()
+        except Exception:
+            pass
+
+        self.spreadsheet_id = saved_id or os.getenv("GOOGLE_SHEETS_SPREADSHEET_ID") or "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
         self._ensure_initialized()
+
+    def set_spreadsheet_id(self, spreadsheet_id_or_url: str, custom_title: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Updates the target Google Sheets spreadsheet ID or URL for this business.
+        Extracts spreadsheet ID if full Google Docs URL is supplied.
+        """
+        raw = (spreadsheet_id_or_url or "").strip()
+        if not raw:
+            raise ValueError("Spreadsheet ID or URL cannot be empty.")
+
+        import re
+        match = re.search(r"/spreadsheets/d/([a-zA-Z0-9-_]+)", raw)
+        extracted_id = match.group(1) if match else raw
+
+        self.spreadsheet_id = extracted_id
+        self.memory.set(
+            business_id=self.business_id,
+            key="google_sheets_spreadsheet_id",
+            value=extracted_id,
+            tags=["finance", "google_sheets", "config"],
+            updated_by="User"
+        )
+        if custom_title:
+            self.memory.set(
+                business_id=self.business_id,
+                key="google_sheets_custom_title",
+                value=custom_title,
+                tags=["finance", "google_sheets", "config"],
+                updated_by="User"
+            )
+
+        return self.get_config()
 
     def _unpack_memory(self, val: Any, default: Any) -> Any:
         """Helper to unpack Supabase shared_memory record or json string."""

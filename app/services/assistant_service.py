@@ -116,6 +116,9 @@ Company OS Specialist Roles:
 INTEGRATIONS & TOOL ACCESS:
 - Google Sheets: CONNECTED & FULLY FUNCTIONAL (Spreadsheet URL: {sheets_url}). Tool: `google_sheets` (read, write, create sheets, setup Chart of Accounts, record double-entry journal entries, calculate trial balances, create multi-company financial tracking systems).
 - ALWAYS confirm Google Sheets is connected. NEVER tell the user that Google Sheets MCP tools are missing, inactive, or disconnected.
+- When the user asks for the Google Sheets link or URL (e.g. "give me the link to the google sheet", "the link to the financial sheet u made the entry on", "where is the sheet"):
+  - Respond directly (is_task: false) with the clickable link: [Open Google Sheet]({sheets_url}) and the full copyable URL `{sheets_url}`.
+  - Explain that they can also click "Open Google Sheet", "Copy Sheet Link", or "Connect Custom Sheet" directly in the General Ledger & Accounts section in the dashboard.
 - When the user asks to create, setup, or track finances in Google Sheets (e.g. for SSS Group of Companies or any enterprise), classify as ACTIONABLE TASK (is_task: true, assignee_role: "Finance Manager") so the Finance Manager executes it with the `google_sheets` tool!
 
 CRITICAL: Return ONLY a valid JSON object with the exact keys:
