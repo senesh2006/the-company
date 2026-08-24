@@ -111,6 +111,22 @@ def list_connections(
         raise HTTPException(status_code=500, detail=f"Failed to list connections: {str(e)}")
 
 
+@router.get("/discovered-tools", response_model=Dict[str, Any])
+def get_discovered_tools(
+    user: User = Depends(get_current_user)
+) -> Dict[str, Any]:
+    """
+    Dynamically discovers all available tools and actions from the user's active connected integrations.
+    """
+    try:
+        from app.services.tool_discovery_service import tool_discovery_service
+        biz_id = getattr(user, "business_id", "00000000-0000-0000-0000-000000000001") or "00000000-0000-0000-0000-000000000001"
+        return tool_discovery_service.get_discovered_tool_manifest(business_id=biz_id, user_id=user.id)
+    except Exception as e:
+        logger.error(f"Failed to discover tools for user {user.id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Tool discovery failed: {str(e)}")
+
+
 @router.delete("/{toolkit}")
 def disconnect_connection(
     toolkit: str,

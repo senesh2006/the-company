@@ -89,7 +89,8 @@ class BaseTool(ABC):
 
 class ToolRegistry:
     """
-    Registry for organizing and retrieving tools by agent role.
+    Registry for organizing and retrieving tools by agent role,
+    with dynamic tool discovery from connected integrations.
     """
     def __init__(self):
         self._tools: Dict[str, List[BaseTool]] = {}
@@ -106,13 +107,45 @@ class ToolRegistry:
             self._tools[role] = []
         self._tools[role].extend(tools)
 
-    def get_tools(self, role: str) -> List[BaseTool]:
-        """Gets all BaseTool instances for a given role."""
-        return self._tools.get(role, [])
+    def get_tools(
+        self,
+        role: str,
+        business_id: Optional[str] = None,
+        user_id: Optional[str] = None
+    ) -> List[BaseTool]:
+        """
+        Gets all BaseTool instances for a given role.
+        If business_id / user_id are provided, dynamically discovers and merges
+        active tools from connected integrations (Google Sheets, Gmail, Slack, GitHub, etc.).
+        """
+        base_list = list(self._tools.get(role, []))
+
+        # Perform dynamic discovery if business_id or user_id is supplied
+        if business_id or user_id:
+            try:
+                from app.services.tool_discovery_service import tool_discovery_service
+                discovered = tool_discovery_service.discover_tools_for_user(
+                    business_id=business_id or "00000000-0000-0000-0000-000000000001",
+                    user_id=user_id or "00000000-0000-0000-0000-000000000001",
+                    role=role
+                )
+                existing_names = {t.name for t in base_list}
+                for dt in discovered:
+                    if dt.name not in existing_names:
+                        base_list.append(dt)
+            except Exception as e:
+                logger.debug(f"Dynamic tool discovery note: {e}")
+
+        return base_list
         
-    def get_langchain_tools(self, role: str) -> List[StructuredTool]:
-        """Gets all tools for a role, formatted as LangChain StructuredTools."""
-        base_tools = self.get_tools(role)
+    def get_langchain_tools(
+        self,
+        role: str,
+        business_id: Optional[str] = None,
+        user_id: Optional[str] = None
+    ) -> List[StructuredTool]:
+        """Gets all tools for a role, formatted as LangChain StructuredTools with dynamic discovery."""
+        base_tools = self.get_tools(role, business_id=business_id, user_id=user_id)
         return [t.to_langchain_tool() for t in base_tools]
 
 # Global registry instance

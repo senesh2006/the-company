@@ -87,12 +87,23 @@ class PersonalAssistantService:
         effective_chat_id = chat_id or sender_name or "default_user"
         prior_history = history or self.get_recent_history(business_id, channel, effective_chat_id, limit=6)
 
-        # Check active integrations status
+        # Dynamic Tool Discovery across active integrations
         try:
-            from app.services.google_sheets_service import GoogleSheetsService
-            sheets_cfg = GoogleSheetsService(business_id=business_id).get_config()
-            sheets_url = sheets_cfg.get("spreadsheet_url", "https://docs.google.com/spreadsheets/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/edit")
-        except Exception:
+            from app.services.tool_discovery_service import tool_discovery_service
+            manifest = tool_discovery_service.get_discovered_tool_manifest(business_id=business_id, user_id=effective_chat_id)
+            connected_toolkits = manifest.get("connected_toolkits", [])
+            discovered_tools = manifest.get("discovered_tools", [])
+            
+            toolkits_desc = ", ".join([c["name"] for c in connected_toolkits]) or "Google Sheets"
+            tools_bullet_points = "\n".join([f"- `{t['name']}` ({t['toolkit']}): {t['description']}" for t in discovered_tools])
+
+            # Sheets config details
+            gs_item = next((c for c in connected_toolkits if c["toolkit"] == "googlesheets"), None)
+            sheets_url = gs_item.get("spreadsheet_url", "https://docs.google.com/spreadsheets/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/edit") if gs_item else "https://docs.google.com/spreadsheets/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/edit"
+        except Exception as e:
+            logger.debug(f"Dynamic tool discovery in assistant_service note: {e}")
+            toolkits_desc = "Google Sheets"
+            tools_bullet_points = "- `google_sheets` (googlesheets): Manage Chart of Accounts, General Ledger, and multi-entity models."
             sheets_url = "https://docs.google.com/spreadsheets/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/edit"
 
         system_prompt = f"""You are the Personal Assistant and Chief of Staff at Company OS, working directly with {sender_name or 'the Founder/CEO'}.
@@ -113,13 +124,17 @@ Company OS Specialist Roles:
 - Admin & Operations Worker: Document processing, operational syncs, administrative triage.
 - Personal Assistant: Multi-department coordination or general mandates.
 
-INTEGRATIONS & TOOL ACCESS:
-- Google Sheets: CONNECTED & FULLY FUNCTIONAL (Spreadsheet URL: {sheets_url}). Tool: `google_sheets` (read, write, create sheets, setup Chart of Accounts, record double-entry journal entries, calculate trial balances, create multi-company financial tracking systems).
-- ALWAYS confirm Google Sheets is connected. NEVER tell the user that Google Sheets MCP tools are missing, inactive, or disconnected.
+DYNAMICALLY DISCOVERED CONNECTED INTEGRATIONS & TOOLS:
+- Active Connected Services: {toolkits_desc}
+{tools_bullet_points}
+
+SPECIAL RULES FOR CONNECTED TOOLS:
+- All tools listed above are LIVE, CONNECTED, and ready for autonomous execution.
+- NEVER state that connected tools (like Google Sheets, Gmail, Slack, etc.) are inactive or missing.
 - When the user asks for the Google Sheets link or URL (e.g. "give me the link to the google sheet", "the link to the financial sheet u made the entry on", "where is the sheet"):
   - Respond directly (is_task: false) with the clickable link: [Open Google Sheet]({sheets_url}) and the full copyable URL `{sheets_url}`.
   - Explain that they can also click "Open Google Sheet", "Copy Sheet Link", or "Connect Custom Sheet" directly in the General Ledger & Accounts section in the dashboard.
-- When the user asks to create, setup, or track finances in Google Sheets (e.g. for SSS Group of Companies or any enterprise), classify as ACTIONABLE TASK (is_task: true, assignee_role: "Finance Manager") so the Finance Manager executes it with the `google_sheets` tool!
+- When the user asks to execute an action involving connected tools (e.g. setup Google Sheets financial tracking, send an email, post to Slack), classify as ACTIONABLE TASK (is_task: true) with the appropriate specialist assignee so they execute it with the discovered tool!
 
 CRITICAL: Return ONLY a valid JSON object with the exact keys:
 {{
