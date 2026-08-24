@@ -363,6 +363,29 @@ class GoogleSheetsService:
             }
         }
 
+    def _push_live_composio_sheet(self, sheet_name: str, values: List[List[Any]]) -> bool:
+        """Attempts to push values directly to live Google Sheets via Composio."""
+        if self.spreadsheet_id == "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms":
+            # Skip pushing to Google's public read-only example sheet
+            return False
+
+        try:
+            from app.services.composio_client import composio_service
+            user_id = composio_service.resolve_user_id(self.business_id)
+            composio_service.execute_tool(
+                user_id=user_id,
+                slug="GOOGLESHEETS_BATCH_UPDATE",
+                arguments={
+                    "spreadsheet_id": self.spreadsheet_id,
+                    "range": f"{sheet_name}!A1",
+                    "values": values
+                }
+            )
+            return True
+        except Exception as e:
+            logger.debug(f"Composio live sheet push note: {e}")
+            return False
+
     def sync_to_google_sheets(self) -> Dict[str, Any]:
         """
         Synchronizes all accounts and journal entries into Google Sheets.
@@ -379,17 +402,31 @@ class GoogleSheetsService:
             tags=["finance", "google_sheets", "sync"]
         )
 
+        # Attempt live API push
+        accounts_matrix = self.read_sheet_range("Accounts", "A1:G100")
+        journal_matrix = self.read_sheet_range("General Journal", "A1:H100")
+        live_accounts = self._push_live_composio_sheet("Accounts", accounts_matrix)
+        live_journal = self._push_live_composio_sheet("General Journal", journal_matrix)
+        live_synced = live_accounts or live_journal
+
+        msg = (
+            f"Successfully synchronized {len(accounts)} accounts and {len(journal)} journal transactions to Google Sheets."
+            if live_synced else
+            f"Synchronized {len(accounts)} accounts and {len(journal)} journal transactions to Company OS persistent ledger."
+        )
+
         return {
             "success": True,
             "synced_at": now_str,
             "spreadsheet_id": self.spreadsheet_id,
             "spreadsheet_url": f"https://docs.google.com/spreadsheets/d/{self.spreadsheet_id}/edit",
+            "live_api_synced": live_synced,
             "synced_counts": {
                 "accounts": len(accounts),
                 "journal_entries": len(journal),
                 "trial_balance_status": "BALANCED" if tb["is_balanced"] else "UNBALANCED"
             },
-            "message": f"Successfully synchronized {len(accounts)} accounts and {len(journal)} journal transactions to Google Sheets."
+            "message": msg
         }
 
     def read_sheet_range(self, sheet_name: str, cell_range: str = "A1:Z100") -> List[List[Any]]:
@@ -449,6 +486,24 @@ class GoogleSheetsService:
                     "verified_by_checker": True
                 }
                 self.post_journal_entry(entry)
+                
+                # Attempt live append via Composio
+                if self.spreadsheet_id != "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms":
+                    try:
+                        from app.services.composio_client import composio_service
+                        user_id = composio_service.resolve_user_id(self.business_id)
+                        composio_service.execute_tool(
+                            user_id=user_id,
+                            slug="GOOGLESHEETS_APPEND_ROW",
+                            arguments={
+                                "spreadsheet_id": self.spreadsheet_id,
+                                "sheet_name": sheet_name,
+                                "values": [row_values]
+                            }
+                        )
+                    except Exception as e:
+                        logger.debug(f"Live row append via Composio note: {e}")
+
                 return {"success": True, "appended_entry": entry}
 
         return {"success": True, "appended_values": row_values}
