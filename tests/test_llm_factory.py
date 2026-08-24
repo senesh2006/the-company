@@ -145,9 +145,32 @@ def test_list_available_models_hides_broken_models():
 def test_resolve_model_openrouter_priority():
     """OpenRouter should be priority 1 and resolve to dots-studio/dots-3-note-preview:free."""
     with patch("app.agents.llm_factory.settings.OPENROUTER_API_KEY", "sk-or-v1-testkey1234567890"), \
+         patch("app.agents.llm_factory.settings.OPENROUTER_FALLBACK_API_KEY", None), \
          patch("app.agents.llm_factory.settings.GROQ_API_KEY", "gsk-testkey"), \
          patch("app.agents.llm_factory.settings.NVIDIA_API_KEY", "nvapi-testkey"):
         model_name, provider = resolve_model("dots-3-note", role="default")
         assert provider == "openrouter"
         assert model_name == "dots-studio/dots-3-note-preview:free"
+
+
+def test_get_all_openrouter_keys_multiple():
+    """get_all_openrouter_keys should collect distinct primary and fallback keys."""
+    from app.agents.llm_factory import get_all_openrouter_keys
+    with patch("app.agents.llm_factory.settings.OPENROUTER_API_KEY", "sk-or-primary1, sk-or-primary2"), \
+         patch("app.agents.llm_factory.settings.OPENROUTER_FALLBACK_API_KEY", "sk-or-fallback1"):
+        keys = get_all_openrouter_keys()
+        assert "sk-or-primary1" in keys
+        assert "sk-or-primary2" in keys
+        assert "sk-or-fallback1" in keys
+        assert len(keys) == 3
+
+
+def test_get_llm_with_multiple_openrouter_keys():
+    """get_llm should instantiate and include fallback candidate models for all keys."""
+    with patch("app.agents.llm_factory.settings.OPENROUTER_API_KEY", "sk-or-primary1"), \
+         patch("app.agents.llm_factory.settings.OPENROUTER_FALLBACK_API_KEY", "sk-or-fallback2"):
+        llm = get_llm(role="default")
+        # Should be a runnable with fallbacks or ChatOpenAI
+        assert llm is not None
+
 

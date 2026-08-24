@@ -78,10 +78,29 @@ def llm_health_check():
             return "***"
         return f"{cleaned[:4]}...{cleaned[-4:]}"
 
-    providers = [
-        {
+    from app.agents.llm_factory import get_all_openrouter_keys
+    or_keys = get_all_openrouter_keys()
+
+    providers = []
+    if or_keys:
+        for idx, k in enumerate(or_keys):
+            p_tag = "openrouter" if idx == 0 else f"openrouter_fallback_{idx}"
+            p_display = "OpenRouter (Primary)" if idx == 0 else f"OpenRouter (Fallback #{idx})"
+            providers.append({
+                "name": p_tag,
+                "display_name": f"{p_display} ({getattr(settings, 'OPENROUTER_MODEL', 'dots-studio/dots-3-note-preview:free')})",
+                "key": k,
+                "base_url": getattr(settings, "OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1"),
+                "models": [
+                    getattr(settings, "OPENROUTER_MODEL", "dots-studio/dots-3-note-preview:free") or "dots-studio/dots-3-note-preview:free",
+                    "meta-llama/llama-3.3-70b-instruct:free"
+                ],
+                "headers": {"HTTP-Referer": "https://thecompany.ai", "X-Title": "The Company OS"}
+            })
+    else:
+        providers.append({
             "name": "openrouter",
-            "display_name": "OpenRouter (dots-studio/dots-3-note-preview:free)",
+            "display_name": "OpenRouter (Primary)",
             "key": getattr(settings, "OPENROUTER_API_KEY", None),
             "base_url": getattr(settings, "OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1"),
             "models": [
@@ -89,7 +108,9 @@ def llm_health_check():
                 "meta-llama/llama-3.3-70b-instruct:free"
             ],
             "headers": {"HTTP-Referer": "https://thecompany.ai", "X-Title": "The Company OS"}
-        },
+        })
+
+    providers.extend([
         {
             "name": "groq",
             "display_name": "Groq (Llama 3.3 70B & 3.1 8B)",
@@ -125,7 +146,7 @@ def llm_health_check():
             "base_url": None,
             "models": ["gpt-4o-mini"],
         }
-    ]
+    ])
 
     results = {}
     at_least_one_working = False
