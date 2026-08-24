@@ -280,6 +280,49 @@ export function ChartOfAccountsSheet() {
         </div>
       </div>
 
+      {/* Sample Template Notice & 1-Click Connect Banner */}
+      {sheetsConfig?.is_sample_template && (
+        <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <div className="p-2 rounded-xl bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-200 shrink-0">
+              <AlertCircle className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-xs font-bold text-amber-900 dark:text-amber-100">
+                You are currently viewing Google's Public Sample Sheet
+              </h3>
+              <p className="text-[11px] text-amber-700 dark:text-amber-300 mt-0.5">
+                To have your AI agents read and write directly to your own Google Drive, create a blank sheet or paste your existing Google Spreadsheet link.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <a
+              href="https://sheets.new"
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white dark:bg-slate-900 hover:bg-slate-50 dark:bg-slate-950 border border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-100 text-xs font-bold transition shadow-2xs"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+              <span>1. Open sheets.new</span>
+              <ExternalLink className="w-3 h-3 text-amber-500" />
+            </a>
+
+            <button
+              onClick={() => {
+                setSheetUrlInput('');
+                setIsEditSheetOpen(true);
+              }}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-800 hover:bg-amber-900 text-white text-xs font-bold transition shadow-xs cursor-pointer"
+            >
+              <Link2 className="w-3.5 h-3.5" />
+              <span>2. Paste & Connect Link</span>
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* KPI Metric Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Total Assets */}

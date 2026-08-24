@@ -172,11 +172,17 @@ class GoogleSheetsService:
         accounts = self.get_accounts()
         journal = self.get_journal_entries()
 
+        raw_title = self.memory.get(self.business_id, "google_sheets_custom_title")
+        custom_title = self._unpack_memory(raw_title, None)
+        title = custom_title or "Company OS - Master General Ledger & Chart of Accounts"
+        is_sample = self.spreadsheet_id == "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
+
         return {
             "spreadsheet_id": self.spreadsheet_id,
             "spreadsheet_url": sheet_url,
-            "spreadsheet_title": "Company OS - Master General Ledger & Chart of Accounts",
+            "spreadsheet_title": title,
             "is_connected": True,
+            "is_sample_template": is_sample,
             "mode": "live_api" if has_credentials else "durable_sync",
             "last_synced_at": last_sync,
             "sheets": [

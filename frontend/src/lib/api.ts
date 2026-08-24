@@ -240,6 +240,7 @@ export interface SheetsConfig {
   spreadsheet_url: string;
   spreadsheet_title: string;
   is_connected: boolean;
+  is_sample_template?: boolean;
   mode: 'live_api' | 'durable_sync';
   last_synced_at: string;
   sheets: Array<{
