@@ -438,59 +438,46 @@ class WAHAService:
             except Exception as e:
                 logger.error(f"Error saving WhatsApp to memory: {e}")
 
-            # 2. Dispatch Mandate to Personal Assistant if enabled
+            # 2. Process through Personal Assistant (Chatbot vs. Actionable Task)
             if settings.WAHA_AUTO_DISPATCH_MANDATE:
                 try:
-                    from app.services.task_service import TaskService
-                    from app.agents.runner import TeamRunner
-                    import asyncio
+                    from app.services.assistant_service import assistant_service
 
-                    task_service = TaskService()
-                    mandate_desc = f"[WhatsApp from {sender_name}]: {body}"
-                    
-                    # Create task in DB
-                    task = task_service.create_task(
+                    chat_res = await assistant_service.process_chat(
+                        message=body,
                         business_id="00000000-0000-0000-0000-000000000001",
-                        description=mandate_desc,
-                        mandate=mandate_desc,
-                        status="queued",
-                        assignee_role="Personal Assistant"
+                        sender_name=sender_name,
+                        channel="whatsapp",
+                        chat_id=chat_id
                     )
 
-                    task_id = task.get("id") if isinstance(task, dict) else str(task)
+                    is_task = chat_res.get("is_task", False)
+                    reply_text = chat_res.get("reply", "")
 
-                    # Log to Company Feed
-                    task_service.log_audit_event(
-                        business_id="00000000-0000-0000-0000-000000000001",
-                        role="Personal Assistant",
-                        agent_name="Personal Assistant",
-                        trust_tier="operate",
-                        action="WhatsApp Mandate Ingested",
-                        details={"from": sender_name, "chat_id": chat_id, "mandate": body}
-                    )
-
-                    # Trigger runner in background
-                    runner = TeamRunner(business_id="00000000-0000-0000-0000-000000000001", task_id=task_id)
-                    asyncio.create_task(asyncio.to_thread(runner.start, mandate_desc))
-
-                    # 3. Acknowledge receipt via WhatsApp
-                    try:
-                        reply_text = (
-                            f"🤖 *Company OS*: Mandate received from {sender_name}!\n\n"
-                            f"📋 *Task*: \"{body}\"\n"
-                            f"✨ Your Personal Assistant is now coordinating the team to execute this."
+                    if is_task:
+                        formatted_reply = (
+                            f"🤖 *Company OS*: Mandate Dispatched to *{chat_res.get('assignee_role', 'Personal Assistant')}*!\n\n"
+                            f"📋 *Task*: \"{body}\"\n\n"
+                            f"{reply_text}"
                         )
-                        await self.send_text(chat_id=chat_id, text=reply_text, session=session)
+                    else:
+                        formatted_reply = f"🤖 *Personal Assistant*:\n\n{reply_text}"
+
+                    # Send reply back via WhatsApp
+                    try:
+                        await self.send_text(chat_id=chat_id, text=formatted_reply, session=session)
                     except Exception as err:
-                        logger.error(f"Error sending WhatsApp acknowledgment: {err}")
+                        logger.error(f"Error sending WhatsApp reply: {err}")
 
                     return {
-                        "status": "mandate_dispatched",
-                        "task_id": task.get("id") if isinstance(task, dict) else str(task),
+                        "status": "task_dispatched" if is_task else "chat_replied",
+                        "is_task": is_task,
+                        "task_id": chat_res.get("task_id"),
+                        "reply": reply_text,
                         "chat_id": chat_id
                     }
                 except Exception as e:
-                    logger.error(f"Error auto-dispatching WhatsApp mandate: {e}")
+                    logger.error(f"Error processing WhatsApp message via Personal Assistant: {e}")
                     return {"status": "error", "error": str(e)}
 
         return {"status": "processed", "event": event}

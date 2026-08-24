@@ -10,7 +10,9 @@ class TestBriefing(unittest.TestCase):
         self.client = TestClient(app)
         self.business_id = "00000000-0000-0000-0000-000000000001"
 
-    def test_briefing_service_fallback_generation(self):
+    @patch("app.services.briefing_service.get_fast_llm")
+    def test_briefing_service_fallback_generation(self, mock_llm):
+        mock_llm.side_effect = Exception("LLM unavailable")
         service = BriefingService()
         briefing = service.get_today_briefing(self.business_id, force_refresh=True)
         
@@ -33,7 +35,9 @@ class TestBriefing(unittest.TestCase):
         self.assertIn("marketing_update", data)
         self.assertIn("finance_update", data)
 
-    def test_briefing_refresh_endpoint(self):
+    @patch("app.services.briefing_service.get_fast_llm")
+    def test_briefing_refresh_endpoint(self, mock_llm):
+        mock_llm.side_effect = Exception("LLM unavailable")
         response = self.client.post("/api/v1/briefing/refresh")
         self.assertEqual(response.status_code, 200)
         data = response.json()

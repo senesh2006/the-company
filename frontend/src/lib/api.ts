@@ -795,6 +795,45 @@ export const api = {
     if (!res.ok) throw new Error(`Failed to disconnect ${toolkit} (${res.status})`);
     return res.json();
   },
+
+  assistantChat: async (payload: {
+    message: string;
+    business_id?: string;
+    sender_name?: string;
+    channel?: string;
+    chat_id?: string;
+    history?: Array<{ role: string; content: string }>;
+  }): Promise<{
+    type: 'chat_reply' | 'task_dispatched';
+    reply: string;
+    is_task: boolean;
+    task_id?: string;
+    task?: any;
+    assignee_role?: string;
+    priority?: string;
+    intent_summary?: string;
+    error?: string;
+  }> => {
+    const baseUrl = getBaseUrl();
+    const res = await authFetch(`${baseUrl}/api/v1/assistant/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) throw new Error(`Assistant chat request failed (${res.status})`);
+    return res.json();
+  },
+
+  getAssistantHistory: async (params?: { business_id?: string; channel?: string; chat_id?: string }): Promise<any> => {
+    const baseUrl = getBaseUrl();
+    const query = new URLSearchParams();
+    if (params?.business_id) query.set('business_id', params.business_id);
+    if (params?.channel) query.set('channel', params.channel);
+    if (params?.chat_id) query.set('chat_id', params.chat_id);
+    const res = await authFetch(`${baseUrl}/api/v1/assistant/history?${query.toString()}`);
+    if (!res.ok) throw new Error(`Failed to fetch assistant history (${res.status})`);
+    return res.json();
+  },
 };
 
 export interface ConnectedAccount {

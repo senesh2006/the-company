@@ -57,35 +57,54 @@ export function PersonalAssistantBlob() {
       timestamp: new Date(),
     };
 
-    setMessages((prev) => [...prev, userMessage]);
     const taskText = input.trim();
     setInput("");
     setIsLoading(true);
 
     const assistantMsgId = `assistant-${Date.now()}`;
 
+    // Prepare previous history
+    const historyPayload = messages
+      .filter((m) => m.id !== "welcome")
+      .map((m) => ({ role: m.role, content: m.content }));
+
+    setMessages((prev) => [...prev, userMessage]);
+
     try {
-      const task: any = await createTask.mutateAsync({
-        title: taskText,
-        description: taskText,
-        priority: "P1",
+      const res = await api.assistantChat({
+        message: taskText,
+        history: historyPayload,
       });
 
-      const taskId = task?.id || task?.mandate_task?.id || task?.task?.id;
+      // Case 1: Pure Conversational Reply
+      if (res.type === "chat_reply" || !res.is_task) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: assistantMsgId,
+            role: "assistant",
+            content: res.reply || "I'm on it! Let me know if you need anything else.",
+            timestamp: new Date(),
+          },
+        ]);
+        return;
+      }
 
-      // Add single coordinating placeholder message
+      // Case 2: Actionable Task Dispatched
+      const taskId = res.task_id;
+      const initialAck = res.reply || `🤖 *Coordinating mandate with ${res.assignee_role || "specialist team"}...*`;
+
       setMessages((prev) => [
         ...prev,
         {
           id: assistantMsgId,
           role: "assistant",
-          content: `🤖 *Coordinating team of specialists... Delegating mandates and aggregating deliverables into one unified briefing.*`,
+          content: initialAck,
           timestamp: new Date(),
         },
       ]);
 
       if (!taskId || taskId === "undefined" || taskId === "null") {
-        // Task dispatched but no synchronous ID returned
         return;
       }
 
@@ -106,8 +125,12 @@ export function PersonalAssistantBlob() {
 
             if (updatedTask.status === "completed" || updatedTask.status === "failed") {
               completed = true;
-              const finalResult = updatedTask.result || (updatedTask.status === "completed" ? "✅ Mandate successfully completed by your team." : "❌ Mandate execution encountered an issue.");
-              
+              const finalResult =
+                updatedTask.result ||
+                (updatedTask.status === "completed"
+                  ? "✅ Mandate successfully completed by your team."
+                  : "❌ Mandate execution encountered an issue.");
+
               setMessages((prev) =>
                 prev.map((msg) =>
                   msg.id === assistantMsgId
@@ -134,7 +157,7 @@ export function PersonalAssistantBlob() {
       const errorMessage: Message = {
         id: `error-${Date.now()}`,
         role: "assistant",
-        content: `Something went wrong while dispatching: ${err.message}. Please try again.`,
+        content: `Something went wrong: ${err.message || "Unable to reach assistant"}. Please try again.`,
         timestamp: new Date(),
       };
       setMessages((prev) =>
