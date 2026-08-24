@@ -465,6 +465,15 @@ export const useConnections = () => {
     });
 };
 
+export const useDiscoveredTools = () => {
+    return useQuery({
+        queryKey: ['discovered-tools'],
+        queryFn: api.getDiscoveredTools,
+        refetchInterval: 20000,
+        staleTime: 10000,
+    });
+};
+
 export const useInitiateConnection = () => {
     const queryClient = useQueryClient();
     return useMutation({
@@ -472,6 +481,7 @@ export const useInitiateConnection = () => {
             api.initiateConnection(payload),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['connections'] });
+            queryClient.invalidateQueries({ queryKey: ['discovered-tools'] });
         },
     });
 };
@@ -482,6 +492,7 @@ export const useDisconnectConnection = () => {
         mutationFn: (toolkit: string) => api.disconnectConnection(toolkit),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['connections'] });
+            queryClient.invalidateQueries({ queryKey: ['discovered-tools'] });
         },
     });
 };

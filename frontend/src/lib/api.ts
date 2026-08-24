@@ -808,6 +808,13 @@ export const api = {
     return res.json();
   },
 
+  getDiscoveredTools: async (): Promise<DiscoveredToolsResponse> => {
+    const baseUrl = getBaseUrl();
+    const res = await authFetch(`${baseUrl}/api/v1/connections/discovered-tools`);
+    if (!res.ok) throw new Error(`Failed to fetch discovered tools (${res.status})`);
+    return res.json();
+  },
+
   assistantChat: async (payload: {
     message: string;
     business_id?: string;
@@ -847,6 +854,34 @@ export const api = {
     return res.json();
   },
 };
+
+export interface DiscoveredToolItem {
+  name: string;
+  toolkit: string;
+  action_slug: string;
+  description: string;
+  category: string;
+  input_schema?: Record<string, any>;
+  cost_estimate?: number;
+}
+
+export interface DiscoveredToolsResponse {
+  business_id: string;
+  user_id: string;
+  connected_toolkits: Array<{
+    toolkit: string;
+    name: string;
+    category: string;
+    status: string;
+    mode?: string;
+    spreadsheet_url?: string;
+    spreadsheet_title?: string;
+    icon?: string;
+  }>;
+  connected_toolkits_count: number;
+  discovered_tools: DiscoveredToolItem[];
+  total_discovered_tools: number;
+}
 
 export interface ConnectedAccount {
   id?: string;

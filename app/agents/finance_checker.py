@@ -46,6 +46,20 @@ STANDARD_CHART_OF_ACCOUNTS = {
 COA_NAMES_LOWER = {name.lower(): code for code, name in STANDARD_CHART_OF_ACCOUNTS.items()}
 COA_CODES = set(STANDARD_CHART_OF_ACCOUNTS.keys())
 
+def safe_float(val: Any, default: float = 0.0) -> float:
+    """Safely converts string, numeric, or dollar formatted values to float."""
+    if val is None:
+        return default
+    if isinstance(val, (int, float)):
+        return float(val)
+    try:
+        cleaned = re.sub(r'[^\d.-]', '', str(val).strip())
+        if not cleaned or cleaned in ('-', '.', '-.'):
+            return default
+        return float(cleaned)
+    except (ValueError, TypeError):
+        return default
+
 class JournalLine(BaseModel):
     account: str
     debit: float = 0.0
@@ -57,7 +71,7 @@ class MathematicalCheckResult(BaseModel):
     total_debits: float = 0.0
     total_credits: float = 0.0
     imbalance: float = 0.0
-    details: List[str] = []
+    details: List[str] = Field(default_factory=list)
 
 class PolicyCheckResult(BaseModel):
     passed: bool
@@ -110,8 +124,8 @@ class FinanceCheckerEngine:
             for item in maker_output["journal_entries"]:
                 entries.append(JournalLine(
                     account=str(item.get("account", "")),
-                    debit=float(item.get("debit", 0.0) or 0.0),
-                    credit=float(item.get("credit", 0.0) or 0.0),
+                    debit=safe_float(item.get("debit", 0.0)),
+                    credit=safe_float(item.get("credit", 0.0)),
                     description=item.get("description")
                 ))
         elif isinstance(maker_output, list):
@@ -119,16 +133,16 @@ class FinanceCheckerEngine:
                 if isinstance(item, dict) and ("debit" in item or "credit" in item):
                     entries.append(JournalLine(
                         account=str(item.get("account", "")),
-                        debit=float(item.get("debit", 0.0) or 0.0),
-                        credit=float(item.get("credit", 0.0) or 0.0)
+                        debit=safe_float(item.get("debit", 0.0)),
+                        credit=safe_float(item.get("credit", 0.0))
                     ))
         else:
             # Fallback regex scanning for debit/credit patterns in markdown tables
             debit_matches = re.findall(r'(?:debit|dr\.?)\s*[:=]?\s*\$?\s*([\d,]+\.?\d*)', output_str, re.IGNORECASE)
             credit_matches = re.findall(r'(?:credit|cr\.?)\s*[:=]?\s*\$?\s*([\d,]+\.?\d*)', output_str, re.IGNORECASE)
 
-            total_d = sum(float(m.replace(',', '')) for m in debit_matches) if debit_matches else 0.0
-            total_c = sum(float(m.replace(',', '')) for m in credit_matches) if credit_matches else 0.0
+            total_d = sum(safe_float(m) for m in debit_matches if m.strip()) if debit_matches else 0.0
+            total_c = sum(safe_float(m) for m in credit_matches if m.strip()) if credit_matches else 0.0
 
             if debit_matches or credit_matches:
                 imbalance = round(abs(total_d - total_c), 2)
@@ -243,10 +257,10 @@ class FinanceCheckerEngine:
         # Check for potential duplicates against recent transactions in shared_context
         recent_txs = shared_context.get("recent_transactions", [])
         if isinstance(maker_output, dict) and "amount" in maker_output and "vendor" in maker_output:
-            amt = float(maker_output["amount"] or 0.0)
-            vnd = str(maker_output["vendor"]).lower()
+            amt = safe_float(maker_output.get("amount", 0.0))
+            vnd = str(maker_output.get("vendor", "")).lower()
             for tx in recent_txs:
-                if isinstance(tx, dict) and tx.get("amount") == amt and str(tx.get("vendor", "")).lower() == vnd:
+                if isinstance(tx, dict) and safe_float(tx.get("amount", 0.0)) == amt and str(tx.get("vendor", "")).lower() == vnd:
                     anomalies.append(f"Potential duplicate transaction detected: ${amt:.2f} for vendor '{vnd}'")
                     risk_score += 0.5
 
@@ -315,7 +329,7 @@ Output JSON only:
                 data = json.loads(content_str.replace("```json", "").replace("```", "").strip())
                 
             passed = bool(data.get("passed", True))
-            confidence = float(data.get("confidence", 0.95))
+            confidence = safe_float(data.get("confidence", 0.95), 0.95)
             findings = data.get("audit_findings", ["Audit passed standard verification."])
             return passed, confidence, findings
         except Exception as e:

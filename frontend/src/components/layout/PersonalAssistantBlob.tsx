@@ -252,24 +252,12 @@ export function PersonalAssistantBlob() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-1.5">
-                {/* 1-Click Open Sheet Window Button */}
-                <button
-                  onClick={() => setIsSheetWindowOpen(!isSheetWindowOpen)}
-                  title="Open Google Sheet Mini Window"
-                  className="px-2.5 py-1 rounded-xl bg-white/20 hover:bg-white/30 text-white text-[11px] font-bold transition flex items-center gap-1 cursor-pointer"
-                >
-                  <FileSpreadsheet className="w-3.5 h-3.5" />
-                  <span>Sheet</span>
-                </button>
-
-                <button
-                  onClick={() => setIsOpen(false)}
-                  className="p-1.5 rounded-xl hover:bg-white/20 transition-colors cursor-pointer"
-                >
-                  <ChevronDown className="w-5 h-5" />
-                </button>
-              </div>
+              <button
+                onClick={() => setIsOpen(false)}
+                className="p-1.5 rounded-xl hover:bg-white/20 transition-colors cursor-pointer"
+              >
+                <ChevronDown className="w-5 h-5" />
+              </button>
             </div>
 
             {/* Messages */}

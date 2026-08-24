@@ -248,31 +248,29 @@ class GoogleSheetsService:
 
     def post_journal_entry(self, entry: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Record a new double-entry journal entry and update account balances accordingly.
+        Appends a verified double-entry transaction to the General Journal
+        and adjusts debit/credit balances in the Chart of Accounts.
         """
-        entries = self.get_journal_entries()
+        journal = self.get_journal_entries()
         
-        if "id" not in entry:
-            entry["id"] = f"je_{len(entries) + 1001}"
-        if "date" not in entry:
-            entry["date"] = datetime.utcnow().strftime("%Y-%m-%d")
-        if "status" not in entry:
-            entry["status"] = "Posted"
-        if "verified_by_checker" not in entry:
-            entry["verified_by_checker"] = True
+        now = datetime.utcnow()
+        entry["id"] = entry.get("id") or f"je_{now.strftime('%Y%m%d%H%M%S')}_{len(journal)+1}"
+        entry["date"] = entry.get("date") or now.strftime("%Y-%m-%d")
+        entry["status"] = entry.get("status") or "Posted"
+        entry["verified_by_checker"] = True
+        entry["created_at"] = now.isoformat()
 
-        entries.insert(0, entry)
-
+        journal.append(entry)
         self.memory.set(
             business_id=self.business_id,
             key="finance_journal_entries",
-            value=entries,
+            value=journal,
             tags=["finance", "google_sheets", "journal"]
         )
 
         # Update account balances
         accounts = self.get_accounts()
-        amt = float(entry.get("amount", 0) or 0)
+        amt = self._to_float(entry.get("amount", 0))
 
         debit_code = str(entry.get("debit_account", "")).split(" ")[0]
         credit_code = str(entry.get("credit_account", "")).split(" ")[0]
@@ -282,14 +280,14 @@ class GoogleSheetsService:
                 continue
             if acc.get("code") == debit_code:
                 if acc.get("normal_balance") == "Debit":
-                    acc["balance"] = round(float(acc.get("balance", 0) or 0) + amt, 2)
+                    acc["balance"] = round(self._to_float(acc.get("balance", 0)) + amt, 2)
                 else:
-                    acc["balance"] = round(float(acc.get("balance", 0) or 0) - amt, 2)
+                    acc["balance"] = round(self._to_float(acc.get("balance", 0)) - amt, 2)
             elif acc.get("code") == credit_code:
                 if acc.get("normal_balance") == "Credit":
-                    acc["balance"] = round(float(acc.get("balance", 0) or 0) + amt, 2)
+                    acc["balance"] = round(self._to_float(acc.get("balance", 0)) + amt, 2)
                 else:
-                    acc["balance"] = round(float(acc.get("balance", 0) or 0) - amt, 2)
+                    acc["balance"] = round(self._to_float(acc.get("balance", 0)) - amt, 2)
 
         self.memory.set(
             business_id=self.business_id,
@@ -304,43 +302,43 @@ class GoogleSheetsService:
         """Calculates total debits, credits, and verification integrity."""
         accounts = self.get_accounts()
         total_debits = sum(
-            float(a.get("balance", 0) or 0)
+            self._to_float(a.get("balance", 0))
             for a in accounts
             if isinstance(a, dict) and a.get("normal_balance") == "Debit"
         )
         total_credits = sum(
-            float(a.get("balance", 0) or 0)
+            self._to_float(a.get("balance", 0))
             for a in accounts
             if isinstance(a, dict) and a.get("normal_balance") == "Credit"
         )
 
         total_assets = sum(
-            float(a.get("balance", 0) or 0)
+            self._to_float(a.get("balance", 0))
             for a in accounts
             if isinstance(a, dict) and a.get("category") == "Assets"
         )
         total_liabilities = sum(
-            float(a.get("balance", 0) or 0)
+            self._to_float(a.get("balance", 0))
             for a in accounts
             if isinstance(a, dict) and a.get("category") == "Liabilities"
         )
         total_equity = sum(
-            float(a.get("balance", 0) or 0)
+            self._to_float(a.get("balance", 0))
             for a in accounts
             if isinstance(a, dict) and a.get("category") == "Equity"
         )
         total_revenue = sum(
-            float(a.get("balance", 0) or 0)
+            self._to_float(a.get("balance", 0))
             for a in accounts
             if isinstance(a, dict) and a.get("category") == "Revenue"
         )
         total_cogs = sum(
-            float(a.get("balance", 0) or 0)
+            self._to_float(a.get("balance", 0))
             for a in accounts
             if isinstance(a, dict) and a.get("category") == "COGS"
         )
         total_opex = sum(
-            float(a.get("balance", 0) or 0)
+            self._to_float(a.get("balance", 0))
             for a in accounts
             if isinstance(a, dict) and a.get("category") == "OPEX"
         )
