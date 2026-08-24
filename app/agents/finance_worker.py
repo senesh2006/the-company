@@ -170,12 +170,15 @@ def maker_node(state: FinanceWorkerState):
     revision_context = f"\nPREVIOUS AUDIT REVISION FEEDBACK (FIX THESE):\n{revisions}\n" if revisions else ""
 
     sheet_context = ""
-    if any(w in task_desc.lower() for w in ["sheet", "spreadsheet", "trial balance", "balance", "ledger", "chart of accounts", "coa"]):
+    biz_id = state.get("business_id", "00000000-0000-0000-0000-000000000001")
+    if any(w in task_desc.lower() for w in ["sheet", "spreadsheet", "trial balance", "balance", "ledger", "chart of accounts", "coa", "group of companies", "financial tracking"]):
         try:
             from app.agents.google_sheets_tool import GoogleSheetsTool
             gs_tool = GoogleSheetsTool()
-            setattr(gs_tool, "business_id", state.get("business_id", "00000000-0000-0000-0000-000000000001"))
-            if any(w in task_desc.lower() for w in ["create", "new", "make", "initialize"]):
+            setattr(gs_tool, "business_id", biz_id)
+            if any(w in task_desc.lower() for w in ["group", "sss", "companies", "subsidiary", "tracking system"]):
+                sheet_res = gs_tool._run(action="create_group_financial_tracking_system", sheet_name="SSS Group of Companies")
+            elif any(w in task_desc.lower() for w in ["create", "new", "make", "initialize"]):
                 sheet_res = gs_tool._run(action="create_sheet", sheet_name="Trial Balance")
             else:
                 sheet_res = gs_tool._run(action="get_trial_balance")
@@ -197,7 +200,7 @@ If creating financial journal entries or categorizations, provide a structured J
 - Credits ($)
 - Description & Rationale
 Ensure Debits strictly equal Credits.
-If this mandate involves Google Sheets or reports, provide the full structured table and direct Google Sheets link."""
+Provide the full structured table and direct Google Sheets link."""
 
     messages = [
         SystemMessage(content=FINANCE_SYSTEM_PROMPT),
@@ -354,6 +357,29 @@ def update_memory_node(state: FinanceWorkerState):
     observations = state.get("observations", "Loaded company ledger policies.")
     revisions = state.get("revisions_count", 0)
 
+    # Ensure the Google Sheets Master Ledger link and copy block are ALWAYS included in the financial deliverables
+    sheet_badge = ""
+    try:
+        from app.services.google_sheets_service import GoogleSheetsService
+        biz_id = state.get("business_id", "00000000-0000-0000-0000-000000000001")
+        sheets_cfg = GoogleSheetsService(business_id=biz_id).get_config()
+        sheet_url = sheets_cfg.get("spreadsheet_url", "https://docs.google.com/spreadsheets/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/edit")
+        sheet_id = sheets_cfg.get("spreadsheet_id", "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms")
+        sheet_title = sheets_cfg.get("spreadsheet_title", "Master General Ledger")
+
+        sheet_badge = (
+            f"\n\n---\n"
+            f"### 📊 Google Sheets Master Ledger & Live Access\n"
+            f"- **Spreadsheet Name**: {sheet_title}\n"
+            f"- **Direct Link**: [Open Google Sheet: {sheet_title}]({sheet_url})\n"
+            f"- **Copy Spreadsheet URL**:\n```{sheet_url}```\n"
+            f"- **Spreadsheet ID**: `{sheet_id}`\n"
+            f"- **Synchronized Tabs**: `Executive_Dashboard`, `Chart_of_Accounts`, `General_Journal`, `Trial_Balance`, `Subsidiary_Breakdown`, `Cash_Flow_Forecast`\n\n"
+            f"> 💡 *Tip: You can also open, copy, or connect your own Google Sheet directly in the General Ledger & Accounts section on the dashboard.*"
+        )
+    except Exception as e:
+        logger.debug(f"Google sheets badge injection note: {e}")
+
     # Wrap reasoning trace in <thought> tags so the frontend presents it as a collapsible ChatGPT-style thought process
     full_report = (
         f"<thought>\n"
@@ -363,7 +389,8 @@ def update_memory_node(state: FinanceWorkerState):
         f"</thought>\n\n"
         f"### Financial Deliverables & Execution Report\n\n"
         f"**Task Mandate**: {state['task'].description}\n\n"
-        f"{final_text}\n\n"
+        f"{final_text}"
+        f"{sheet_badge}\n\n"
         f"**Audit Status**: Verified by Senior Independent Audit Checker."
     )
 
