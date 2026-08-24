@@ -104,6 +104,11 @@ class GoogleSheetsTool(BaseTool):
                 sync_res = service.sync_to_google_sheets()
                 default_res = json.dumps(sync_res, indent=2)
 
+            elif act in ("create_group_financial_tracking_system", "setup_financial_system", "financial_tracking", "create_group_financial_system", "create_group_sheet"):
+                group_name = sheet_name if sheet_name and sheet_name != "Accounts" else "SSS Group of Companies"
+                res = service.create_group_financial_tracking_system(group_name=group_name)
+                default_res = json.dumps(res, indent=2)
+
             elif act in ("create_finance_sheet", "create_sheet", "create_google_sheet", "new_sheet", "create_trial_balance_sheet", "create_trial_balance"):
                 cfg = service.get_config()
                 default_res = json.dumps({

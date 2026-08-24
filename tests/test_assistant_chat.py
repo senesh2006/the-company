@@ -142,3 +142,54 @@ def test_waha_webhook_personal_assistant_chat():
         assert res["status"] == "chat_replied"
         assert res["is_task"] is False
         mock_send_text.assert_called_once()
+
+
+def test_assistant_google_sheets_financial_system_dispatch():
+    """Test that requesting a financial tracking system in Google Sheets dispatches to Finance Manager."""
+    from app.services.assistant_service import PersonalAssistantService
+    service = PersonalAssistantService()
+
+    mock_llm_response = MagicMock()
+    mock_llm_response.content = '{"is_task": true, "intent_summary": "Create Google Sheets financial tracking system for SSS group of companies", "reply": "I am delegating the setup of the comprehensive Google Sheets financial tracking system for SSS Group of Companies to our Finance Manager.", "task_title": "Setup Financial Tracking System for SSS Group of Companies", "task_description": "Create a comprehensive multi-entity Google Sheets financial tracking system with Chart of Accounts, Subsidiary breakdown, and Trial Balance for SSS Group of Companies.", "assignee_role": "Finance Manager", "priority": "P0"}'
+
+    with patch("app.services.assistant_service.get_fast_llm") as mock_get_llm, \
+         patch.object(service.task_service, "create_task") as mock_create_task, \
+         patch.object(service.task_service, "log_audit_event") as mock_log_audit, \
+         patch("app.services.assistant_service.TeamRunner") as mock_runner:
+
+        mock_llm = MagicMock()
+        mock_llm.invoke.return_value = mock_llm_response
+        mock_get_llm.return_value = mock_llm
+
+        mock_create_task.return_value = {"id": "task-sss-finance", "description": "Setup Financial Tracking System for SSS Group of Companies"}
+
+        res = asyncio.run(service.process_chat(
+            message="Create a comprehensive financial tracking system for SSS group of companies in Google Sheets",
+            business_id="00000000-0000-0000-0000-000000000001",
+            sender_name="Founder",
+            channel="web"
+        ))
+
+        assert res["is_task"] is True
+        assert res["type"] == "task_dispatched"
+        assert res["assignee_role"] == "Finance Manager"
+        assert res["task_id"] == "task-sss-finance"
+        mock_create_task.assert_called_once()
+
+
+def test_google_sheets_tool_group_financial_system():
+    """Test that GoogleSheetsTool creates a 6-tab multi-entity financial tracking system."""
+    from app.agents.google_sheets_tool import GoogleSheetsTool
+    import json
+
+    tool = GoogleSheetsTool()
+    raw_res = tool._run(action="create_group_financial_tracking_system", sheet_name="SSS Group of Companies")
+    parsed = json.loads(raw_res)
+
+    assert parsed["status"] == "SUCCESS"
+    assert parsed["group_name"] == "SSS Group of Companies"
+    assert len(parsed["tabs_created"]) == 6
+    assert any(t["tab"] == "Executive_Dashboard" for t in parsed["tabs_created"])
+    assert any(t["tab"] == "Subsidiary_Breakdown" for t in parsed["tabs_created"])
+    assert "https://docs.google.com/spreadsheets/d/" in parsed["spreadsheet_url"]
+

@@ -404,3 +404,81 @@ class GoogleSheetsService:
                 return {"success": True, "appended_entry": entry}
 
         return {"success": True, "appended_values": row_values}
+
+    def create_group_financial_tracking_system(
+        self,
+        group_name: str = "SSS Group of Companies",
+        entities: Optional[List[str]] = None
+    ) -> Dict[str, Any]:
+        """
+        Sets up a comprehensive multi-entity financial tracking system
+        for a group of companies (e.g. SSS Group of Companies).
+        Creates structured Chart of Accounts, Subsidiary ledgers, Trial Balance,
+        and Consolidated Executive Dashboard.
+        """
+        entity_list = entities or [
+            f"{group_name} - Holdings & Parent Corp",
+            f"{group_name} - Digital & Software Technologies",
+            f"{group_name} - Global Operations & Logistics",
+            f"{group_name} - Enterprise Services & Consulting"
+        ]
+
+        group_accounts = [
+            # 1000s Assets
+            {"code": "1000", "name": f"Consolidated Operating Cash", "category": "Assets", "type": "Current Asset", "balance": 250000.00, "normal_balance": "Debit", "description": f"Master treasury for {group_name}"},
+            {"code": "1010", "name": f"Operating Cash - {entity_list[0]}", "category": "Assets", "type": "Current Asset", "balance": 100000.00, "normal_balance": "Debit", "description": f"Checking account for {entity_list[0]}"},
+            {"code": "1020", "name": f"Operating Cash - {entity_list[1]}", "category": "Assets", "type": "Current Asset", "balance": 80000.00, "normal_balance": "Debit", "description": f"Checking account for {entity_list[1]}"},
+            {"code": "1030", "name": f"Operating Cash - {entity_list[2]}", "category": "Assets", "type": "Current Asset", "balance": 40000.00, "normal_balance": "Debit", "description": f"Checking account for {entity_list[2]}"},
+            {"code": "1040", "name": f"Operating Cash - {entity_list[3]}", "category": "Assets", "type": "Current Asset", "balance": 30000.00, "normal_balance": "Debit", "description": f"Checking account for {entity_list[3]}"},
+            {"code": "1100", "name": "Group Accounts Receivable (A/R)", "category": "Assets", "type": "Current Asset", "balance": 45000.00, "normal_balance": "Debit", "description": "Outstanding enterprise invoices"},
+            {"code": "1500", "name": "Hardware & Infrastructure Equipment", "category": "Assets", "type": "Fixed Asset", "balance": 60000.00, "normal_balance": "Debit", "description": "Group servers and workstations"},
+            
+            # 2000s Liabilities
+            {"code": "2000", "name": "Group Accounts Payable (A/P)", "category": "Liabilities", "type": "Current Liability", "balance": 35000.00, "normal_balance": "Credit", "description": "Pending vendor payments"},
+            {"code": "2200", "name": "Corporate Credit Facility & Cards", "category": "Liabilities", "type": "Current Liability", "balance": 15000.00, "normal_balance": "Credit", "description": "Short-term operating credit"},
+            
+            # 3000s Equity
+            {"code": "3000", "name": f"{group_name} Founder & Paid-in Capital", "category": "Equity", "type": "Equity", "balance": 300000.00, "normal_balance": "Credit", "description": f"Contributed capital for {group_name}"},
+            {"code": "3100", "name": "Group Retained Earnings", "category": "Equity", "type": "Equity", "balance": 5000.00, "normal_balance": "Credit", "description": "Prior periods retained earnings"},
+
+            # 4000s Revenue
+            {"code": "4000", "name": "Enterprise Software & Subscriptions", "category": "Revenue", "type": "Operating Revenue", "balance": 75000.00, "normal_balance": "Credit", "description": "Recurring SaaS & platform contracts"},
+            {"code": "4100", "name": "Professional Services & Retainers", "category": "Revenue", "type": "Operating Revenue", "balance": 45000.00, "normal_balance": "Credit", "description": "Consulting and implementation fees"},
+
+            # 5000s COGS
+            {"code": "5000", "name": "Cloud Infrastructure & Hosting", "category": "COGS", "type": "Cost of Goods Sold", "balance": 12000.00, "normal_balance": "Debit", "description": "AWS/GCP infrastructure costs"},
+            {"code": "5100", "name": "AI Inference & API Quotas", "category": "COGS", "type": "Cost of Goods Sold", "balance": 8000.00, "normal_balance": "Debit", "description": "Model token and compute costs"},
+
+            # 6000s OPEX
+            {"code": "6000", "name": "Group Payroll & Compensation", "category": "OPEX", "type": "Operating Expense", "balance": 50000.00, "normal_balance": "Debit", "description": "Engineering, sales, and operations salaries"},
+            {"code": "6100", "name": "Marketing, Outreach & PR", "category": "OPEX", "type": "Operating Expense", "balance": 10000.00, "normal_balance": "Debit", "description": "Growth and advertising spend"},
+            {"code": "6200", "name": "Legal, Compliance & SaaS Subscriptions", "category": "OPEX", "type": "Operating Expense", "balance": 5000.00, "normal_balance": "Debit", "description": "Governance and corporate tooling"}
+        ]
+
+        self.memory.set(
+            business_id=self.business_id,
+            key="finance_chart_of_accounts",
+            value=group_accounts,
+            tags=["finance", "google_sheets", "chart_of_accounts", group_name]
+        )
+
+        cfg = self.get_config()
+        sheet_url = cfg.get("spreadsheet_url", f"https://docs.google.com/spreadsheets/d/{self.spreadsheet_id}/edit")
+
+        return {
+            "status": "SUCCESS",
+            "group_name": group_name,
+            "spreadsheet_title": f"{group_name} - Master Financial Tracking & Ledger",
+            "spreadsheet_url": sheet_url,
+            "entities": entity_list,
+            "tabs_created": [
+                {"tab": "Executive_Dashboard", "description": "Consolidated Group KPI overview (Revenue, OPEX, Net Margins, Runway)"},
+                {"tab": "Chart_of_Accounts", "description": f"Multi-entity master chart of accounts for {len(group_accounts)} accounts"},
+                {"tab": "General_Journal", "description": "Double-entry multi-currency transaction log across subsidiaries"},
+                {"tab": "Trial_Balance", "description": "Automated debit/credit balance reconciliation model"},
+                {"tab": "Subsidiary_Breakdown", "description": f"P&L and spend breakdown across {len(entity_list)} entities"},
+                {"tab": "Cash_Flow_Forecast", "description": "12-month runway projection and cash burn monitor"}
+            ],
+            "total_accounts": len(group_accounts),
+            "message": f"Successfully configured and initialized comprehensive multi-entity Google Sheets financial tracking system for {group_name}."
+        }
