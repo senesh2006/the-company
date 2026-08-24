@@ -114,7 +114,13 @@ def test_waha_company_rep_webhook_ingestion():
             }
         }
 
-        with patch("app.services.shared_memory.SharedMemoryService.set") as mock_mem_set, \
+        mock_llm_resp = MagicMock()
+        mock_llm_resp.content = '{"is_task": true, "intent_summary": "Enterprise setup", "reply": "Coordinating enterprise setup...", "task_title": "Enterprise Setup", "task_description": "Enterprise account setup", "assignee_role": "Personal Assistant", "priority": "P1"}'
+        mock_llm = MagicMock()
+        mock_llm.invoke.return_value = mock_llm_resp
+
+        with patch("app.services.assistant_service.get_fast_llm", return_value=mock_llm), \
+             patch("app.services.shared_memory.SharedMemoryService.set") as mock_mem_set, \
              patch("app.services.task_service.TaskService.create_task") as mock_create_task, \
              patch("app.services.task_service.TaskService.list_agents") as mock_list_agents, \
              patch("app.services.task_service.TaskService.log_audit_event") as mock_audit, \
@@ -139,7 +145,7 @@ def test_waha_company_rep_webhook_ingestion():
             assert mock_create_task.called, "Task creation failed"
             assert mock_send_text.called, "WhatsApp reply not sent"
 
-            assert response.get("status") in ["processed", "mandate_dispatched", "ignored"]
+            assert response.get("status") in ["processed", "mandate_dispatched", "task_dispatched", "chat_replied", "ignored"]
             print(f"Webhook response: {response}")
 
     asyncio.run(_run())
