@@ -2,12 +2,13 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Bot, Send, X, Sparkles, Loader2, ChevronDown } from "lucide-react";
-import { useCreateTask } from "@/lib/queries";
+import { Bot, Send, X, Sparkles, Loader2, ChevronDown, FileSpreadsheet, ExternalLink } from "lucide-react";
+import { useCreateTask, useSheetsConfig } from "@/lib/queries";
 import { api } from "@/lib/api";
 import { AssistantAvatar } from "@/components/ui/AssistantAvatar";
 import { MarkdownRenderer } from "@/components/MarkdownRenderer";
 import { MilestoneMap, MilestoneItem } from "@/components/MilestoneMap";
+import { GoogleSheetMiniWindow } from "@/components/finance/GoogleSheetMiniWindow";
 
 interface Message {
   id: string;
@@ -20,7 +21,10 @@ interface Message {
 
 export function PersonalAssistantBlob() {
   const [isOpen, setIsOpen] = useState(false);
+  const [isSheetWindowOpen, setIsSheetWindowOpen] = useState(false);
+  const [sheetWindowUrl, setSheetWindowUrl] = useState<string | undefined>(undefined);
   const [input, setInput] = useState("");
+  const { data: sheetsConfig } = useSheetsConfig();
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "welcome",
@@ -63,6 +67,21 @@ export function PersonalAssistantBlob() {
 
     const assistantMsgId = `assistant-${Date.now()}`;
 
+    // Check if user specifically requested to open or preview the Google Sheet
+    const lowerText = taskText.toLowerCase();
+    const isDirectSheetRequest = 
+      lowerText.includes("open the google sheet") ||
+      lowerText.includes("open sheet") ||
+      lowerText.includes("show sheet") ||
+      lowerText.includes("preview sheet") ||
+      lowerText.includes("view sheet") ||
+      lowerText.includes("sheet window") ||
+      lowerText.includes("google sheet window");
+
+    if (isDirectSheetRequest) {
+      setIsSheetWindowOpen(true);
+    }
+
     // Prepare previous history
     const historyPayload = messages
       .filter((m) => m.id !== "welcome")
@@ -78,6 +97,14 @@ export function PersonalAssistantBlob() {
 
       // Case 1: Pure Conversational Reply
       if (res.type === "chat_reply" || !res.is_task) {
+        // If the reply contains a sheet link or user asked for sheets, ensure sheet window is prepared
+        if (res.reply && res.reply.includes("docs.google.com/spreadsheets")) {
+          const match = res.reply.match(/https:\/\/docs\.google\.com\/spreadsheets\/d\/[a-zA-Z0-9-_]+[^\s\)]*/);
+          if (match) {
+            setSheetWindowUrl(match[0]);
+          }
+        }
+
         setMessages((prev) => [
           ...prev,
           {
@@ -131,6 +158,13 @@ export function PersonalAssistantBlob() {
                   ? "✅ Mandate successfully completed by your team."
                   : "❌ Mandate execution encountered an issue.");
 
+              if (finalResult.includes("docs.google.com/spreadsheets")) {
+                const match = finalResult.match(/https:\/\/docs\.google\.com\/spreadsheets\/d\/[a-zA-Z0-9-_]+[^\s\)]*/);
+                if (match) {
+                  setSheetWindowUrl(match[0]);
+                }
+              }
+
               setMessages((prev) =>
                 prev.map((msg) =>
                   msg.id === assistantMsgId
@@ -177,8 +211,22 @@ export function PersonalAssistantBlob() {
     }
   };
 
+  // Helper to extract spreadsheet link from text
+  const extractSheetUrl = (text: string): string | null => {
+    const match = text.match(/https:\/\/docs\.google\.com\/spreadsheets\/d\/[a-zA-Z0-9-_]+[^\s\)]*/);
+    return match ? match[0] : null;
+  };
+
   return (
     <>
+      {/* Live Google Sheet Mini Window */}
+      <GoogleSheetMiniWindow
+        isOpen={isSheetWindowOpen}
+        onClose={() => setIsSheetWindowOpen(false)}
+        customSpreadsheetUrl={sheetWindowUrl || sheetsConfig?.spreadsheet_url}
+        customTitle={sheetsConfig?.spreadsheet_title || "Google Sheets Ledger"}
+      />
+
       {/* Chat Panel */}
       <AnimatePresence>
         {isOpen && (
@@ -203,45 +251,79 @@ export function PersonalAssistantBlob() {
                   </p>
                 </div>
               </div>
-              <button
-                onClick={() => setIsOpen(false)}
-                className="p-1.5 rounded-xl hover:bg-white dark:bg-slate-900/20 transition-colors cursor-pointer"
-              >
-                <ChevronDown className="w-5 h-5" />
-              </button>
+
+              <div className="flex items-center gap-1.5">
+                {/* 1-Click Open Sheet Window Button */}
+                <button
+                  onClick={() => setIsSheetWindowOpen(!isSheetWindowOpen)}
+                  title="Open Google Sheet Mini Window"
+                  className="px-2.5 py-1 rounded-xl bg-white/20 hover:bg-white/30 text-white text-[11px] font-bold transition flex items-center gap-1 cursor-pointer"
+                >
+                  <FileSpreadsheet className="w-3.5 h-3.5" />
+                  <span>Sheet</span>
+                </button>
+
+                <button
+                  onClick={() => setIsOpen(false)}
+                  className="p-1.5 rounded-xl hover:bg-white/20 transition-colors cursor-pointer"
+                >
+                  <ChevronDown className="w-5 h-5" />
+                </button>
+              </div>
             </div>
 
             {/* Messages */}
             <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3 bg-slate-50/50" style={{ minHeight: 200 }}>
-              {messages.map((msg) => (
-                <div
-                  key={msg.id}
-                  className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
-                >
+              {messages.map((msg) => {
+                const sheetUrl = msg.role === "assistant" ? extractSheetUrl(msg.content) : null;
+                const hasSheetMention = msg.role === "assistant" && (sheetUrl || msg.content.toLowerCase().includes("google sheet"));
+
+                return (
                   <div
-                    className={`${
-                      msg.role === "user"
-                        ? "max-w-[85%] bg-emerald-600 text-white rounded-br-lg"
-                        : msg.milestones && msg.milestones.length > 0
-                        ? "w-full max-w-[98%] bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-bl-lg shadow-sm"
-                        : "max-w-[85%] bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-bl-lg shadow-sm"
-                    } px-3.5 py-2.5 rounded-2xl text-xs leading-relaxed min-w-0`}
+                    key={msg.id}
+                    className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
                   >
-                    {msg.role === "assistant" ? (
-                      <div className="space-y-3">
-                        {msg.milestones && msg.milestones.length > 0 && (
-                          <div className="mb-2">
-                            <MilestoneMap milestones={msg.milestones} progress={msg.progress} compact={false} />
-                          </div>
-                        )}
-                        <MarkdownRenderer content={msg.content} />
-                      </div>
-                    ) : (
-                      msg.content
-                    )}
+                    <div
+                      className={`${
+                        msg.role === "user"
+                          ? "max-w-[85%] bg-emerald-600 text-white rounded-br-lg"
+                          : msg.milestones && msg.milestones.length > 0
+                          ? "w-full max-w-[98%] bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-bl-lg shadow-sm"
+                          : "max-w-[85%] bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-bl-lg shadow-sm"
+                      } px-3.5 py-2.5 rounded-2xl text-xs leading-relaxed min-w-0`}
+                    >
+                      {msg.role === "assistant" ? (
+                        <div className="space-y-3">
+                          {msg.milestones && msg.milestones.length > 0 && (
+                            <div className="mb-2">
+                              <MilestoneMap milestones={msg.milestones} progress={msg.progress} compact={false} />
+                            </div>
+                          )}
+                          <MarkdownRenderer content={msg.content} />
+
+                          {/* Quick Action: Open Mini Window */}
+                          {hasSheetMention && (
+                            <div className="pt-1.5 border-t border-slate-100 dark:border-slate-800 flex items-center gap-2">
+                              <button
+                                onClick={() => {
+                                  if (sheetUrl) setSheetWindowUrl(sheetUrl);
+                                  setIsSheetWindowOpen(true);
+                                }}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 dark:hover:bg-emerald-900 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200 text-[11px] font-bold transition shadow-2xs cursor-pointer active:scale-95"
+                              >
+                                <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                                <span>📊 Open in Mini Window</span>
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        msg.content
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
 
               {isLoading && (
                 <div className="flex justify-start">
