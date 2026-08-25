@@ -275,7 +275,7 @@ def register_admin_tools(business_id: str, agent_id: str = None, task_id: str = 
     """
     Registers allowed MCP tools for Personal Assistant and Admin / Ops worker roles.
     """
-    from app.agents.tools import SearchWebTool, SendEmailTool
+    from app.agents.tools import SearchWebTool, SendEmailTool, CreateRoutineTool
     from app.agents.google_sheets_tool import GoogleSheetsTool
 
     tools = [
@@ -283,6 +283,7 @@ def register_admin_tools(business_id: str, agent_id: str = None, task_id: str = 
         SendEmailTool(),
         CalendarScheduleTool(),
         GoogleSheetsTool(),
+        CreateRoutineTool(),
         HelpdeskTicketTool(),
         SearchWebTool(),
         ReadSharedMemoryTool(business_id=business_id),

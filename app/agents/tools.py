@@ -381,6 +381,56 @@ class AskUserForInputTool(BaseTool):
         except Exception as e:
             return f"Failed to ask user for input: {str(e)}"
 
+# --- Routine Automation Tools ---
+
+class CreateRoutineInput(BaseModel):
+    title: str = Field(description="Title of the automated routine (e.g. 'Daily 9 AM Financial Audit', 'Hourly Lead Triage')")
+    description: str = Field(description="Actionable mandate/prompt to be executed autonomously by the assigned specialist on each schedule tick.")
+    schedule_type: str = Field(default="daily", description="'daily', 'hourly', 'weekly', or 'interval_minutes'")
+    schedule_config: Optional[Dict[str, Any]] = Field(default_factory=lambda: {"time": "09:00"}, description="Schedule config e.g. {'time': '09:00'}, {'interval_minutes': 60}, {'day_of_week': 'monday', 'time': '09:00'}")
+    assignee_role: str = Field(default="Personal Assistant", description="'Finance Manager', 'Marketing Manager', 'Software Engineer', 'Research Specialist', 'Admin & Operations Worker', or 'Personal Assistant'")
+
+class CreateRoutineTool(BaseTool):
+    name = "create_routine"
+    description = (
+        "Creates an automated scheduled routine that executes autonomously in the background on schedule, "
+        "even when the user is offline or the web app is closed."
+    )
+    args_schema = CreateRoutineInput
+    cost_estimate = 0.005
+
+    def _run(
+        self,
+        title: str,
+        description: str,
+        schedule_type: str = "daily",
+        schedule_config: Optional[Dict[str, Any]] = None,
+        assignee_role: str = "Personal Assistant"
+    ) -> str:
+        biz_id = getattr(self, "business_id", None) or "00000000-0000-0000-0000-000000000001"
+        from app.services.routine_service import routine_service
+        try:
+            routine = routine_service.create_routine(
+                business_id=biz_id,
+                title=title,
+                description=description,
+                assignee_role=assignee_role,
+                schedule_type=schedule_type,
+                schedule_config=schedule_config or {"time": "09:00"},
+                created_by="Autonomous Agent"
+            )
+            return (
+                f"✅ **Automated Routine Successfully Created!**\n\n"
+                f"- **Routine ID:** `{routine['id']}`\n"
+                f"- **Title:** {routine['title']}\n"
+                f"- **Assigned Specialist:** {routine['assignee_role']}\n"
+                f"- **Schedule:** {routine['schedule_type'].capitalize()} ({routine['schedule_config']})\n"
+                f"- **Next Autonomous Execution:** {routine['next_run_at']}\n\n"
+                f"*This routine will execute autonomously in the background via the backend scheduler daemon even if the browser/web app is closed.*"
+            )
+        except Exception as e:
+            return f"❌ Failed to create routine: {e}"
+
 # --- Registration Helper ---
 
 def register_default_tools(business_id: str, role: str = "assistant", agent_id: str = None, task_id: str = None):
@@ -397,6 +447,7 @@ def register_default_tools(business_id: str, role: str = "assistant", agent_id: 
         SearchWebTool(),
         SendEmailTool(),
         CreateCalendarEventTool(),
+        CreateRoutineTool(),
         RequestCollaborationTool(business_id=business_id, main_task_id=task_id),
         SpawnSubtaskTool(business_id=business_id, main_task_id=task_id),
         TextUserWhatsAppTool(),

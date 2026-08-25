@@ -112,3 +112,20 @@ def test_execute_routine(mock_worker, mock_memory):
     assert updated["run_count"] == 1
     assert updated["last_status"] == "completed"
     assert updated["last_run_at"] is not None
+
+
+def test_create_routine_tool():
+    from app.agents.tools import CreateRoutineTool
+    tool = CreateRoutineTool()
+    tool.business_id = DEFAULT_BUSINESS_ID
+    
+    result = tool._run(
+        title="Automated Google Sheets Ledger Sync",
+        description="Sync ledger and calculate trial balance every hour",
+        schedule_type="hourly",
+        schedule_config={"interval_minutes": 60},
+        assignee_role="Finance Manager"
+    )
+    assert "Automated Routine Successfully Created" in result
+    assert "Automated Google Sheets Ledger Sync" in result
+    assert "Finance Manager" in result
