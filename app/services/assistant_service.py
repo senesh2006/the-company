@@ -170,54 +170,146 @@ CRITICAL: Return ONLY a valid JSON object with the exact keys:
         llm = get_fast_llm(temperature=0.2)
         parsed_data = None
 
+        def _clean_special_tokens(text: str) -> str:
+            if not text:
+                return ""
+            # Strip functioncall tags, XML artifacts, and stray LLM tokens
+            t = re.sub(r'<\/?functioncall\b[^>]*>', '', text, flags=re.IGNORECASE)
+            t = re.sub(r'<\/?tool_call\b[^>]*>', '', t, flags=re.IGNORECASE)
+            t = re.sub(r'<\/?function_calls\b[^>]*>', '', t, flags=re.IGNORECASE)
+            t = re.sub(r'<\/?thought\b[^>]*>', '', t, flags=re.IGNORECASE)
+            t = re.sub(r'\bfunctioncall>\b', '', t, flags=re.IGNORECASE)
+            t = re.sub(r'\btool_call>\b', '', t, flags=re.IGNORECASE)
+            return t.strip()
+
+        def _heuristic_classify(msg: str) -> Dict[str, Any]:
+            lower = msg.lower().strip()
+            
+            # Check for Routine
+            if any(w in lower for w in ["routine", "recurring", "every day", "daily", "every hour", "hourly", "every week", "schedule a routine"]):
+                sched_type = "daily"
+                if "hour" in lower:
+                    sched_type = "hourly"
+                elif "week" in lower:
+                    sched_type = "weekly"
+                return {
+                    "is_task": False,
+                    "is_routine": True,
+                    "intent_summary": "Create automated background routine",
+                    "reply": f"Configuring automated background routine for your mandate.",
+                    "task_title": msg[:50],
+                    "task_description": msg,
+                    "routine_title": msg[:50],
+                    "routine_schedule_type": sched_type,
+                    "routine_schedule_config": {"time": "09:00"} if sched_type == "daily" else {"interval_minutes": 60},
+                    "assignee_role": "Personal Assistant",
+                    "priority": "P1"
+                }
+
+            # Check for Finance
+            if any(w in lower for w in ["expense", "expenses", "profit", "revenue", "sheet", "sheets", "ledger", "invoice", "payment", "$", "dollar", "usd", "accounting", "cogs", "opex", "tax", "journal", "debit", "credit"]):
+                return {
+                    "is_task": True,
+                    "is_routine": False,
+                    "intent_summary": "Financial bookkeeping and ledger update",
+                    "reply": "I'm delegating this to the Finance Manager to record the transaction in your Expense Tracker & Google Sheets ledger.",
+                    "task_title": msg[:60],
+                    "task_description": msg,
+                    "assignee_role": "Finance Manager",
+                    "priority": "P0"
+                }
+
+            # Check for Marketing / Outreach
+            if any(w in lower for w in ["email", "campaign", "tweet", "post", "social", "outreach", "lead", "seo", "blog", "newsletter"]):
+                return {
+                    "is_task": True,
+                    "is_routine": False,
+                    "intent_summary": "Marketing campaign and communications",
+                    "reply": "I've assigned this to the Marketing Manager for execution.",
+                    "task_title": msg[:60],
+                    "task_description": msg,
+                    "assignee_role": "Marketing Manager",
+                    "priority": "P1"
+                }
+
+            # Check for Software / Code
+            if any(w in lower for w in ["code", "bug", "feature", "deploy", "build", "api", "git", "python", "typescript", "react"]):
+                return {
+                    "is_task": True,
+                    "is_routine": False,
+                    "intent_summary": "Software engineering mandate",
+                    "reply": "I've assigned this task to the Software Engineer.",
+                    "task_title": msg[:60],
+                    "task_description": msg,
+                    "assignee_role": "Software Engineer",
+                    "priority": "P1"
+                }
+
+            # Check for Research
+            if any(w in lower for w in ["research", "competitor", "market", "scrape", "trend", "analyze"]):
+                return {
+                    "is_task": True,
+                    "is_routine": False,
+                    "intent_summary": "Market intelligence & research",
+                    "reply": "I've assigned this research mandate to the Research Specialist.",
+                    "task_title": msg[:60],
+                    "task_description": msg,
+                    "assignee_role": "Research Specialist",
+                    "priority": "P1"
+                }
+
+            # Check general actionable verbs
+            action_verbs = ["add", "record", "create", "build", "draft", "write", "analyze", "deploy", "schedule", "track", "insert", "send", "update", "delete", "run", "pay", "spend"]
+            if any(lower.startswith(v) or f" {v} " in lower for v in action_verbs):
+                return {
+                    "is_task": True,
+                    "is_routine": False,
+                    "intent_summary": "Actionable operations task",
+                    "reply": "Understood! I'm creating a task for this mandate and coordinating execution with the team.",
+                    "task_title": msg[:60],
+                    "task_description": msg,
+                    "assignee_role": "Personal Assistant",
+                    "priority": "P1"
+                }
+
+            # Fallback to conversational reply
+            return {
+                "is_task": False,
+                "is_routine": False,
+                "intent_summary": "Conversational greeting/query",
+                "reply": f"Hello {sender_name}! I'm your Personal Assistant & Chief of Staff. How can I help you today? Whether you need financial tracking, marketing campaigns, software engineering, or market research — I'm ready to assist.",
+                "task_title": None,
+                "task_description": None,
+                "assignee_role": "Personal Assistant",
+                "priority": "P1"
+            }
+
         try:
             resp = await asyncio.to_thread(llm.invoke, messages)
-            raw_content = (resp.content or "").strip()
+            raw_content = _clean_special_tokens((resp.content or "").strip())
 
             # Attempt to extract JSON block
             json_match = re.search(r"\{[\s\S]*\}", raw_content)
             if json_match:
-                parsed_data = json.loads(json_match.group(0))
-            else:
-                parsed_data = {
-                    "is_task": False,
-                    "intent_summary": "General conversation",
-                    "reply": raw_content,
-                    "task_title": None,
-                    "task_description": None,
-                    "assignee_role": "Personal Assistant",
-                    "priority": "P1"
-                }
+                try:
+                    parsed_data = json.loads(json_match.group(0))
+                    # Validate reply string inside parsed JSON
+                    if parsed_data and isinstance(parsed_data, dict):
+                        clean_rep = _clean_special_tokens(parsed_data.get("reply", ""))
+                        parsed_data["reply"] = clean_rep
+                except Exception:
+                    parsed_data = None
+            
+            # If JSON extraction didn't yield a valid dict or reply is corrupted
+            if not parsed_data or not isinstance(parsed_data, dict) or not parsed_data.get("reply"):
+                parsed_data = _heuristic_classify(cleaned_msg)
         except Exception as e:
-            logger.warning(f"Error invoking LLM for PA chat: {e}. Using intelligent fallback.")
-            # Fallback heuristic
-            is_task_heuristic = any(
-                cleaned_msg.lower().startswith(kw) for kw in ["create", "build", "draft", "research", "audit", "write", "analyze", "deploy", "schedule"]
-            )
-            if is_task_heuristic:
-                parsed_data = {
-                    "is_task": True,
-                    "intent_summary": "Actionable task request",
-                    "reply": f"Understood! I'm creating a task for this mandate and coordinating with the team.",
-                    "task_title": cleaned_msg[:60],
-                    "task_description": cleaned_msg,
-                    "assignee_role": "Personal Assistant",
-                    "priority": "P1"
-                }
-            else:
-                parsed_data = {
-                    "is_task": False,
-                    "intent_summary": "Conversational greeting/query",
-                    "reply": f"Hey {sender_name}! I'm here and ready to help. What would you like to work on or discuss?",
-                    "task_title": None,
-                    "task_description": None,
-                    "assignee_role": "Personal Assistant",
-                    "priority": "P1"
-                }
+            logger.warning(f"Error invoking LLM for PA chat: {e}. Using intelligent heuristic fallback.")
+            parsed_data = _heuristic_classify(cleaned_msg)
 
         is_task = bool(parsed_data.get("is_task", False))
         is_routine = bool(parsed_data.get("is_routine", False))
-        reply_text = str(parsed_data.get("reply") or "").strip()
+        reply_text = _clean_special_tokens(str(parsed_data.get("reply") or "").strip())
         if not reply_text:
             reply_text = "I'm on it! Let me know if you need anything else."
 
