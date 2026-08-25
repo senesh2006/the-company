@@ -13,6 +13,10 @@ class Settings(BaseSettings):
     OPENROUTER_API_KEY_FALLBACK: Optional[str] = None
     OPENROUTER_BACKUP_API_KEY: Optional[str] = None
     OPENROUTER_API_KEY_2: Optional[str] = None
+    OPENROUTER_API_KEY_3: Optional[str] = None
+    OPENROUTER_API_KEY_4: Optional[str] = None
+    OPENROUTER_API_KEY_5: Optional[str] = None
+    OPENROUTER_FALLBACK_API_KEY_2: Optional[str] = None
     OPENROUTER_BASE_URL: str = "https://openrouter.ai/api/v1"
     OPENROUTER_MODEL: str = "dots-studio/dots-3-note-preview:free"
     GROQ_API_KEY: Optional[str] = None

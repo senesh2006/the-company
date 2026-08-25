@@ -157,12 +157,16 @@ def test_get_all_openrouter_keys_multiple():
     """get_all_openrouter_keys should collect distinct primary and fallback keys."""
     from app.agents.llm_factory import get_all_openrouter_keys
     with patch("app.agents.llm_factory.settings.OPENROUTER_API_KEY", "sk-or-primary1, sk-or-primary2"), \
-         patch("app.agents.llm_factory.settings.OPENROUTER_FALLBACK_API_KEY", "sk-or-fallback1"):
+         patch("app.agents.llm_factory.settings.OPENROUTER_FALLBACK_API_KEY", "sk-or-fallback1"), \
+         patch("app.agents.llm_factory.settings.OPENROUTER_API_KEY_3", "sk-or-fallback3"), \
+         patch("app.agents.llm_factory.settings.OPENROUTER_FALLBACK_API_KEY_2", "sk-or-fallback4"):
         keys = get_all_openrouter_keys()
         assert "sk-or-primary1" in keys
         assert "sk-or-primary2" in keys
         assert "sk-or-fallback1" in keys
-        assert len(keys) == 3
+        assert "sk-or-fallback3" in keys
+        assert "sk-or-fallback4" in keys
+        assert len(keys) == 5
 
 
 def test_get_llm_with_multiple_openrouter_keys():

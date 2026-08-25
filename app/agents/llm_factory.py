@@ -139,7 +139,19 @@ def get_all_openrouter_keys() -> list[str]:
     _add_from_raw(getattr(settings, "OPENROUTER_API_KEY_FALLBACK", None) or os.getenv("OPENROUTER_API_KEY_FALLBACK"))
     _add_from_raw(getattr(settings, "OPENROUTER_BACKUP_API_KEY", None) or os.getenv("OPENROUTER_BACKUP_API_KEY"))
     _add_from_raw(getattr(settings, "OPENROUTER_API_KEY_2", None) or os.getenv("OPENROUTER_API_KEY_2"))
+    _add_from_raw(getattr(settings, "OPENROUTER_API_KEY_3", None) or os.getenv("OPENROUTER_API_KEY_3"))
+    _add_from_raw(getattr(settings, "OPENROUTER_API_KEY_4", None) or os.getenv("OPENROUTER_API_KEY_4"))
+    _add_from_raw(getattr(settings, "OPENROUTER_API_KEY_5", None) or os.getenv("OPENROUTER_API_KEY_5"))
+    _add_from_raw(getattr(settings, "OPENROUTER_FALLBACK_API_KEY_2", None) or os.getenv("OPENROUTER_FALLBACK_API_KEY_2"))
+    _add_from_raw(os.getenv("OPENROUTER_FALLBACK_API_KEY_3"))
     _add_from_raw(os.getenv("OPENROUTER_SECONDARY_API_KEY"))
+    _add_from_raw(os.getenv("OPENROUTER_KEY_2"))
+    _add_from_raw(os.getenv("OPENROUTER_KEY_3"))
+
+    # Dynamically scan any other OPENROUTER_* keys from environment
+    for env_k, env_v in os.environ.items():
+        if env_k.startswith("OPENROUTER_") and ("KEY" in env_k or "FALLBACK" in env_k) and env_k not in ["OPENROUTER_BASE_URL", "OPENROUTER_MODEL"]:
+            _add_from_raw(env_v)
 
     return keys
 
