@@ -155,10 +155,10 @@ def make_specialist_worker_node(agent_data: dict):
     researcher = get_research_agent(model_id=agent_model_id)
     
     llm = get_llm(model_id=agent_model_id, role=role)
-    tools = registry.get_langchain_tools(role)
+    tools = registry.get_langchain_tools(role, business_id=business_id, user_id=agent_id)
     if not tools:
         register_admin_tools(business_id=business_id, agent_id=agent_id)
-        tools = registry.get_langchain_tools("Personal Assistant") or registry.get_langchain_tools("assistant")
+        tools = registry.get_langchain_tools("Personal Assistant", business_id=business_id, user_id=agent_id) or registry.get_langchain_tools("assistant", business_id=business_id, user_id=agent_id)
 
     if "assistant" in role.lower() or "admin" in role.lower():
         system_modifier = (

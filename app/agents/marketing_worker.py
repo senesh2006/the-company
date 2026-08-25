@@ -100,8 +100,9 @@ Output JSON:
 
 def act(state: MarketingWorkerState):
     """Act using the React agent with MCP tools."""
+    biz_id = state.get("business_id", "00000000-0000-0000-0000-000000000001")
     llm = get_marketing_llm(model_id=state.get("model_id"))
-    tools = registry.get_langchain_tools("Marketing Manager")
+    tools = registry.get_langchain_tools("Marketing Manager", business_id=biz_id, user_id=biz_id)
     
     sig = inspect.signature(create_react_agent)
     kwargs = {}

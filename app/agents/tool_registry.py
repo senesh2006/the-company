@@ -115,26 +115,49 @@ class ToolRegistry:
     ) -> List[BaseTool]:
         """
         Gets all BaseTool instances for a given role.
-        If business_id / user_id are provided, dynamically discovers and merges
-        active tools from connected integrations (Google Sheets, Gmail, Slack, GitHub, etc.).
+        Auto-populates default tools if role is uninitialized, and dynamically discovers
+        all known and connected integration tools.
         """
-        base_list = list(self._tools.get(role, []))
+        norm_role = (role or "assistant").strip()
+        effective_biz_id = business_id or "00000000-0000-0000-0000-000000000001"
+        effective_user_id = user_id or effective_biz_id
 
-        # Perform dynamic discovery if business_id or user_id is supplied
-        if business_id or user_id:
+        # 1. Auto-register default tools for this role if not already initialized
+        if norm_role not in self._tools or not self._tools[norm_role]:
             try:
-                from app.services.tool_discovery_service import tool_discovery_service
-                discovered = tool_discovery_service.discover_tools_for_user(
-                    business_id=business_id or "00000000-0000-0000-0000-000000000001",
-                    user_id=user_id or "00000000-0000-0000-0000-000000000001",
-                    role=role
-                )
-                existing_names = {t.name for t in base_list}
-                for dt in discovered:
-                    if dt.name not in existing_names:
-                        base_list.append(dt)
-            except Exception as e:
-                logger.debug(f"Dynamic tool discovery note: {e}")
+                from app.agents.admin_tools import register_admin_tools
+                from app.agents.marketing_tools import register_marketing_tools
+                from app.agents.finance_tools import register_finance_tools
+                from app.agents.tools import register_default_tools
+
+                if any(w in norm_role.lower() for w in ["market", "growth", "social"]):
+                    register_marketing_tools(business_id=effective_biz_id)
+                elif any(w in norm_role.lower() for w in ["finance", "account", "ledger", "bookkeeper"]):
+                    register_finance_tools(business_id=effective_biz_id)
+                else:
+                    register_admin_tools(business_id=effective_biz_id)
+                    register_default_tools(business_id=effective_biz_id, role=norm_role)
+            except Exception as reg_err:
+                logger.debug(f"Auto-registration of default tools note: {reg_err}")
+
+        base_list = list(self._tools.get(norm_role, []))
+        if not base_list:
+            base_list = list(self._tools.get("Personal Assistant", []) or self._tools.get("assistant", []) or self._tools.get("default", []))
+
+        # 2. Dynamic Tool Self-Discovery (Google Sheets, Gmail, Slack, GitHub, Notion, Routines, Web Search, Knowledge Base, WhatsApp)
+        try:
+            from app.services.tool_discovery_service import tool_discovery_service
+            discovered = tool_discovery_service.discover_tools_for_user(
+                business_id=effective_biz_id,
+                user_id=effective_user_id,
+                role=norm_role
+            )
+            existing_names = {t.name for t in base_list}
+            for dt in discovered:
+                if dt.name not in existing_names:
+                    base_list.append(dt)
+        except Exception as e:
+            logger.debug(f"Dynamic tool discovery note: {e}")
 
         return base_list
         

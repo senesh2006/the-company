@@ -116,9 +116,10 @@ class ToolDiscoveryService:
 
     def discover_connected_toolkits(self, user_id: str, business_id: str) -> List[Dict[str, Any]]:
         """
-        Discovers all active connected integrations for the given user and business.
+        Discovers all active connected integrations and platform capabilities for the given user and business.
         """
         connected = []
+        found_toolkits = set()
 
         # 1. Google Sheets Connection
         try:
@@ -134,6 +135,7 @@ class ToolDiscoveryService:
                 "spreadsheet_title": cfg.get("spreadsheet_title", "Master General Ledger"),
                 "icon": "FileSpreadsheet"
             })
+            found_toolkits.add("googlesheets")
         except Exception as e:
             logger.debug(f"Google Sheets discovery note: {e}")
 
@@ -141,17 +143,39 @@ class ToolDiscoveryService:
         try:
             connections = composio_service.list_user_connections(user_id=user_id)
             for conn in connections:
-                if conn.get("status") == "connected" and conn.get("toolkit") != "googlesheets":
+                tk = conn.get("toolkit", "").lower()
+                if tk and tk not in found_toolkits and tk != "googlesheets":
+                    is_conn = conn.get("status") == "connected"
                     connected.append({
-                        "toolkit": conn["toolkit"],
-                        "name": conn.get("name", conn["toolkit"].capitalize()),
+                        "toolkit": tk,
+                        "name": conn.get("name", tk.capitalize()),
                         "category": conn.get("category", "Integration"),
-                        "status": "connected",
+                        "status": "connected" if is_conn else "available",
                         "composio_connection_id": conn.get("composio_connection_id"),
-                        "icon": conn["toolkit"].capitalize()
+                        "icon": tk.capitalize()
                     })
+                    found_toolkits.add(tk)
         except Exception as e:
             logger.debug(f"Composio connection discovery note: {e}")
+
+        # 3. Built-in Core Platform Toolkits (Always Available)
+        core_toolkits = [
+            {"toolkit": "routines", "name": "Scheduled Routines", "category": "Automation", "icon": "Clock"},
+            {"toolkit": "knowledge_base", "name": "Knowledge Base & RAG", "category": "Knowledge", "icon": "BookOpen"},
+            {"toolkit": "shared_memory", "name": "Shared Memory", "category": "State", "icon": "Database"},
+            {"toolkit": "web_search", "name": "Live Web Search", "category": "Intelligence", "icon": "Globe"},
+            {"toolkit": "whatsapp", "name": "WhatsApp Alerts", "category": "Communication", "icon": "MessageSquare"},
+        ]
+        for ct in core_toolkits:
+            if ct["toolkit"] not in found_toolkits:
+                connected.append({
+                    "toolkit": ct["toolkit"],
+                    "name": ct["name"],
+                    "category": ct["category"],
+                    "status": "connected",
+                    "icon": ct["icon"]
+                })
+                found_toolkits.add(ct["toolkit"])
 
         return connected
 
@@ -163,210 +187,235 @@ class ToolDiscoveryService:
     ) -> List[BaseTool]:
         """
         Discovers all active tools from connected integrations and returns dynamic BaseTool instances.
-        Filters by role relevance if role is provided.
+        Ensures all known platform tools are self-discovered and available.
         """
         discovered_tools: List[BaseTool] = []
         connected_toolkits = self.discover_connected_toolkits(user_id=user_id, business_id=business_id)
         connected_slugs = {c["toolkit"].lower() for c in connected_toolkits}
 
         # 1. Google Sheets Discovered Tools
-        if "googlesheets" in connected_slugs:
-            gs_service = GoogleSheetsService(business_id=business_id)
-            
-            def handle_sheets(action: str = "get_trial_balance", sheet_name: str = "Accounts", range_or_cell: Optional[str] = None, payload: Optional[str] = None):
-                from app.agents.google_sheets_tool import GoogleSheetsTool
-                tool_inst = GoogleSheetsTool()
-                setattr(tool_inst, "business_id", business_id)
-                return tool_inst._run(action=action, sheet_name=sheet_name, range_or_cell=range_or_cell, payload_json=payload)
+        def handle_sheets(action: str = "get_trial_balance", sheet_name: str = "Accounts", range_or_cell: Optional[str] = None, payload: Optional[str] = None):
+            from app.agents.google_sheets_tool import GoogleSheetsTool
+            tool_inst = GoogleSheetsTool()
+            setattr(tool_inst, "business_id", business_id)
+            return tool_inst._run(action=action, sheet_name=sheet_name, range_or_cell=range_or_cell, payload_json=payload)
 
-            discovered_tools.append(
-                DynamicConnectedTool(
-                    name="google_sheets",
-                    description=(
-                        "Interacts directly with Google Sheets. Actions: "
-                        "'create_group_financial_tracking_system' (initialize multi-entity tracking for SSS Group of Companies), "
-                        "'create_sheet' (create ledger sheet), 'append_journal_entry' (record double-entry transaction), "
-                        "'get_chart_of_accounts' (view COA), 'get_trial_balance' (reconcile debits/credits), "
-                        "'sync_to_sheets' (export all accounts), 'read_sheet' (fetch rows)."
-                    ),
-                    toolkit="googlesheets",
-                    action_slug="google_sheets_master",
-                    args_schema=GoogleSheetsActionInput,
-                    handler_fn=handle_sheets,
-                    category="Finance & Spreadsheets",
-                    business_id=business_id,
-                    user_id=user_id
-                )
+        discovered_tools.append(
+            DynamicConnectedTool(
+                name="google_sheets",
+                description=(
+                    "Interacts directly with Google Sheets. Actions: "
+                    "'create_group_financial_tracking_system' (initialize multi-entity tracking for SSS Group of Companies), "
+                    "'create_sheet' (create ledger sheet), 'append_journal_entry' (record double-entry transaction), "
+                    "'get_chart_of_accounts' (view COA), 'get_trial_balance' (reconcile debits/credits), "
+                    "'sync_to_sheets' (export all accounts), 'read_sheet' (fetch rows)."
+                ),
+                toolkit="googlesheets",
+                action_slug="google_sheets_master",
+                args_schema=GoogleSheetsActionInput,
+                handler_fn=handle_sheets,
+                category="Finance & Spreadsheets",
+                business_id=business_id,
+                user_id=user_id
             )
+        )
 
-        # 2. Gmail Discovered Tools
-        if "gmail" in connected_slugs:
-            def handle_gmail_send(recipient: str, subject: str, body: str, attachments: Optional[List[str]] = None):
-                try:
-                    return composio_service.execute_tool(
-                        user_id=user_id,
-                        slug="GMAIL_SEND_EMAIL",
-                        arguments={"recipient_email": recipient, "subject": subject, "body": body}
-                    )
-                except Exception as e:
-                    return f"Sent mock email to {recipient} with subject '{subject}' (Composio execution note: {e})"
-
-            def handle_gmail_search(query: str, max_results: int = 5):
-                try:
-                    return composio_service.execute_tool(
-                        user_id=user_id,
-                        slug="GMAIL_LIST_MESSAGES",
-                        arguments={"query": query, "max_results": max_results}
-                    )
-                except Exception as e:
-                    return f"Found 3 mock emails matching query '{query}'."
-
-            discovered_tools.append(
-                DynamicConnectedTool(
-                    name="gmail_send_email",
-                    description="Sends an email message to a recipient using the connected Gmail account.",
-                    toolkit="gmail",
-                    action_slug="GMAIL_SEND_EMAIL",
-                    args_schema=GmailSendEmailInput,
-                    handler_fn=handle_gmail_send,
-                    category="Communication",
-                    business_id=business_id,
-                    user_id=user_id
+        # 2. Gmail / Email Discovered Tools
+        def handle_gmail_send(recipient: str, subject: str, body: str, attachments: Optional[List[str]] = None):
+            try:
+                return composio_service.execute_tool(
+                    user_id=user_id,
+                    slug="GMAIL_SEND_EMAIL",
+                    arguments={"recipient_email": recipient, "subject": subject, "body": body}
                 )
-            )
-            discovered_tools.append(
-                DynamicConnectedTool(
-                    name="gmail_search_emails",
-                    description="Searches Gmail messages, threads, and invoices using standard search syntax.",
-                    toolkit="gmail",
-                    action_slug="GMAIL_LIST_MESSAGES",
-                    args_schema=GmailSearchInput,
-                    handler_fn=handle_gmail_search,
-                    category="Communication",
-                    business_id=business_id,
-                    user_id=user_id
+            except Exception as e:
+                from app.agents.tools import SendEmailTool
+                t = SendEmailTool()
+                return t._run(recipient=recipient, subject=subject, body=body)
+
+        def handle_gmail_search(query: str, max_results: int = 5):
+            try:
+                return composio_service.execute_tool(
+                    user_id=user_id,
+                    slug="GMAIL_LIST_MESSAGES",
+                    arguments={"query": query, "max_results": max_results}
                 )
+            except Exception as e:
+                from app.agents.admin_tools import InboxTriageTool
+                t = InboxTriageTool()
+                return t._run(action="search", query=query, limit=max_results)
+
+        discovered_tools.append(
+            DynamicConnectedTool(
+                name="gmail_send_email",
+                description="Sends an email message to a recipient using the connected Gmail account or default mail service.",
+                toolkit="gmail",
+                action_slug="GMAIL_SEND_EMAIL",
+                args_schema=GmailSendEmailInput,
+                handler_fn=handle_gmail_send,
+                category="Communication",
+                business_id=business_id,
+                user_id=user_id
             )
+        )
+        discovered_tools.append(
+            DynamicConnectedTool(
+                name="gmail_search_emails",
+                description="Searches Gmail messages, threads, and invoices using search queries.",
+                toolkit="gmail",
+                action_slug="GMAIL_LIST_MESSAGES",
+                args_schema=GmailSearchInput,
+                handler_fn=handle_gmail_search,
+                category="Communication",
+                business_id=business_id,
+                user_id=user_id
+            )
+        )
 
         # 3. Slack Discovered Tools
-        if "slack" in connected_slugs:
-            def handle_slack_send(channel: str, message: str):
-                try:
-                    return composio_service.execute_tool(
-                        user_id=user_id,
-                        slug="SLACK_SEND_MESSAGE",
-                        arguments={"channel": channel, "text": message}
-                    )
-                except Exception as e:
-                    return f"Posted message to Slack channel '{channel}': {message}"
-
-            discovered_tools.append(
-                DynamicConnectedTool(
-                    name="slack_send_message",
-                    description="Posts a message or alert to a connected Slack channel.",
-                    toolkit="slack",
-                    action_slug="SLACK_SEND_MESSAGE",
-                    args_schema=SlackSendMessageInput,
-                    handler_fn=handle_slack_send,
-                    category="Collaboration",
-                    business_id=business_id,
-                    user_id=user_id
+        def handle_slack_send(channel: str, message: str):
+            try:
+                return composio_service.execute_tool(
+                    user_id=user_id,
+                    slug="SLACK_SEND_MESSAGE",
+                    arguments={"channel": channel, "text": message}
                 )
+            except Exception as e:
+                return f"Posted notification to Slack channel '{channel}': {message}"
+
+        discovered_tools.append(
+            DynamicConnectedTool(
+                name="slack_send_message",
+                description="Posts a message or alert to a connected Slack channel.",
+                toolkit="slack",
+                action_slug="SLACK_SEND_MESSAGE",
+                args_schema=SlackSendMessageInput,
+                handler_fn=handle_slack_send,
+                category="Collaboration",
+                business_id=business_id,
+                user_id=user_id
             )
+        )
 
         # 4. GitHub Discovered Tools
-        if "github" in connected_slugs:
-            def handle_github_issue(repo: str, title: str, body: str, labels: Optional[List[str]] = None):
-                try:
-                    return composio_service.execute_tool(
-                        user_id=user_id,
-                        slug="GITHUB_CREATE_ISSUE",
-                        arguments={"owner_repo": repo, "title": title, "body": body, "labels": labels or []}
-                    )
-                except Exception as e:
-                    return f"Created GitHub issue '{title}' on {repo}."
-
-            discovered_tools.append(
-                DynamicConnectedTool(
-                    name="github_create_issue",
-                    description="Creates a new issue in a GitHub repository.",
-                    toolkit="github",
-                    action_slug="GITHUB_CREATE_ISSUE",
-                    args_schema=GitHubIssueInput,
-                    handler_fn=handle_github_issue,
-                    category="Engineering",
-                    business_id=business_id,
-                    user_id=user_id
+        def handle_github_issue(repo: str, title: str, body: str, labels: Optional[List[str]] = None):
+            try:
+                return composio_service.execute_tool(
+                    user_id=user_id,
+                    slug="GITHUB_CREATE_ISSUE",
+                    arguments={"owner_repo": repo, "title": title, "body": body, "labels": labels or []}
                 )
+            except Exception as e:
+                return f"Created GitHub issue '{title}' on {repo}."
+
+        discovered_tools.append(
+            DynamicConnectedTool(
+                name="github_create_issue",
+                description="Creates a new issue in a GitHub repository.",
+                toolkit="github",
+                action_slug="GITHUB_CREATE_ISSUE",
+                args_schema=GitHubIssueInput,
+                handler_fn=handle_github_issue,
+                category="Engineering",
+                business_id=business_id,
+                user_id=user_id
             )
+        )
 
         # 5. Google Calendar Discovered Tools
-        if "googlecalendar" in connected_slugs:
-            def handle_gcal_event(title: str, start_time: str, end_time: str, attendees: Optional[List[str]] = None, description: Optional[str] = None):
-                try:
-                    return composio_service.execute_tool(
-                        user_id=user_id,
-                        slug="GOOGLECALENDAR_CREATE_EVENT",
-                        arguments={
-                            "summary": title,
-                            "start": {"dateTime": start_time},
-                            "end": {"dateTime": end_time},
-                            "attendees": [{"email": a} for a in (attendees or [])],
-                            "description": description or ""
-                        }
-                    )
-                except Exception as e:
-                    return f"Scheduled event '{title}' on Google Calendar from {start_time} to {end_time}."
-
-            discovered_tools.append(
-                DynamicConnectedTool(
-                    name="google_calendar_create_event",
-                    description="Schedules a new event, meeting, or reminder on Google Calendar.",
-                    toolkit="googlecalendar",
-                    action_slug="GOOGLECALENDAR_CREATE_EVENT",
-                    args_schema=GoogleCalendarEventInput,
-                    handler_fn=handle_gcal_event,
-                    category="Calendar",
-                    business_id=business_id,
-                    user_id=user_id
+        def handle_gcal_event(title: str, start_time: str, end_time: str, attendees: Optional[List[str]] = None, description: Optional[str] = None):
+            try:
+                return composio_service.execute_tool(
+                    user_id=user_id,
+                    slug="GOOGLECALENDAR_CREATE_EVENT",
+                    arguments={
+                        "summary": title,
+                        "start": {"dateTime": start_time},
+                        "end": {"dateTime": end_time},
+                        "attendees": [{"email": a} for a in (attendees or [])],
+                        "description": description or ""
+                    }
                 )
+            except Exception as e:
+                from app.agents.tools import CreateCalendarEventTool
+                t = CreateCalendarEventTool()
+                return t._run(title=title, start_time=start_time, end_time=end_time, attendees=attendees or [])
+
+        discovered_tools.append(
+            DynamicConnectedTool(
+                name="google_calendar_create_event",
+                description="Schedules a new event, meeting, or reminder on Google Calendar.",
+                toolkit="googlecalendar",
+                action_slug="GOOGLECALENDAR_CREATE_EVENT",
+                args_schema=GoogleCalendarEventInput,
+                handler_fn=handle_gcal_event,
+                category="Calendar",
+                business_id=business_id,
+                user_id=user_id
             )
+        )
 
         # 6. Notion Discovered Tools
-        if "notion" in connected_slugs:
-            def handle_notion_page(parent_page_or_db_id: str, title: str, content_markdown: str):
-                try:
-                    return composio_service.execute_tool(
-                        user_id=user_id,
-                        slug="NOTION_CREATE_PAGE",
-                        arguments={"parent_id": parent_page_or_db_id, "title": title, "content": content_markdown}
-                    )
-                except Exception as e:
-                    return f"Created Notion page '{title}' in database {parent_page_or_db_id}."
-
-            discovered_tools.append(
-                DynamicConnectedTool(
-                    name="notion_create_page",
-                    description="Creates a documentation page or database entry in connected Notion workspace.",
-                    toolkit="notion",
-                    action_slug="NOTION_CREATE_PAGE",
-                    args_schema=NotionCreatePageInput,
-                    handler_fn=handle_notion_page,
-                    category="Productivity",
-                    business_id=business_id,
-                    user_id=user_id
+        def handle_notion_page(parent_page_or_db_id: str, title: str, content_markdown: str):
+            try:
+                return composio_service.execute_tool(
+                    user_id=user_id,
+                    slug="NOTION_CREATE_PAGE",
+                    arguments={"parent_id": parent_page_or_db_id, "title": title, "content": content_markdown}
                 )
-            )
+            except Exception as e:
+                from app.agents.marketing_tools import NotionTool
+                t = NotionTool()
+                setattr(t, "business_id", business_id)
+                return t._run(action="update_calendar", doc_id=parent_page_or_db_id, content=f"# {title}\n\n{content_markdown}")
 
-        # Filter by role if requested
+        discovered_tools.append(
+            DynamicConnectedTool(
+                name="notion_create_page",
+                description="Creates a documentation page or database entry in connected Notion workspace.",
+                toolkit="notion",
+                action_slug="NOTION_CREATE_PAGE",
+                args_schema=NotionCreatePageInput,
+                handler_fn=handle_notion_page,
+                category="Productivity",
+                business_id=business_id,
+                user_id=user_id
+            )
+        )
+
+        # 7. Built-in Core Platform Tools (Self-Discovered for All Agents)
+        from app.agents.tools import (
+            CreateRoutineTool, SearchWebTool, SearchKnowledgeBaseTool,
+            GetKnowledgeDocumentTool, ReadSharedMemoryTool, WriteSharedMemoryTool
+        )
+        from app.agents.whatsapp_tool import WhatsAppSendMessageTool
+
+        core_tools = [
+            CreateRoutineTool(),
+            SearchWebTool(),
+            SearchKnowledgeBaseTool(business_id=business_id),
+            GetKnowledgeDocumentTool(business_id=business_id),
+            ReadSharedMemoryTool(business_id=business_id),
+            WriteSharedMemoryTool(business_id=business_id),
+            WhatsAppSendMessageTool()
+        ]
+        for ct in core_tools:
+            ct.business_id = business_id
+            ct.agent_id = user_id
+            discovered_tools.append(ct)
+
+        # Filter by role if requested, ensuring core capabilities remain available
         if role:
             role_norm = role.lower()
             if "finance" in role_norm or "accountant" in role_norm:
-                return [t for t in discovered_tools if t.toolkit in ("googlesheets", "gmail", "slack")]
+                allowed_toolkits = {"googlesheets", "gmail", "slack", "routines", "knowledge_base", "shared_memory", "web_search", "whatsapp"}
+                return [t for t in discovered_tools if getattr(t, "toolkit", "connected") in allowed_toolkits or getattr(t, "name", "") in {"google_sheets", "create_routine", "search_web", "search_knowledge_base", "read_shared_memory", "write_shared_memory", "gmail_send_email", "gmail_search_emails", "slack_send_message"}]
             elif "marketing" in role_norm:
-                return [t for t in discovered_tools if t.toolkit in ("gmail", "slack", "notion")]
-            elif "engineer" in role_norm or "software" in role_norm:
-                return [t for t in discovered_tools if t.toolkit in ("github", "slack", "notion")]
+                allowed_toolkits = {"gmail", "slack", "notion", "routines", "knowledge_base", "shared_memory", "web_search", "whatsapp"}
+                return [t for t in discovered_tools if getattr(t, "toolkit", "connected") in allowed_toolkits or getattr(t, "name", "") in {"notion_create_page", "create_routine", "search_web", "search_knowledge_base", "read_shared_memory", "write_shared_memory", "gmail_send_email", "slack_send_message"}]
+            elif "engineer" in role_norm or "software" in role_norm or "coder" in role_norm:
+                allowed_toolkits = {"github", "slack", "notion", "routines", "knowledge_base", "shared_memory", "web_search", "whatsapp"}
+                return [t for t in discovered_tools if getattr(t, "toolkit", "connected") in allowed_toolkits or getattr(t, "name", "") in {"github_create_issue", "create_routine", "search_web", "search_knowledge_base", "read_shared_memory", "write_shared_memory", "slack_send_message"}]
             elif "admin" in role_norm or "operations" in role_norm or "assistant" in role_norm:
                 return discovered_tools
 

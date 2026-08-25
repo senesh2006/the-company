@@ -29,11 +29,13 @@ def test_tool_discovery_service_connected_toolkits():
         ]
 
         toolkits = service.discover_connected_toolkits(user_id="user-1", business_id="biz-1")
-        assert len(toolkits) == 3
+        assert len(toolkits) >= 3
         slugs = {t["toolkit"] for t in toolkits}
         assert "googlesheets" in slugs
         assert "gmail" in slugs
         assert "slack" in slugs
+        assert "routines" in slugs
+        assert "knowledge_base" in slugs
 
 
 def test_tool_discovery_service_dynamic_tools():

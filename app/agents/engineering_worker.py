@@ -90,11 +90,12 @@ Output JSON:
 
 def act(state: EngineeringWorkerState):
     """Act using the React agent with engineering tools."""
+    biz_id = state.get("business_id", "00000000-0000-0000-0000-000000000001")
     llm = get_engineering_llm(model_id=state.get("model_id"))
     role = state["task"].assignee_role or "Coder"
-    tools = registry.get_langchain_tools(role)
+    tools = registry.get_langchain_tools(role, business_id=biz_id, user_id=biz_id)
     if not tools:
-        tools = registry.get_langchain_tools("assistant")
+        tools = registry.get_langchain_tools("assistant", business_id=biz_id, user_id=biz_id)
     
     sig = inspect.signature(create_react_agent)
     kwargs = {}
