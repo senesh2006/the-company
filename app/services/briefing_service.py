@@ -35,22 +35,44 @@ class BriefingService:
         today_key = datetime.now(timezone.utc).strftime("%Y-%m-%d")
         cache_key = f"daily_briefing:{today_key}"
 
-        if not force_refresh:
-            cached = self.memory.get(business_id, cache_key)
-            if cached and isinstance(cached.get("value"), dict):
-                logger.info(f"Returning cached executive briefing for {today_key}")
-                return cached["value"]
+        try:
+            if not force_refresh:
+                cached = self.memory.get(business_id, cache_key)
+                if cached and isinstance(cached.get("value"), dict):
+                    logger.info(f"Returning cached executive briefing for {today_key}")
+                    return cached["value"]
+        except Exception as e:
+            logger.warning(f"Error reading briefing cache: {e}")
 
         # Generate fresh briefing
-        briefing = self._generate_briefing(business_id, today_key)
-        self.memory.set(
-            business_id=business_id,
-            key=cache_key,
-            value=briefing,
-            tags=["briefing", "executive", "daily", today_key],
-            updated_by="Executive Briefing AI"
-        )
-        return briefing
+        try:
+            briefing = self._generate_briefing(business_id, today_key)
+            try:
+                self.memory.set(
+                    business_id=business_id,
+                    key=cache_key,
+                    value=briefing,
+                    tags=["briefing", "executive", "daily", today_key],
+                    updated_by="Executive Briefing AI"
+                )
+            except Exception as set_err:
+                logger.warning(f"Failed to cache daily briefing: {set_err}")
+            return briefing
+        except Exception as e:
+            logger.error(f"Error in _generate_briefing: {e}")
+            now = datetime.now(timezone.utc)
+            return self._programmatic_fallback_briefing(
+                company_name="The Company",
+                yesterday_date_str=(now - timedelta(days=1)).strftime("%B %d, %Y"),
+                today_date_str=now.strftime("%B %d, %Y"),
+                completed_tasks=[],
+                running_tasks=[],
+                agents_list=[],
+                revenue=0.0,
+                expenses=0.0,
+                net_profit=0.0,
+                audit_feed=[]
+            )
 
     def _generate_briefing(self, business_id: str, date_str: str) -> Dict[str, Any]:
         """
@@ -60,19 +82,51 @@ class BriefingService:
         yesterday_date_str = (now - timedelta(days=1)).strftime("%B %d, %Y")
         today_date_str = now.strftime("%B %d, %Y")
 
+        # Initialize safe default variables BEFORE try block
+        company_name = "The Company"
+        completed_tasks: List[Any] = []
+        running_tasks: List[Any] = []
+        failed_tasks: List[Any] = []
+        agents_list: List[Any] = []
+        audit_feed: List[Any] = []
+        revenue = 0.0
+        expenses = 0.0
+        net_profit = 0.0
+
         try:
             # 1. Fetch raw context safely
-            tasks_list = self.tasks.list_tasks(business_id) or []
-            audit_feed = self.tasks.list_audit_feed(business_id, limit=40) or []
-            agents_list = self.tasks.list_agents(business_id) or []
-            sheets = self.finance or GoogleSheetsService(business_id=business_id)
-            accounts_list = sheets.get_accounts() or []
-            trial_balance = sheets.get_trial_balance() or {}
-            company_profile = self.memory.get(business_id, "company_profile")
-            profile_data = company_profile.get("value", {}) if (company_profile and isinstance(company_profile, dict)) else {}
-            if not isinstance(profile_data, dict):
+            tasks_list = []
+            try:
+                tasks_list = self.tasks.list_tasks(business_id) or []
+            except Exception as e:
+                logger.warning(f"Error listing tasks for briefing: {e}")
+
+            try:
+                audit_feed = self.tasks.list_audit_feed(business_id, limit=40) or []
+            except Exception as e:
+                logger.warning(f"Error listing audit feed for briefing: {e}")
+
+            try:
+                agents_list = self.tasks.list_agents(business_id) or []
+            except Exception as e:
+                logger.warning(f"Error listing agents for briefing: {e}")
+
+            try:
+                sheets = self.finance or GoogleSheetsService(business_id=business_id)
+                accounts_list = sheets.get_accounts() or []
+                trial_balance = sheets.get_trial_balance() or {}
+            except Exception as e:
+                logger.warning(f"Error fetching sheets balance for briefing: {e}")
+                trial_balance = {}
+
+            try:
+                company_profile = self.memory.get(business_id, "company_profile")
+                profile_data = company_profile.get("value", {}) if (company_profile and isinstance(company_profile, dict)) else {}
+                if isinstance(profile_data, dict):
+                    company_name = profile_data.get("company_name", "The Company")
+            except Exception as e:
+                logger.warning(f"Error fetching company profile for briefing: {e}")
                 profile_data = {}
-            company_name = profile_data.get("company_name", "The Company")
 
             # Filter completed tasks & active tasks
             completed_tasks = [t for t in tasks_list if isinstance(t, dict) and t.get("status") == "completed"]
