@@ -150,25 +150,53 @@ class SendEmailTool(BaseTool):
 
     def _run(self, to_email: str, subject: str, body: str) -> str:
         target_uid = getattr(self, "user_id", None) or getattr(self, "business_id", None) or "00000000-0000-0000-0000-000000000000"
+        
+        # 1. Try Composio Gmail tool execution
         try:
             from app.services.composio_client import composio_service
             if composio_service.api_key:
-                res = composio_service.execute_tool(
-                    user_id=target_uid,
-                    slug="GMAIL_SEND_EMAIL",
-                    arguments={"recipient_email": to_email, "subject": subject, "body": body}
-                )
-                if res:
-                    return f"Email successfully sent to {to_email} with subject '{subject}' via live Gmail."
+                status = composio_service.get_connection_status(target_uid, "gmail")
+                if status == "connected":
+                    # Pass all standard argument aliases for Composio Gmail tool
+                    res = composio_service.execute_tool(
+                        user_id=target_uid,
+                        slug="GMAIL_SEND_EMAIL",
+                        arguments={
+                            "recipient_email": to_email,
+                            "recipient": to_email,
+                            "to": to_email,
+                            "subject": subject,
+                            "body": body,
+                            "message": body
+                        }
+                    )
+                    return f"✅ Email successfully sent to {to_email} with subject '{subject}' via your connected Gmail account."
+                else:
+                    return (
+                        f"⚠️ Gmail account is not connected yet for your organization. "
+                        f"Please connect your Gmail account on the Integrations page (/integrations) so AI agents can send emails directly.\n\n"
+                        f"**Drafted Email Prepared:**\n"
+                        f"- **To:** {to_email}\n"
+                        f"- **Subject:** {subject}\n\n"
+                        f"{body}"
+                    )
         except Exception as e:
-            logger.debug(f"Composio GMAIL_SEND_EMAIL note: {e}")
+            logger.warning(f"Composio GMAIL_SEND_EMAIL execution error: {e}")
+            return (
+                f"⚠️ Attempted to send email via Gmail, but encountered an error: {e}. "
+                f"Please verify your Gmail connection on the Integrations page (/integrations).\n\n"
+                f"**Drafted Email:**\n"
+                f"- **To:** {to_email}\n"
+                f"- **Subject:** {subject}\n\n"
+                f"{body}"
+            )
 
-        default = f"Email successfully queued to {to_email} with subject '{subject}'."
-        return _common_mcp_call(
-            "email",
-            "send_email",
-            {"to_email": to_email, "subject": subject, "body": body},
-            default,
+        return (
+            f"📧 **Email Draft Ready for Dispatch:**\n"
+            f"- **To:** {to_email}\n"
+            f"- **Subject:** {subject}\n\n"
+            f"{body}\n\n"
+            f"*(Connect your Gmail account in /integrations to enable 1-click autonomous sending)*"
         )
 
 # --- Scheduling Tools ---

@@ -133,6 +133,9 @@ SPECIAL RULES FOR CONNECTED TOOLS & ROUTINES:
 - NEVER state that connected tools (like Google Sheets, Gmail, Slack, etc.) are inactive or missing.
 - When the user asks for the Google Sheets link or URL:
   - Respond directly (is_task: false) with the clickable link: [Open Google Sheet]({sheets_url}) and the full copyable URL `{sheets_url}`.
+- When the user asks to send an email, message someone, or dispatch outreach (e.g. "send an email to...", "email imirawelihinda@gmail.com saying hello"):
+  - ALWAYS classify as ACTIONABLE TASK (is_task: true) with assignee_role="Marketing Manager" or "Personal Assistant".
+  - NEVER claim or hallucinate that an email was sent in a conversational chat reply without executing the actual task.
 - When the user asks to create, schedule, or set up an AUTOMATED ROUTINE or RECURRING TASK (e.g. "create a routine to audit finances daily", "set up a routine for competitor tracking every hour", "schedule a routine to sync Google Sheets"):
   - Set `is_routine: true` in the output JSON.
   - Formulate routine_title, routine_schedule_type ('daily', 'hourly', 'weekly', 'interval_minutes'), routine_schedule_config (e.g. {{"time": "09:00"}} or {{"interval_minutes": 60}}), and routine_mandate.

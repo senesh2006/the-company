@@ -395,10 +395,12 @@ def register_marketing_tools(business_id: str, agent_id: str = None, task_id: st
     Registers the specific allowed MCP tools for the Marketing Manager role.
     """
     from app.agents.whatsapp_tool import WhatsAppSendMessageTool, TextUserWhatsAppTool, WhatsAppCheckStatusTool, WhatsAppReadDMsTool
+    from app.agents.tools import SendEmailTool
     
     tools = [
         PlaywrightTool(),
         BraveSearchTool(),
+        SendEmailTool(),
         NotionTool(),
         FilesystemTool(),
         CommTool(),
