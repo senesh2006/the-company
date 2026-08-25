@@ -16,6 +16,17 @@ from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
+def _normalize_business_id(business_id: Optional[str]) -> str:
+    """Ensure business_id is a valid UUID string to prevent Postgres 22P02 errors."""
+    if not business_id:
+        return "00000000-0000-0000-0000-000000000001"
+    try:
+        uuid.UUID(str(business_id))
+        return str(business_id)
+    except (ValueError, TypeError, AttributeError):
+        return str(uuid.uuid5(uuid.NAMESPACE_DNS, str(business_id)))
+
+
 class SharedMemoryService:
     """
     Central Shared Memory & Knowledge Base Service for Company OS.
@@ -42,15 +53,28 @@ class SharedMemoryService:
                 logger.warning(f"Could not connect to Supabase client: {e}. Operating in memory-backed mode.")
         return None
 
+    def _sanitize_value(self, val: Any) -> Any:
+        """Safely trims excessively large strings or collections to avoid Postgres 22023 payload limits."""
+        if isinstance(val, str):
+            if len(val) > 40000:
+                return val[:40000] + "... [truncated for storage limits]"
+            return val
+        if isinstance(val, list):
+            return [self._sanitize_value(x) for x in val[-20:]]
+        if isinstance(val, dict):
+            return {k: self._sanitize_value(v) for k, v in val.items()}
+        return val
+
     def get(self, business_id: str, key: str) -> Optional[dict[str, Any]]:
         """
         Fetch a specific key from shared memory for a business.
         """
+        norm_biz_id = _normalize_business_id(business_id)
         try:
             if self.client:
                 response = self.client.table("shared_memory")\
                     .select("*")\
-                    .eq("business_id", business_id)\
+                    .eq("business_id", norm_biz_id)\
                     .eq("key", key)\
                     .execute()
                     
@@ -59,20 +83,23 @@ class SharedMemoryService:
         except Exception as e:
             logger.warning(f"Supabase read fallback for key '{key}': {e}")
 
-        # Local fallback
-        local_key = f"{business_id}:{key}"
-        return self._local_kv.get(local_key)
+        # Local fallback (check normalized and raw keys)
+        local_key = f"{norm_biz_id}:{key}"
+        raw_key = f"{business_id}:{key}"
+        return self._local_kv.get(local_key) or self._local_kv.get(raw_key)
 
     def set(self, business_id: str, key: str, value: Any, tags: List[str] = [], updated_by: Optional[str] = None) -> dict[str, Any]:
         """
         Insert or update a key in shared memory.
         """
+        norm_biz_id = _normalize_business_id(business_id)
+        clean_value = self._sanitize_value(value)
         now_iso = datetime.now(timezone.utc).isoformat()
         record = {
             "id": str(uuid.uuid4()),
-            "business_id": business_id,
+            "business_id": norm_biz_id,
             "key": key,
-            "value": value,
+            "value": clean_value,
             "tags": tags,
             "updated_by": updated_by or "System",
             "created_at": now_iso,
@@ -81,11 +108,11 @@ class SharedMemoryService:
 
         try:
             if self.client:
-                existing = self.get(business_id, key)
+                existing = self.get(norm_biz_id, key)
                 data = {
-                    "business_id": business_id,
+                    "business_id": norm_biz_id,
                     "key": key,
-                    "value": value,
+                    "value": clean_value,
                     "tags": tags
                 }
                 if existing and isinstance(existing, dict) and "id" in existing:
@@ -103,7 +130,7 @@ class SharedMemoryService:
             logger.warning(f"Supabase write fallback for key '{key}': {e}")
 
         # Cache locally
-        local_key = f"{business_id}:{key}"
+        local_key = f"{norm_biz_id}:{key}"
         self._local_kv[local_key] = record
 
         # Emit Memory Updated audit event for the Company Feed
@@ -159,21 +186,24 @@ class SharedMemoryService:
         """
         Delete a key from shared memory.
         """
+        norm_biz_id = _normalize_business_id(business_id)
         deleted = False
         try:
             if self.client:
                 response = self.client.table("shared_memory")\
                     .delete()\
-                    .eq("business_id", business_id)\
+                    .eq("business_id", norm_biz_id)\
                     .eq("key", key)\
                     .execute()
                 deleted = len(response.data) > 0
         except Exception as e:
             logger.warning(f"Supabase delete fallback for key '{key}': {e}")
 
-        local_key = f"{business_id}:{key}"
-        if local_key in self._local_kv:
-            del self._local_kv[local_key]
+        local_key = f"{norm_biz_id}:{key}"
+        raw_key = f"{business_id}:{key}"
+        if local_key in self._local_kv or raw_key in self._local_kv:
+            self._local_kv.pop(local_key, None)
+            self._local_kv.pop(raw_key, None)
             deleted = True
             
         return deleted
@@ -182,12 +212,13 @@ class SharedMemoryService:
         """
         List all key-value shared memory items for a business.
         """
+        norm_biz_id = _normalize_business_id(business_id)
         results: List[dict[str, Any]] = []
         try:
             if self.client:
                 response = self.client.table("shared_memory")\
                     .select("*")\
-                    .eq("business_id", business_id)\
+                    .eq("business_id", norm_biz_id)\
                     .execute()
                 if response.data and isinstance(response.data, list) and all(isinstance(item, dict) for item in response.data):
                     results = response.data
@@ -195,7 +226,7 @@ class SharedMemoryService:
             logger.warning(f"Supabase list fallback: {e}")
 
         # Merge local entries
-        local_items = [v for k, v in self._local_kv.items() if k.startswith(f"{business_id}:") and isinstance(v, dict)]
+        local_items = [v for k, v in self._local_kv.items() if (k.startswith(f"{norm_biz_id}:") or k.startswith(f"{business_id}:")) and isinstance(v, dict)]
         seen_keys = {item.get("key") for item in results if isinstance(item, dict)}
         for item in local_items:
             if isinstance(item, dict) and item.get("key") not in seen_keys:

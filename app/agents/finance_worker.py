@@ -323,8 +323,11 @@ def update_memory_node(state: FinanceWorkerState):
         "timestamp": datetime.utcnow().isoformat(),
         "task_id": task_id,
         "task_description": state["task"].description,
-        "maker_output": state.get("maker_output"),
-        "checker_verdict": state.get("checker_verdict"),
+        "maker_output": (
+            state.get("maker_output", {}) if isinstance(state.get("maker_output"), dict)
+            else str(state.get("maker_output", ""))[:1200]
+        ),
+        "checker_verdict": state.get("checker_verdict", {}),
         "confidence": state.get("confidence", 0.0),
         "risk_level": state.get("risk_level", "high"),
         "side_effects": state.get("side_effects", []),
@@ -337,6 +340,8 @@ def update_memory_node(state: FinanceWorkerState):
 
     audit_log = list(state.get("audit_log") or [])
     audit_log.append(audit_entry)
+    if len(audit_log) > 10:
+        audit_log = audit_log[-10:]
 
     # Persist durable state spine to SharedMemory
     shared_mem.set(
