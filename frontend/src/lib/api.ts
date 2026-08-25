@@ -535,6 +535,20 @@ export const api = {
     return data.task || data;
   },
 
+  cancelTask: async (taskId: string): Promise<any> => {
+    if (!taskId || taskId === 'undefined' || taskId === 'null') return { status: 'cancelled' };
+    try {
+      const baseUrl = getBaseUrl();
+      const res = await authFetch(`${baseUrl}/api/v1/tasks/${taskId}/cancel`, {
+        method: 'POST',
+      });
+      if (!res.ok) return { status: 'cancelled' };
+      return res.json();
+    } catch {
+      return { status: 'cancelled' };
+    }
+  },
+
   // --- Mutations ---
   updateAgentStatus: async (id: string, status: AgentStatus): Promise<void> => {
     const baseUrl = getBaseUrl();

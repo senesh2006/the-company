@@ -179,6 +179,18 @@ export const useCreateTask = () => {
     });
 };
 
+export const useCancelTask = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (taskId: string) => api.cancelTask(taskId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['tasks'] });
+            queryClient.invalidateQueries({ queryKey: ['agents'] });
+            queryClient.invalidateQueries({ queryKey: ['company-feed'] });
+        },
+    });
+};
+
 export const useCompanyFeed = (limit: number = 50) => {
     return useQuery({
         queryKey: ['company-feed', limit],
