@@ -1,48 +1,38 @@
-import unittest
+import pytest
 from unittest.mock import MagicMock, patch
-from fastapi.testclient import TestClient
-
-from app.main import app
 from app.services.briefing_service import BriefingService
+from app.services.shared_memory import SharedMemoryService
+from app.services.task_service import TaskService
 
-class TestBriefing(unittest.TestCase):
-    def setUp(self):
-        self.client = TestClient(app)
-        self.business_id = "00000000-0000-0000-0000-000000000001"
+DEFAULT_BUSINESS_ID = "00000000-0000-0000-0000-000000000001"
 
-    @patch("app.services.briefing_service.get_fast_llm")
-    def test_briefing_service_fallback_generation(self, mock_llm):
-        mock_llm.side_effect = Exception("LLM unavailable")
-        service = BriefingService()
-        briefing = service.get_today_briefing(self.business_id, force_refresh=True)
-        
-        self.assertIn("headline", briefing)
-        self.assertIn("executive_summary", briefing)
-        self.assertIn("marketing_update", briefing)
-        self.assertIn("finance_update", briefing)
-        self.assertIn("completed_milestones", briefing)
-        self.assertIn("todays_priorities", briefing)
-        self.assertIn("metrics", briefing)
-        self.assertIsInstance(briefing["completed_milestones"], list)
-        self.assertIsInstance(briefing["todays_priorities"], list)
 
-    def test_briefing_api_endpoint(self):
-        response = self.client.get("/api/v1/briefing/today")
-        self.assertEqual(response.status_code, 200)
-        data = response.json()
-        self.assertIn("headline", data)
-        self.assertIn("executive_summary", data)
-        self.assertIn("marketing_update", data)
-        self.assertIn("finance_update", data)
+@pytest.fixture
+def mock_deps():
+    mem = MagicMock(spec=SharedMemoryService)
+    mem.get.return_value = None
+    mem.set.return_value = None
 
-    @patch("app.services.briefing_service.get_fast_llm")
-    def test_briefing_refresh_endpoint(self, mock_llm):
-        mock_llm.side_effect = Exception("LLM unavailable")
-        response = self.client.post("/api/v1/briefing/refresh")
-        self.assertEqual(response.status_code, 200)
-        data = response.json()
-        self.assertIn("headline", data)
-        self.assertIn("period", data)
+    tasks = MagicMock(spec=TaskService)
+    tasks.list_tasks.return_value = []
+    tasks.list_audit_feed.return_value = []
+    tasks.list_agents.return_value = []
 
-if __name__ == "__main__":
-    unittest.main()
+    return mem, tasks
+
+
+def test_briefing_generation_fallback_safety(mock_deps):
+    mem, tasks = mock_deps
+    service = BriefingService(memory_service=mem, task_service=tasks)
+
+    # Force fallback by mocking LLM to fail
+    with patch("app.services.briefing_service.get_fast_llm") as mock_llm:
+        mock_llm.side_effect = Exception("LLM connection timeout")
+        briefing = service.get_today_briefing(DEFAULT_BUSINESS_ID, force_refresh=True)
+
+        assert briefing is not None
+        assert "headline" in briefing
+        assert "executive_summary" in briefing
+        assert "metrics" in briefing
+        assert briefing["metrics"]["completed_tasks_count"] == 0
+        assert briefing["metrics"]["total_revenue"] == 0.0

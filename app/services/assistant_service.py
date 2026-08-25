@@ -122,27 +122,33 @@ Company OS Specialist Roles:
 - Software Engineer: Code implementation, architecture, bug fixes, software features, repository tasks.
 - Research Specialist: Competitor intelligence, market analysis, deep web research, data aggregation.
 - Admin & Operations Worker: Document processing, operational syncs, administrative triage.
-- Personal Assistant: Multi-department coordination or general mandates.
+- Personal Assistant: Multi-department coordination, general mandates, and automated scheduled routines.
 
 DYNAMICALLY DISCOVERED CONNECTED INTEGRATIONS & TOOLS:
 - Active Connected Services: {toolkits_desc}
 {tools_bullet_points}
 
-SPECIAL RULES FOR CONNECTED TOOLS:
+SPECIAL RULES FOR CONNECTED TOOLS & ROUTINES:
 - All tools listed above are LIVE, CONNECTED, and ready for autonomous execution.
 - NEVER state that connected tools (like Google Sheets, Gmail, Slack, etc.) are inactive or missing.
-- When the user asks for the Google Sheets link or URL (e.g. "give me the link to the google sheet", "the link to the financial sheet u made the entry on", "where is the sheet"):
+- When the user asks for the Google Sheets link or URL:
   - Respond directly (is_task: false) with the clickable link: [Open Google Sheet]({sheets_url}) and the full copyable URL `{sheets_url}`.
-  - Explain that they can also click "Open Google Sheet", "Copy Sheet Link", or "Connect Custom Sheet" directly in the General Ledger & Accounts section in the dashboard.
-- When the user asks to execute an action involving connected tools (e.g. setup Google Sheets financial tracking, send an email, post to Slack), classify as ACTIONABLE TASK (is_task: true) with the appropriate specialist assignee so they execute it with the discovered tool!
+- When the user asks to create, schedule, or set up an AUTOMATED ROUTINE or RECURRING TASK (e.g. "create a routine to audit finances daily", "set up a routine for competitor tracking every hour", "schedule a routine to sync Google Sheets"):
+  - Set `is_routine: true` in the output JSON.
+  - Formulate routine_title, routine_schedule_type ('daily', 'hourly', 'weekly', 'interval_minutes'), routine_schedule_config (e.g. {{"time": "09:00"}} or {{"interval_minutes": 60}}), and routine_mandate.
+  - Explain in your reply that the automated routine has been configured to execute autonomously in the background even if they are not logged in or using the web app.
 
 CRITICAL: Return ONLY a valid JSON object with the exact keys:
 {{
   "is_task": boolean,
+  "is_routine": boolean,
   "intent_summary": "one sentence explaining what the user wants",
-  "reply": "string (If is_task=false: your direct conversational answer. If is_task=true: a brief friendly acknowledgment explaining you are delegating this to the chosen specialist)",
+  "reply": "string (If is_task=false and is_routine=false: your direct conversational answer. If is_task=true or is_routine=true: a brief friendly acknowledgment explaining how you are handling/delegating it)",
   "task_title": "concise title (string or null if is_task=false)",
   "task_description": "refined actionable mandate (string or null if is_task=false)",
+  "routine_title": "concise routine title (string or null if is_routine=false)",
+  "routine_schedule_type": "daily | hourly | weekly | interval_minutes (or null)",
+  "routine_schedule_config": {{"time": "09:00"}} (or null),
   "assignee_role": "Finance Manager | Marketing Manager | Software Engineer | Research Specialist | Admin & Operations Worker | Personal Assistant",
   "priority": "P0 | P1 | P2"
 }}"""
@@ -207,9 +213,48 @@ CRITICAL: Return ONLY a valid JSON object with the exact keys:
                 }
 
         is_task = bool(parsed_data.get("is_task", False))
+        is_routine = bool(parsed_data.get("is_routine", False))
         reply_text = str(parsed_data.get("reply") or "").strip()
         if not reply_text:
             reply_text = "I'm on it! Let me know if you need anything else."
+
+        # Case 0: Automated Routine Request
+        if is_routine:
+            from app.services.routine_service import routine_service
+            routine_title = parsed_data.get("routine_title") or cleaned_msg[:50]
+            routine_desc = parsed_data.get("task_description") or cleaned_msg
+            routine_role = parsed_data.get("assignee_role") or "Personal Assistant"
+            schedule_type = parsed_data.get("routine_schedule_type") or "daily"
+            schedule_cfg = parsed_data.get("routine_schedule_config") or {"time": "09:00"}
+            
+            created_routine = routine_service.create_routine(
+                business_id=business_id,
+                title=routine_title,
+                description=routine_desc,
+                assignee_role=routine_role,
+                schedule_type=schedule_type,
+                schedule_config=schedule_cfg,
+                created_by=sender_name or "Founder"
+            )
+
+            confirm_msg = (
+                f"✅ **Automated Routine Configured!**\n\n"
+                f"**Routine:** {created_routine['title']}\n"
+                f"**Assigned Specialist:** {created_routine['assignee_role']}\n"
+                f"**Schedule:** {created_routine['schedule_type'].capitalize()} ({json.dumps(created_routine['schedule_config'])})\n"
+                f"**Next Autonomous Execution:** {created_routine['next_run_at']}\n\n"
+                f"*This routine is active and will execute automatically in the background even if you're not using the web app.*"
+            )
+
+            self.save_chat_turn(business_id, channel, effective_chat_id, cleaned_msg, confirm_msg)
+            return {
+                "type": "routine_created",
+                "reply": confirm_msg,
+                "is_task": False,
+                "is_routine": True,
+                "routine": created_routine,
+                "intent_summary": "Automated routine created"
+            }
 
         # Case 1: Pure conversation / query (Do NOT create task)
         if not is_task:

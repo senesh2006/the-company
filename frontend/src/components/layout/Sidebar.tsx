@@ -26,7 +26,8 @@ import {
   Sparkles,
   CreditCard,
   Compass,
-  Cable
+  Cable,
+  Clock
 } from "lucide-react";
 import { easings, durations } from "@/lib/motion";
 
@@ -66,6 +67,7 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
   ];
 
   const opsNavItems: NavItem[] = [
+    { name: 'Automated Routines', href: '/routines', icon: Clock },
     { name: 'Integrations & Tools', href: '/integrations', icon: Cable },
     { name: 'Recruit Worker', href: '/hire', icon: UserPlus },
     { name: 'Pricing & Billing', href: '/pricing', icon: CreditCard },

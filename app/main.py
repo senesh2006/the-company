@@ -3,9 +3,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from app.core.config import settings
-from app.api.routes import health, agents, tasks, costs, metrics, memory, attention, hierarchy, finance, departments, ui_control, whatsapp, onboarding, briefing, connections, assistant
+from app.api.routes import health, agents, tasks, costs, metrics, memory, attention, hierarchy, finance, departments, ui_control, whatsapp, onboarding, briefing, connections, assistant, routines
 from app.core.logging import logger
 from app.services.event_bus import start_event_bus
+from app.services.routine_scheduler import routine_scheduler_daemon
 from supabase import create_client
 
 app = FastAPI(
@@ -42,6 +43,7 @@ app.include_router(whatsapp.router, prefix=f"{settings.API_V1_STR}/whatsapp", ta
 app.include_router(onboarding.router, prefix=f"{settings.API_V1_STR}/onboarding", tags=["onboarding"])
 app.include_router(briefing.router, prefix=f"{settings.API_V1_STR}/briefing", tags=["briefing"])
 app.include_router(connections.router, prefix=f"{settings.API_V1_STR}/connections", tags=["connections"])
+app.include_router(routines.router, prefix=f"{settings.API_V1_STR}/routines", tags=["routines"])
 
 from fastapi import Depends
 from app.api.deps import get_current_user
@@ -150,9 +152,11 @@ async def startup_event():
     try:
         logger.info(f"Starting up {settings.PROJECT_NAME} API")
         start_event_bus()
+        await routine_scheduler_daemon.start()
     except Exception as e:
         logger.error(f"Error during startup_event: {e}")
 
 @app.on_event("shutdown")
 async def shutdown_event():
     logger.info(f"Shutting down {settings.PROJECT_NAME} API")
+    await routine_scheduler_daemon.stop()

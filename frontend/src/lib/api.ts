@@ -843,17 +843,83 @@ export const api = {
     return res.json();
   },
 
-  getAssistantHistory: async (params?: { business_id?: string; channel?: string; chat_id?: string }): Promise<any> => {
+  getRoutines: async (): Promise<RoutineItem[]> => {
     const baseUrl = getBaseUrl();
-    const query = new URLSearchParams();
-    if (params?.business_id) query.set('business_id', params.business_id);
-    if (params?.channel) query.set('channel', params.channel);
-    if (params?.chat_id) query.set('chat_id', params.chat_id);
-    const res = await authFetch(`${baseUrl}/api/v1/assistant/history?${query.toString()}`);
-    if (!res.ok) throw new Error(`Failed to fetch assistant history (${res.status})`);
+    const res = await authFetch(`${baseUrl}/api/v1/routines`);
+    if (!res.ok) throw new Error(`Failed to fetch routines (${res.status})`);
+    return res.json();
+  },
+
+  createRoutine: async (payload: RoutineCreateInput): Promise<RoutineItem> => {
+    const baseUrl = getBaseUrl();
+    const res = await authFetch(`${baseUrl}/api/v1/routines`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) throw new Error(`Failed to create routine (${res.status})`);
+    return res.json();
+  },
+
+  updateRoutine: async (routineId: string, updates: Partial<RoutineItem>): Promise<RoutineItem> => {
+    const baseUrl = getBaseUrl();
+    const res = await authFetch(`${baseUrl}/api/v1/routines/${routineId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates),
+    });
+    if (!res.ok) throw new Error(`Failed to update routine (${res.status})`);
+    return res.json();
+  },
+
+  deleteRoutine: async (routineId: string): Promise<any> => {
+    const baseUrl = getBaseUrl();
+    const res = await authFetch(`${baseUrl}/api/v1/routines/${routineId}`, {
+      method: 'DELETE',
+    });
+    if (!res.ok) throw new Error(`Failed to delete routine (${res.status})`);
+    return res.json();
+  },
+
+  runRoutine: async (routineId: string): Promise<any> => {
+    const baseUrl = getBaseUrl();
+    const res = await authFetch(`${baseUrl}/api/v1/routines/${routineId}/run`, {
+      method: 'POST',
+    });
+    if (!res.ok) throw new Error(`Failed to trigger routine (${res.status})`);
     return res.json();
   },
 };
+
+export interface RoutineCreateInput {
+  title: string;
+  description: string;
+  assignee_role?: string;
+  schedule_type?: 'daily' | 'hourly' | 'weekly' | 'interval_minutes' | 'cron';
+  schedule_config?: Record<string, any>;
+  priority?: string;
+  is_active?: boolean;
+}
+
+export interface RoutineItem {
+  id: string;
+  business_id: string;
+  title: string;
+  description: string;
+  assignee_role: string;
+  schedule_type: string;
+  schedule_config: Record<string, any>;
+  priority: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+  last_run_at?: string | null;
+  next_run_at?: string | null;
+  run_count: number;
+  last_status?: string | null;
+  last_result?: string | null;
+  created_by?: string;
+}
 
 export interface DiscoveredToolItem {
   name: string;

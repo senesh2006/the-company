@@ -497,6 +497,60 @@ export const useDisconnectConnection = () => {
     });
 };
 
+// --- Automated Routines Hooks ---
+
+export const useRoutines = () => {
+    return useQuery({
+        queryKey: ['routines'],
+        queryFn: api.getRoutines,
+        refetchInterval: 15000,
+        staleTime: 5000,
+    });
+};
+
+export const useCreateRoutine = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: api.createRoutine,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['routines'] });
+        },
+    });
+};
+
+export const useUpdateRoutine = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ id, updates }: { id: string; updates: Partial<any> }) =>
+            api.updateRoutine(id, updates),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['routines'] });
+        },
+    });
+};
+
+export const useDeleteRoutine = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (id: string) => api.deleteRoutine(id),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['routines'] });
+        },
+    });
+};
+
+export const useRunRoutine = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (id: string) => api.runRoutine(id),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['routines'] });
+            queryClient.invalidateQueries({ queryKey: ['tasks'] });
+            queryClient.invalidateQueries({ queryKey: ['audit-feed'] });
+        },
+    });
+};
+
 // --- Live Task Execution Stream (SSE) ---
 
 export interface TaskStreamEvent {

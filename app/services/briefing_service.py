@@ -54,57 +54,72 @@ class BriefingService:
 
     def _generate_briefing(self, business_id: str, date_str: str) -> Dict[str, Any]:
         """
-        Synthesizes recent operational events using LLM analysis.
+        Synthesizes recent operational events using LLM analysis with robust error fallback.
         """
         now = datetime.now(timezone.utc)
         yesterday_date_str = (now - timedelta(days=1)).strftime("%B %d, %Y")
         today_date_str = now.strftime("%B %d, %Y")
 
-        # 1. Fetch raw context
-        tasks_list = self.tasks.list_tasks(business_id)
-        audit_feed = self.tasks.list_audit_feed(business_id, limit=40)
-        agents_list = self.tasks.list_agents(business_id)
-        sheets = self.finance or GoogleSheetsService(business_id=business_id)
-        accounts_list = sheets.get_accounts()
-        trial_balance = sheets.get_trial_balance()
-        company_profile = self.memory.get(business_id, "company_profile")
-        profile_data = company_profile.get("value", {}) if company_profile else {}
-        company_name = profile_data.get("company_name", "The Company")
+        try:
+            # 1. Fetch raw context safely
+            tasks_list = self.tasks.list_tasks(business_id) or []
+            audit_feed = self.tasks.list_audit_feed(business_id, limit=40) or []
+            agents_list = self.tasks.list_agents(business_id) or []
+            sheets = self.finance or GoogleSheetsService(business_id=business_id)
+            accounts_list = sheets.get_accounts() or []
+            trial_balance = sheets.get_trial_balance() or {}
+            company_profile = self.memory.get(business_id, "company_profile")
+            profile_data = company_profile.get("value", {}) if (company_profile and isinstance(company_profile, dict)) else {}
+            if not isinstance(profile_data, dict):
+                profile_data = {}
+            company_name = profile_data.get("company_name", "The Company")
 
-        # Filter completed tasks & active tasks
-        completed_tasks = [t for t in tasks_list if isinstance(t, dict) and t.get("status") == "completed"]
-        running_tasks = [t for t in tasks_list if isinstance(t, dict) and t.get("status") in ("running", "queued", "pending")]
-        failed_tasks = [t for t in tasks_list if isinstance(t, dict) and t.get("status") == "failed"]
+            # Filter completed tasks & active tasks
+            completed_tasks = [t for t in tasks_list if isinstance(t, dict) and t.get("status") == "completed"]
+            running_tasks = [t for t in tasks_list if isinstance(t, dict) and t.get("status") in ("running", "queued", "pending")]
+            failed_tasks = [t for t in tasks_list if isinstance(t, dict) and t.get("status") == "failed"]
 
-        # Financial summary numbers
-        tb_summary = trial_balance.get("summary", {}) if isinstance(trial_balance, dict) else {}
-        revenue = float(tb_summary.get("total_revenue", 0.0))
-        expenses = float(tb_summary.get("total_opex", 0.0)) + float(tb_summary.get("total_cogs", 0.0))
-        net_profit = float(tb_summary.get("net_income", revenue - expenses))
-        journal_count = len(accounts_list)
+            # Safe float parsing helper
+            def _sf(v, d=0.0):
+                if v is None:
+                    return d
+                if isinstance(v, (int, float)):
+                    return float(v)
+                try:
+                    import re
+                    c = re.sub(r'[^\d.-]', '', str(v).strip())
+                    return float(c) if c and c not in ('-', '.', '-.') else d
+                except Exception:
+                    return d
 
-        # Recent activities text representation
-        recent_feed_texts = [
-            f"- [{e.get('created_at', '')}] {e.get('agent_name', 'AI Worker')} ({e.get('role', 'Specialist')}): {e.get('action', '')} (Mandate: {e.get('mandate', 'N/A')})"
-            for e in audit_feed[:20]
-        ]
-        feed_summary_str = "\n".join(recent_feed_texts) if recent_feed_texts else "No recent audit events logged."
+            # Financial summary numbers
+            tb_summary = trial_balance.get("summary", {}) if isinstance(trial_balance, dict) else {}
+            revenue = _sf(tb_summary.get("total_revenue", 0.0))
+            expenses = _sf(tb_summary.get("total_opex", 0.0)) + _sf(tb_summary.get("total_cogs", 0.0))
+            net_profit = _sf(tb_summary.get("net_income", revenue - expenses))
 
-        recent_tasks_texts = [
-            f"- Task: {t.get('description', '')} | Role: {t.get('assignee_role', 'Specialist')} | Status: {t.get('status')} | Result: {str(t.get('result', ''))[:180]}"
-            for t in tasks_list[:15]
-        ]
-        tasks_summary_str = "\n".join(recent_tasks_texts) if recent_tasks_texts else "No tasks recorded."
+            # Recent activities text representation
+            recent_feed_texts = [
+                f"- [{e.get('created_at', '')}] {e.get('agent_name', 'AI Worker')} ({e.get('role', 'Specialist')}): {e.get('action', '')} (Mandate: {e.get('mandate', 'N/A')})"
+                for e in audit_feed[:20] if isinstance(e, dict)
+            ]
+            feed_summary_str = "\n".join(recent_feed_texts) if recent_feed_texts else "No recent audit events logged."
 
-        # Prompt for Fast LLM synthesis
-        prompt = f"""You are the Chief of Staff and Executive AI Intelligence Officer for '{company_name}'.
+            recent_tasks_texts = [
+                f"- Task: {t.get('description', '')} | Role: {t.get('assignee_role', 'Specialist')} | Status: {t.get('status')} | Result: {str(t.get('result', ''))[:180]}"
+                for t in tasks_list[:15] if isinstance(t, dict)
+            ]
+            tasks_summary_str = "\n".join(recent_tasks_texts) if recent_tasks_texts else "No tasks recorded."
+
+            # Prompt for Fast LLM synthesis
+            prompt = f"""You are the Chief of Staff and Executive AI Intelligence Officer for '{company_name}'.
 Analyze yesterday's operational events ({yesterday_date_str}), task executions, and financial states, then construct a highly detailed, precise, and executive-ready Today's Briefing ({today_date_str}).
 
 Context Data:
 - Company Name: {company_name}
 - Industry: {profile_data.get('industry', 'Technology')}
 - Strategic Goals: {profile_data.get('primary_goals', ['Operational Velocity'])}
-- Active Agents ({len(agents_list)}): {[a.get('name', '') + ' (' + a.get('role', '') + ')' for a in agents_list]}
+- Active Agents ({len(agents_list)}): {[a.get('name', '') + ' (' + a.get('role', '') + ')' for a in agents_list if isinstance(a, dict)]}
 - Total Tasks Completed: {len(completed_tasks)}
 - Tasks In-Flight: {len(running_tasks)}
 - Tasks Failed: {len(failed_tasks)}
@@ -136,7 +151,6 @@ Respond STRICTLY with a valid JSON object matching this exact schema:
   ]
 }}"""
 
-        try:
             llm = get_fast_llm(temperature=0.2)
             response = llm.invoke(prompt)
             raw_text = response.content if hasattr(response, "content") else str(response)
