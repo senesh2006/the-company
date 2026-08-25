@@ -114,14 +114,22 @@ def global_supervisor_node(state: OrchestratorState):
     memory_items = memory_service.list_by_business(business_id)
     shared_context_summary = "\n".join([f"- {m['key']}: {m['value']}" for m in memory_items[:10]]) if memory_items else "No shared memory entries."
     
-    last_message = state["messages"][-1].content if state.get("messages") else ""
-    
-    decision = supervisor.invoke({
-        "roles": ", ".join(roles),
-        "current_tasks": str([t.model_dump() for t in current_tasks.values()]) if current_tasks else "No tasks currently exist.",
-        "shared_context_summary": shared_context_summary,
-        "messages": last_message
-    })
+    last_message = ""
+    if state.get("messages"):
+        last_msg_obj = state["messages"][-1]
+        last_message = getattr(last_msg_obj, "content", "") if not isinstance(last_msg_obj, dict) else last_msg_obj.get("content", "")
+
+    decision = None
+    try:
+        decision = supervisor.invoke({
+            "roles": ", ".join(roles),
+            "current_tasks": str([t.model_dump() for t in current_tasks.values()]) if current_tasks else "No tasks currently exist.",
+            "shared_context_summary": shared_context_summary,
+            "messages": last_message
+        })
+    except Exception as e:
+        logger.warning(f"[Supervisor] LLM structured invoke failed: {e}. Falling back to default routing.")
+        decision = None
     
     new_task_dict = {}
     id_mapping = {}
@@ -129,7 +137,16 @@ def global_supervisor_node(state: OrchestratorState):
     
     # Cap sub-tasks to strictly max 5 (or remaining slots)
     remaining_slots = max(0, MAX_TOTAL_SUBTASKS - existing_count)
-    tasks_to_create = (decision.new_tasks or [])[:remaining_slots]
+    raw_tasks = []
+    if decision:
+        if isinstance(decision, SupervisorDecision):
+            raw_tasks = decision.new_tasks or []
+        elif isinstance(decision, dict):
+            raw_tasks = decision.get("new_tasks") or []
+        elif hasattr(decision, "new_tasks"):
+            raw_tasks = getattr(decision, "new_tasks") or []
+
+    tasks_to_create = (raw_tasks or [])[:remaining_slots]
     
     # Fallback: If supervisor decision returned NO tasks on first turn, create one direct task for the whole objective
     if not tasks_to_create and existing_count == 0 and last_message:
@@ -159,7 +176,7 @@ def global_supervisor_node(state: OrchestratorState):
                 valid_deps.append(mapped)
             elif is_valid_uuid(d):
                 valid_deps.append(d)
-        t.dependencies = valid_deps
+            t.dependencies = valid_deps
         
         # --- CRITICAL: Validate and auto-correct assignee_role ---
         t.assignee_role = _resolve_assignee_role(t.assignee_role, available_roles, t.description)
@@ -199,18 +216,38 @@ def global_supervisor_node(state: OrchestratorState):
             }
         )
     
+    # Safe extraction of decision metadata
+    action_text = "DISPATCH"
+    thought_text = "Coordinating team execution."
+    brief_text = None
+    if decision:
+        if hasattr(decision, "action") and decision.action:
+            action_text = str(decision.action).upper()
+        elif isinstance(decision, dict) and decision.get("action"):
+            action_text = str(decision["action"]).upper()
+
+        if hasattr(decision, "thoughts") and decision.thoughts:
+            thought_text = str(decision.thoughts)
+        elif isinstance(decision, dict) and decision.get("thoughts"):
+            thought_text = str(decision["thoughts"])
+
+        if hasattr(decision, "executive_brief"):
+            brief_text = decision.executive_brief
+        elif isinstance(decision, dict):
+            brief_text = decision.get("executive_brief")
+
     # Log Personal Assistant coordination pulse to Company Feed
     task_service.log_audit_event(
         business_id=business_id,
         role="Personal Assistant",
         agent_name="Personal Assistant",
         trust_tier="operate",
-        action=f"Personal Assistant coordinated team: {decision.action.upper()}",
-        details={"thoughts": decision.thoughts[:120], "brief": decision.executive_brief}
+        action=f"Personal Assistant coordinated team: {action_text}",
+        details={"thoughts": thought_text[:120], "brief": brief_text}
     )
     
     return {
-        "supervisor_thoughts": [decision.thoughts],
+        "supervisor_thoughts": [thought_text],
         "task_graph": new_task_dict,
         "iteration": state.get("iteration", 0) + 1
     }

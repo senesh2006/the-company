@@ -77,6 +77,9 @@ def create_mandate_default(payload: MandatePayload, background_tasks: Background
         background_tasks.add_task(run_team_task_bg, biz_id, task["id"], payload.mandate)
         return {"status": "success", "mandate_task": task, "task": task, "id": task.get("id")}
     except Exception as e:
+        logger.error(f"Failed to dispatch mandate: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @router.post("/{task_id}/cancel")
 def cancel_task_action(task_id: str, user = Depends(get_current_user)):
     """Cancels/stops an in-progress or queued task immediately."""
