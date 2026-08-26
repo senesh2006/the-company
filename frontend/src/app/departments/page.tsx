@@ -248,21 +248,21 @@ function DepartmentsContent() {
   
   const cashOnHand = wbMetrics.cash_on_hand ?? wbSummary.cash_on_hand ?? tbSummary.total_cash ?? (
     accountsList
-      .filter((a: any) => a.category === "Assets" && ("cash" in a.name.toLowerCase() || a.code === "1000" || a.code === "1010"))
-      .reduce((sum: number, a: any) => sum + (parseFloat(a.balance) || 0), 0)
+      .filter((a: any) => a?.category === "Assets" && (String(a?.name || "").toLowerCase().includes("cash") || a?.code === "1000" || a?.code === "1010"))
+      .reduce((sum: number, a: any) => sum + (parseFloat(a?.balance) || 0), 0)
   );
 
   const monthlyBurn = wbMetrics.monthly_burn ?? wbSummary.monthly_burn ?? (totalExpenses > 0 ? totalExpenses / 3 : 0);
   const runwayMonths = wbMetrics.runway_months ?? wbSummary.runway_months ?? (monthlyBurn > 0 ? cashOnHand / monthlyBurn : 999);
 
   const totalAssets = wbSummary.total_assets ?? tbSummary.total_assets ?? (
-    accountsList.filter((a: any) => a.category === "Assets").reduce((sum: number, a: any) => sum + (parseFloat(a.balance) || 0), 0)
+    accountsList.filter((a: any) => a?.category === "Assets").reduce((sum: number, a: any) => sum + (parseFloat(a?.balance) || 0), 0)
   );
   const totalLiabilities = wbSummary.total_liabilities ?? tbSummary.total_liabilities ?? (
-    accountsList.filter((a: any) => a.category === "Liabilities").reduce((sum: number, a: any) => sum + (parseFloat(a.balance) || 0), 0)
+    accountsList.filter((a: any) => a?.category === "Liabilities").reduce((sum: number, a: any) => sum + (parseFloat(a?.balance) || 0), 0)
   );
   const totalEquity = wbSummary.total_equity ?? tbSummary.total_equity ?? (
-    accountsList.filter((a: any) => a.category === "Equity").reduce((sum: number, a: any) => sum + (parseFloat(a.balance) || 0), 0) || (totalAssets - totalLiabilities)
+    accountsList.filter((a: any) => a?.category === "Equity").reduce((sum: number, a: any) => sum + (parseFloat(a?.balance) || 0), 0) || (totalAssets - totalLiabilities)
   );
 
   const isBalanced = financeAccountsData?.trial_balance?.is_balanced ?? (Math.abs(totalAssets - (totalLiabilities + totalEquity)) < 0.05);
@@ -672,15 +672,19 @@ function DepartmentsContent() {
                       <table className="w-full text-left text-xs font-sans">
                         <thead className="bg-emerald-700 text-white sticky top-0 font-bold text-[11px]">
                           <tr>
-                            {((wbTabs[activeSheetTab] || [])[0] || ["Col A", "Col B", "Col C", "Col D"]).map((h: string, idx: number) => (
-                              <th key={idx} className="px-3.5 py-2 font-mono">{h || `Col ${idx + 1}`}</th>
+                            {(Array.isArray(wbTabs[activeSheetTab]) && wbTabs[activeSheetTab].length > 0 && Array.isArray(wbTabs[activeSheetTab][0])
+                              ? wbTabs[activeSheetTab][0]
+                              : ["Col A", "Col B", "Col C", "Col D"]
+                            ).map((h: any, idx: number) => (
+                              <th key={idx} className="px-3.5 py-2 font-mono">{String(h || `Col ${idx + 1}`)}</th>
                             ))}
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-200/80 dark:divide-slate-800 text-slate-700 dark:text-slate-300">
-                          {((wbTabs[activeSheetTab] || []).slice(1) || []).map((row: any[], rIdx: number) => {
-                            const isHeaderSection = row.some((cell: any) => typeof cell === "string" && cell.startsWith("---"));
-                            const isTotalRow = row.some((cell: any) => typeof cell === "string" && (cell.includes("TOTAL") || cell.includes("NET INCOME") || cell.includes("GROSS PROFIT")));
+                          {(Array.isArray(wbTabs[activeSheetTab]) ? wbTabs[activeSheetTab].slice(1) : []).map((row: any, rIdx: number) => {
+                            const rowArr = Array.isArray(row) ? row : [row];
+                            const isHeaderSection = rowArr.some((cell: any) => typeof cell === "string" && cell.startsWith("---"));
+                            const isTotalRow = rowArr.some((cell: any) => typeof cell === "string" && (cell.includes("TOTAL") || cell.includes("NET INCOME") || cell.includes("GROSS PROFIT")));
                             
                             return (
                               <tr 
@@ -690,7 +694,7 @@ function DepartmentsContent() {
                                   isTotalRow ? "bg-emerald-50/40 dark:bg-emerald-950/30 font-bold text-slate-900 dark:text-slate-100" : ""
                                 }`}
                               >
-                                {row.map((cell: any, cIdx: number) => (
+                                {rowArr.map((cell: any, cIdx: number) => (
                                   <td key={cIdx} className="px-3.5 py-1.5 font-mono text-[11px] truncate max-w-[200px]">
                                     {String(cell ?? "")}
                                   </td>
