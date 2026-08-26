@@ -41,6 +41,7 @@ import {
   useInitializeFinanceTemplate 
 } from '@/lib/queries';
 import { FinanceAccount, JournalEntry } from '@/lib/api';
+import { CompanyOSSpreadsheet } from './CompanyOSSpreadsheet';
 
 const CATEGORY_COLORS: Record<string, { bg: string; text: string; border: string; icon: any }> = {
   Assets: { bg: 'bg-emerald-50', text: 'text-emerald-800', border: 'border-emerald-200', icon: Building2 },
@@ -760,6 +761,11 @@ export function ChartOfAccountsSheet() {
       {/* TAB 4: GOOGLE SHEETS LIVE HUB */}
       {activeTab === 'sheets' && (
         <div className="space-y-6">
+          {/* Interactive Built-in Spreadsheet Workspace */}
+          <div className="h-[600px] w-full rounded-2xl overflow-hidden shadow-md">
+            <CompanyOSSpreadsheet customTitle={sheetsConfig?.spreadsheet_title} />
+          </div>
+
           <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-xs space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="flex items-center gap-3">

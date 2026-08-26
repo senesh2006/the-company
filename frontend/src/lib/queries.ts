@@ -358,7 +358,25 @@ export const useInitializeFinanceTemplate = () => {
             queryClient.invalidateQueries({ queryKey: ['finance-accounts'] });
             queryClient.invalidateQueries({ queryKey: ['finance-journal'] });
             queryClient.invalidateQueries({ queryKey: ['finance-sheets-config'] });
+            queryClient.invalidateQueries({ queryKey: ['finance-workbook'] });
         },
+    });
+};
+
+export const useFinanceWorkbook = () => {
+    return useQuery({
+        queryKey: ['finance-workbook'],
+        queryFn: api.getFinanceWorkbook,
+        refetchInterval: 6000,
+        staleTime: 3000,
+    });
+};
+
+export const useGoogleAppsScript = () => {
+    return useQuery({
+        queryKey: ['finance-apps-script'],
+        queryFn: api.getGoogleAppsScript,
+        staleTime: 30000,
     });
 };
 

@@ -127,3 +127,31 @@ def initialize_standard_template(user = Depends(get_current_user)):
     accounts = service.initialize_standard_template()
     return {"status": "success", "accounts": accounts, "total_count": len(accounts)}
 
+@router.get("/workbook", response_model=Dict[str, Any])
+def get_finance_workbook(user = Depends(get_current_user)):
+    """Retrieve full multi-tab workbook data for built-in interactive Google Sheets workspace."""
+    biz_id = getattr(user, "business_id", "00000000-0000-0000-0000-000000000001") or "00000000-0000-0000-0000-000000000001"
+    service = GoogleSheetsService(business_id=biz_id)
+    wb = service.get_workbook_data()
+    apps_script = service.generate_apps_script()
+    return {
+        "status": "success",
+        "workbook": wb,
+        "apps_script": apps_script
+    }
+
+@router.get("/apps-script", response_model=Dict[str, Any])
+def get_google_apps_script(user = Depends(get_current_user)):
+    """Generate standalone Google Apps Script for 1-click import into Google Sheets."""
+    biz_id = getattr(user, "business_id", "00000000-0000-0000-0000-000000000001") or "00000000-0000-0000-0000-000000000001"
+    service = GoogleSheetsService(business_id=biz_id)
+    script = service.generate_apps_script()
+    cfg = service.get_config()
+    return {
+        "status": "success",
+        "script": script,
+        "spreadsheet_title": cfg.get("spreadsheet_title", "Master Financials"),
+        "spreadsheet_url": cfg.get("spreadsheet_url")
+    }
+
+

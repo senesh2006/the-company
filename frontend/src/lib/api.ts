@@ -672,6 +672,20 @@ export const api = {
     return res.json();
   },
 
+  getFinanceWorkbook: async (): Promise<any> => {
+    const baseUrl = getBaseUrl();
+    const res = await authFetch(`${baseUrl}/api/v1/finance/workbook`);
+    if (!res.ok) throw new Error(`Failed to fetch finance workbook (${res.status})`);
+    return res.json();
+  },
+
+  getGoogleAppsScript: async (): Promise<any> => {
+    const baseUrl = getBaseUrl();
+    const res = await authFetch(`${baseUrl}/api/v1/finance/apps-script`);
+    if (!res.ok) throw new Error(`Failed to fetch Google Apps Script (${res.status})`);
+    return res.json();
+  },
+
   getDepartmentDetails: async (deptId: string): Promise<any> => {
     const baseUrl = getBaseUrl();
     const res = await authFetch(`${baseUrl}/api/v1/departments/${deptId}`);
