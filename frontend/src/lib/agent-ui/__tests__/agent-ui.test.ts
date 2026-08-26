@@ -21,7 +21,7 @@ describe("Agent UI Schema & Validation (parseAgentUIPayload)", () => {
       expect(result.success).toBe(true);
       if (result.success) {
         expect(result.data.component).toBe("StatCard");
-        expect(result.data.props.value).toBe("$124,500");
+        expect((result.data.props as any).value).toBe("$124,500");
       }
     });
 
@@ -46,7 +46,7 @@ describe("Agent UI Schema & Validation (parseAgentUIPayload)", () => {
       expect(result.success).toBe(true);
       if (result.success) {
         expect(result.data.component).toBe("LineChart");
-        expect(result.data.props.data.length).toBe(3);
+        expect((result.data.props as any).data.length).toBe(3);
       }
     });
 
@@ -96,8 +96,8 @@ describe("Agent UI Schema & Validation (parseAgentUIPayload)", () => {
       expect(result.success).toBe(true);
       if (result.success) {
         expect(result.data.component).toBe("Table");
-        expect(result.data.props.columns.length).toBe(4);
-        expect(result.data.props.rows.length).toBe(2);
+        expect((result.data.props as any).columns.length).toBe(4);
+        expect((result.data.props as any).rows.length).toBe(2);
       }
     });
 
@@ -120,7 +120,7 @@ describe("Agent UI Schema & Validation (parseAgentUIPayload)", () => {
       expect(result.success).toBe(true);
       if (result.success) {
         expect(result.data.component).toBe("FunnelChart");
-        expect(result.data.props.stages.length).toBe(4);
+        expect((result.data.props as any).stages.length).toBe(4);
       }
     });
 

@@ -13,7 +13,7 @@ DEFAULT_CHECKLISTS: Dict[str, List[Dict[str, Any]]] = {
         {"id": 2, "title": "Hire Lead Accountant AI Worker", "completed": True},
         {"id": 3, "title": "Set Authority Limits & Spending Caps", "completed": True},
         {"id": 4, "title": "Enable GAAP Double-Entry Validation", "completed": True},
-        {"id": 5, "title": "Configure Automated Trial Balance Audits", "completed": False},
+        {"id": 5, "title": "Configure Automated Trial Balance Audits", "completed": True},
         {"id": 6, "title": "Set Up Tax & Payroll Directives", "completed": False}
     ],
     "marketing": [
@@ -23,6 +23,30 @@ DEFAULT_CHECKLISTS: Dict[str, List[Dict[str, Any]]] = {
         {"id": 4, "title": "Define Brand Voice Guidelines", "completed": True},
         {"id": 5, "title": "Integrate Notion Content Workspace", "completed": False},
         {"id": 6, "title": "Enable Automated Lead Scoring", "completed": False}
+    ],
+    "engineering": [
+        {"id": 1, "title": "Configure GitHub MCP & Code Repository", "completed": True},
+        {"id": 2, "title": "Hire Principal Coder AI Agent", "completed": True},
+        {"id": 3, "title": "Set Up CI/CD Automated Test Runner", "completed": True},
+        {"id": 4, "title": "Configure Error Boundary & Telemetry", "completed": True},
+        {"id": 5, "title": "Implement Staging Deployment Pipeline", "completed": False},
+        {"id": 6, "title": "Set Up Automated Code Review Directives", "completed": False}
+    ],
+    "operations": [
+        {"id": 1, "title": "Initialize Multi-Agent Fleet Governance", "completed": True},
+        {"id": 2, "title": "Configure WhatsApp Executive Channel", "completed": True},
+        {"id": 3, "title": "Set Autonomous Routine Schedules", "completed": True},
+        {"id": 4, "title": "Set Up Executive Briefing Generator", "completed": True},
+        {"id": 5, "title": "Connect Cloud Workspace Integrations", "completed": False},
+        {"id": 6, "title": "Configure Cross-Department Escalations", "completed": False}
+    ],
+    "sales": [
+        {"id": 1, "title": "Connect CRM / Lead Database", "completed": True},
+        {"id": 2, "title": "Hire Sales & Outreach AI Specialist", "completed": True},
+        {"id": 3, "title": "Configure Automated Pitch Directives", "completed": True},
+        {"id": 4, "title": "Set Up Lead Qualification Filters", "completed": True},
+        {"id": 5, "title": "Integrate Calendar Booking Assistant", "completed": False},
+        {"id": 6, "title": "Enable Deal Velocity Analytics", "completed": False}
     ]
 }
 
@@ -173,6 +197,21 @@ class DepartmentService:
                 {"type": "ok", "title": "Brand Voice Policy Verified", "desc": "Generated copy passes tone & compliance checks."},
                 {"type": "info", "title": "Perplexity Search Connector Ready", "desc": "Live web search enabled for market research."}
             ]
+        elif dept_id == "engineering":
+            return [
+                {"type": "ok", "title": "CI/CD Pipeline Operational", "desc": "All automated test suites passing."},
+                {"type": "info", "title": "Code Review Bot Active", "desc": "Autonomous linting and architecture checks enabled."}
+            ]
+        elif dept_id == "operations":
+            return [
+                {"type": "ok", "title": "Executive WhatsApp Gateway Connected", "desc": "WAHA container healthy and listening."},
+                {"type": "info", "title": "Fleet Governance Active", "desc": "Authority limits enforced across all active specialists."}
+            ]
+        elif dept_id == "sales":
+            return [
+                {"type": "ok", "title": "Lead Qualification Stream Online", "desc": "Automated pipeline scoring enabled."},
+                {"type": "info", "title": "Outreach Directives Synced", "desc": "CRM contact hooks ready."}
+            ]
         return []
 
     def _default_activities(self, dept_id: str) -> List[Dict[str, Any]]:
@@ -186,6 +225,20 @@ class DepartmentService:
                 {"time": "5 mins ago", "text": "Growth & Marketing Lead AI generated campaign briefs.", "badge": "DRAFTED", "badgeClass": "bg-cyan-50 text-cyan-800 border-cyan-200"},
                 {"time": "40 mins ago", "text": "Market intelligence tools fetched active keyword trends.", "badge": "SEARCHED", "badgeClass": "bg-indigo-50 text-indigo-800 border-indigo-200"}
             ]
+        elif dept_id == "engineering":
+            return [
+                {"time": "15 mins ago", "text": "Principal Coder AI executed test suite and verified module builds.", "badge": "TESTED", "badgeClass": "bg-emerald-50 text-emerald-800 border-emerald-200"},
+                {"time": "45 mins ago", "text": "Automated code refactoring task completed.", "badge": "REFACTORED", "badgeClass": "bg-indigo-50 text-indigo-800 border-indigo-200"}
+            ]
+        elif dept_id == "operations":
+            return [
+                {"time": "20 mins ago", "text": "Personal Assistant generated Morning Executive Briefing.", "badge": "BRIEFING", "badgeClass": "bg-purple-50 text-purple-800 border-purple-200"},
+                {"time": "50 mins ago", "text": "Autonomous daily reconciliation routines executed.", "badge": "ROUTINE", "badgeClass": "bg-cyan-50 text-cyan-800 border-cyan-200"}
+            ]
+        elif dept_id == "sales":
+            return [
+                {"time": "30 mins ago", "text": "Sales Specialist analyzed pipeline conversion velocity.", "badge": "QUALIFIED", "badgeClass": "bg-cyan-50 text-cyan-800 border-cyan-200"}
+            ]
         return []
 
     def _default_attention(self, dept_id: str) -> List[Dict[str, Any]]:
@@ -196,5 +249,17 @@ class DepartmentService:
         elif dept_id == "marketing":
             return [
                 {"id": "att-1", "title": "Review Active Strategy Mandates", "action": "Review Deliverable", "priority": "normal"}
+            ]
+        elif dept_id == "engineering":
+            return [
+                {"id": "att-1", "title": "Review Staging Deployment Pull Request", "action": "Review PR", "priority": "high"}
+            ]
+        elif dept_id == "operations":
+            return [
+                {"id": "att-1", "title": "Acknowledge Executive Daily Briefing", "action": "View Briefing", "priority": "normal"}
+            ]
+        elif dept_id == "sales":
+            return [
+                {"id": "att-1", "title": "Approve Outbound Enterprise Pitch Deck", "action": "Review Pitch", "priority": "high"}
             ]
         return []
