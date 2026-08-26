@@ -285,7 +285,10 @@ CRITICAL: Return ONLY a valid JSON object with the exact keys:
             }
 
         try:
-            resp = await asyncio.to_thread(llm.invoke, messages)
+            resp = await asyncio.wait_for(
+                asyncio.to_thread(llm.invoke, messages),
+                timeout=18.0
+            )
             raw_content = _clean_special_tokens((resp.content or "").strip())
 
             # Attempt to extract JSON block

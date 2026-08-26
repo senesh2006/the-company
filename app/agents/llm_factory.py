@@ -371,8 +371,8 @@ def get_fast_llm(temperature: float = 0.0) -> Any:
                     "api_key": k,
                     "base_url": base,
                     "temperature": temperature,
-                    "timeout": 60,
-                    "max_retries": 2,
+                    "timeout": 15,
+                    "max_retries": 1,
                 }
                 if headers:
                     kwargs["default_headers"] = headers

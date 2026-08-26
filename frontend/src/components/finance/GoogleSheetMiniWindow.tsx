@@ -41,7 +41,7 @@ export function GoogleSheetMiniWindow({
   const match = rawUrl.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
   const spreadsheetId = match ? match[1] : null;
   const embedUrl = spreadsheetId 
-    ? `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit?usp=sharing&widget=true&headers=false` 
+    ? `https://docs.google.com/spreadsheets/d/${spreadsheetId}/preview?embedded=true` 
     : rawUrl;
 
   const handleCopyLink = () => {

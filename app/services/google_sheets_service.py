@@ -780,5 +780,15 @@ class GoogleSheetsService:
         )
 
     def create_group_financial_tracking_system(self, group_name: str = "SSS Group of Companies", entities: Optional[List[str]] = None) -> Dict[str, Any]:
-        """Alias for create_q3_master_financials."""
-        return self.create_q3_master_financials(sheet_title=f"{group_name} - Master Financials")
+        """Sets up a comprehensive multi-entity financial tracking system for a group of companies."""
+        res = self.create_q3_master_financials(sheet_title=f"{group_name} - Master Financials")
+        res["group_name"] = group_name
+        res["tabs_created"] = [
+            {"tab": "Executive_Dashboard", "description": "Consolidated Group KPI overview"},
+            {"tab": "Chart_of_Accounts", "description": "Multi-entity master chart of accounts"},
+            {"tab": "General_Journal", "description": "Double-entry transaction log"},
+            {"tab": "Trial_Balance", "description": "Automated reconciliation model"},
+            {"tab": "Subsidiary_Breakdown", "description": "P&L spend breakdown across entities"},
+            {"tab": "Cash_Flow_Forecast", "description": "Runway projection and cash burn monitor"}
+        ]
+        return res
