@@ -185,8 +185,13 @@ CRITICAL: Return ONLY a valid JSON object with the exact keys:
         def _heuristic_classify(msg: str) -> Dict[str, Any]:
             lower = msg.lower().strip()
             
-            # Check for Routine
-            if any(w in lower for w in ["routine", "recurring", "every day", "daily", "every hour", "hourly", "every week", "schedule a routine"]):
+            # Check for Routine ONLY when explicitly asked to create/schedule a routine
+            explicit_routine_triggers = [
+                "create a routine", "set up a routine", "setup a routine", "create routine",
+                "schedule a routine", "scheduled routine", "recurring routine", "automated routine",
+                "repeat every", "run every day at", "run every hour", "run daily at", "run hourly"
+            ]
+            if any(w in lower for w in explicit_routine_triggers):
                 sched_type = "daily"
                 if "hour" in lower:
                     sched_type = "hourly"
@@ -206,8 +211,8 @@ CRITICAL: Return ONLY a valid JSON object with the exact keys:
                     "priority": "P1"
                 }
 
-            # Check for Finance
-            if any(w in lower for w in ["expense", "expenses", "profit", "revenue", "sheet", "sheets", "ledger", "invoice", "payment", "$", "dollar", "usd", "accounting", "cogs", "opex", "tax", "journal", "debit", "credit"]):
+            # Check for Finance (Immediate execution)
+            if any(w in lower for w in ["expense", "expenses", "profit", "revenue", "sheet", "sheets", "ledger", "invoice", "payment", "$", "dollar", "usd", "accounting", "cogs", "opex", "tax", "journal", "debit", "credit", "financial", "balance sheet", "p&l"]):
                 return {
                     "is_task": True,
                     "is_routine": False,
