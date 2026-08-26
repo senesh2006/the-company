@@ -13,12 +13,13 @@ class GoogleSheetsInput(BaseModel):
         description=(
             "Action to perform: 'get_chart_of_accounts', 'read_sheet', 'append_journal_entry', "
             "'post_transaction', 'get_trial_balance', 'sync_to_sheets', 'create_finance_sheet', "
-            "'create_q3_master_financials' (creates Income Statement, Balance Sheet, Cash Flow, Dashboard tabs with data)"
+            "'create_dynamic_financial_system' (dynamically creates any custom P&L, Balance Sheet, Dashboard with user-defined accounts/entries), "
+            "'create_q3_master_financials'"
         )
     )
     sheet_name: Optional[str] = Field(
         "Accounts", 
-        description="Target sheet tab name, e.g. 'Accounts', 'Journal', 'TrialBalance', 'Budget'"
+        description="Target sheet tab name or overall spreadsheet title, e.g. 'Q3 Startup Master Financials', 'P&L', 'Accounts'"
     )
     range_or_cell: Optional[str] = Field(
         "A1:Z100", 
@@ -26,14 +27,18 @@ class GoogleSheetsInput(BaseModel):
     )
     payload_json: Optional[str] = Field(
         None, 
-        description="JSON payload containing journal entry fields (debit_account, credit_account, amount, description) or account definition"
+        description=(
+            "Optional JSON payload. Can contain: "
+            "1) A single journal entry dict {'debit_account': '...', 'credit_account': '...', 'amount': 100, 'description': '...'}, or "
+            "2) Full dynamic sheet setup dict {'sheet_title': '...', 'accounts': [...], 'journal_entries': [...], 'custom_tabs': {...}}"
+        )
     )
 
 class GoogleSheetsTool(BaseTool):
     name = "google_sheets"
     description = (
         "Google Sheets MCP Tool. Reads and writes the Chart of Accounts, records journal entries, "
-        "reconciles debit/credit trial balances, and syncs financial ledger models with Google Sheets."
+        "reconciles debit/credit trial balances, and dynamically builds custom financial statements (P&L, Balance Sheet, Dashboards) in Google Sheets."
     )
     args_schema = GoogleSheetsInput
     cost_estimate = 0.02
@@ -105,18 +110,38 @@ class GoogleSheetsTool(BaseTool):
                 sync_res = service.sync_to_google_sheets()
                 default_res = json.dumps(sync_res, indent=2)
 
-            elif act in ("create_group_financial_tracking_system", "setup_financial_system", "financial_tracking", "create_group_financial_system", "create_group_sheet"):
+            elif act in ("create_dynamic_financial_system", "dynamic_financial_system", "dynamic_sheet", "create_custom_sheet", "create_finance_sheet", "create_sheet", "create_google_sheet", "new_sheet", "setup_financial_system", "financial_tracking"):
+                # Parse dynamic payload if agent/user passed custom data
+                custom_accounts = None
+                custom_entries = None
+                custom_tabs = None
+                title = sheet_name if sheet_name and sheet_name != "Accounts" else "Master Financials"
+
+                if payload_json:
+                    try:
+                        parsed_payload = json.loads(payload_json)
+                        if isinstance(parsed_payload, dict):
+                            title = parsed_payload.get("sheet_title") or parsed_payload.get("title") or title
+                            custom_accounts = parsed_payload.get("accounts") or parsed_payload.get("chart_of_accounts")
+                            custom_entries = parsed_payload.get("journal_entries") or parsed_payload.get("entries")
+                            custom_tabs = parsed_payload.get("custom_tabs") or parsed_payload.get("tabs")
+                    except Exception as e:
+                        logger.debug(f"Payload parse info in dynamic sheet: {e}")
+
+                res = service.create_dynamic_financial_system(
+                    sheet_title=title,
+                    accounts=custom_accounts,
+                    journal_entries=custom_entries,
+                    custom_tabs=custom_tabs
+                )
+                default_res = json.dumps(res, indent=2)
+
+            elif act in ("create_group_financial_tracking_system", "create_group_financial_system", "create_group_sheet"):
                 group_name = sheet_name if sheet_name and sheet_name != "Accounts" else "SSS Group of Companies"
                 res = service.create_group_financial_tracking_system(group_name=group_name)
                 default_res = json.dumps(res, indent=2)
 
             elif act in ("create_q3_master_financials", "q3_master_financials", "q3_financials", "master_financials", "create_master_financials"):
-                title = sheet_name if sheet_name and sheet_name != "Accounts" else "Q3 Startup Master Financials"
-                res = service.create_q3_master_financials(sheet_title=title)
-                default_res = json.dumps(res, indent=2)
-
-            elif act in ("create_finance_sheet", "create_sheet", "create_google_sheet", "new_sheet", "create_trial_balance_sheet", "create_trial_balance"):
-                # Actually create and populate the sheet instead of returning a stub
                 title = sheet_name if sheet_name and sheet_name != "Accounts" else "Q3 Startup Master Financials"
                 res = service.create_q3_master_financials(sheet_title=title)
                 default_res = json.dumps(res, indent=2)

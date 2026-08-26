@@ -180,7 +180,7 @@ def test_finance_worker_simple_expense_categorization(mock_checker_llm, mock_mak
     assert final_state["checker_verdict"]["passed"] is True
     assert final_state["confidence"] >= 0.90
     assert final_state["risk_level"] == "low"
-    assert "Financial Execution & Audit Report" in final_state["final_output"]
+    assert "Financial Deliverables & Execution Report" in final_state["final_output"]
 
     # Verify Durable State Spine (SOX audit log) written to SharedMemory
     mem = SharedMemoryService()
@@ -192,8 +192,20 @@ def test_finance_worker_simple_expense_categorization(mock_checker_llm, mock_mak
     assert audit_entries[0]["checker_verdict"]["passed"] is True
 
 # ----------------- 6. End-to-End LangGraph Flow: Month-End Close (Supervisor Mode) -----------------
+@patch("app.agents.finance_worker.settings.ALLOW_AUTONOMOUS_SUBWORKERS", True)
+@patch("app.agents.finance_worker.get_finance_llm")
 @patch("app.agents.finance_checker.get_checker_llm")
-def test_finance_worker_month_end_close_supervisor_mode(mock_checker_llm):
+def test_finance_worker_month_end_close_supervisor_mode(mock_checker_llm, mock_maker_llm):
+    mock_maker = MagicMock()
+    mock_maker.invoke.return_value = MagicMock(content="""{
+        "journal_entries": [
+            {"account": "6100 - Research & Development (R&D)", "debit": 25000.00, "credit": 0.00, "description": "Engineers Payroll July 2026"},
+            {"account": "1010 - Cash & Cash Equivalents", "debit": 0.00, "credit": 25000.00, "description": "Payroll disbursed"}
+        ],
+        "rationale": "Month-end payroll journal entry for July 2026."
+    }""")
+    mock_maker_llm.return_value = mock_maker
+
     mock_checker = MagicMock()
     mock_checker.invoke.return_value = MagicMock(content="""{
         "passed": true,
@@ -249,3 +261,53 @@ def test_finance_worker_month_end_close_supervisor_mode(mock_checker_llm):
     assert audit_trail is not None
     audit_items = audit_trail.get("value", []) if isinstance(audit_trail, dict) else audit_trail
     assert len(audit_items) >= 1
+
+def test_dynamic_google_sheets_custom_financials():
+    """Verify that GoogleSheetsService dynamically creates custom financial tabs for any user request."""
+    import json
+    from app.services.google_sheets_service import GoogleSheetsService
+    from app.agents.google_sheets_tool import GoogleSheetsTool
+
+    test_biz = "00000000-0000-0000-0000-000000000001"
+    svc = GoogleSheetsService(business_id=test_biz)
+
+    custom_accounts = [
+        {"code": "1000", "name": "Boutique Coffee Cash", "category": "Assets", "type": "Current Asset", "balance": 45000.0, "normal_balance": "Debit"},
+        {"code": "2000", "name": "Coffee Bean Supplier AP", "category": "Liabilities", "type": "Current Liability", "balance": 3500.0, "normal_balance": "Credit"},
+        {"code": "3000", "name": "Owner Equity", "category": "Equity", "type": "Equity", "balance": 50000.0, "normal_balance": "Credit"},
+        {"code": "4000", "name": "Espresso & Pastry Sales", "category": "Revenue", "type": "Operating Revenue", "balance": 18000.0, "normal_balance": "Credit"},
+        {"code": "5000", "name": "Organic Milk & Beans COGS", "category": "COGS", "type": "Cost of Goods Sold", "balance": 4000.0, "normal_balance": "Debit"},
+        {"code": "6000", "name": "Barista Wages & Rent OPEX", "category": "OPEX", "type": "Operating Expense", "balance": 5500.0, "normal_balance": "Debit"},
+    ]
+
+    custom_entries = [
+        {"id": "TX-01", "date": "2026-08-01", "reference": "SALES-01", "description": "Weekly pastry sales", "debit_account": "1000", "credit_account": "4000", "amount": 4500.0, "status": "Posted"}
+    ]
+
+    res = svc.create_dynamic_financial_system(
+        sheet_title="Artisan Cafe Q3 Financials",
+        accounts=custom_accounts,
+        journal_entries=custom_entries
+    )
+
+    assert res["status"] == "SUCCESS"
+    assert res["spreadsheet_title"] == "Artisan Cafe Q3 Financials"
+    assert "Income Statement" in res["tabs_created"]
+    assert "Balance Sheet" in res["tabs_created"]
+    assert "Dashboard" in res["tabs_created"]
+    assert res["financial_summary"]["total_revenue"] == 18000.0
+    assert res["financial_summary"]["gross_profit"] == 14000.0
+    assert res["financial_summary"]["net_income"] == 8500.0
+
+    # Test tool invocation with payload_json
+    tool = GoogleSheetsTool()
+    tool.business_id = test_biz
+    payload = json.dumps({
+        "sheet_title": "Custom Tech Agency",
+        "accounts": custom_accounts,
+        "journal_entries": custom_entries
+    })
+    tool_output = tool._run(action="create_dynamic_financial_system", payload_json=payload)
+    data = json.loads(tool_output)
+    assert data["status"] == "SUCCESS"
+    assert data["spreadsheet_title"] == "Custom Tech Agency"

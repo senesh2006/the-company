@@ -108,6 +108,19 @@ class GoogleSheetsService:
                 pass
         return val if val is not None else default
 
+    @staticmethod
+    def _to_float(val: Any) -> float:
+        """Safely convert numerical or currency strings/numbers to float."""
+        if val is None:
+            return 0.0
+        if isinstance(val, (int, float)):
+            return float(val)
+        try:
+            cleaned = str(val).replace("$", "").replace(",", "").strip()
+            return float(cleaned)
+        except Exception:
+            return 0.0
+
     def _ensure_initialized(self):
         """Ensure initial chart of accounts and journal entries exist in persistent memory."""
         raw_accounts = self.memory.get(self.business_id, "finance_chart_of_accounts")
@@ -506,285 +519,266 @@ class GoogleSheetsService:
 
         return {"success": True, "appended_values": row_values}
 
-    def create_q3_master_financials(
+    def create_dynamic_financial_system(
         self,
-        sheet_title: str = "Q3 Startup Master Financials"
+        sheet_title: str = "Master Financials",
+        accounts: Optional[List[Dict[str, Any]]] = None,
+        journal_entries: Optional[List[Dict[str, Any]]] = None,
+        custom_tabs: Optional[Dict[str, List[List[Any]]]] = None
     ) -> Dict[str, Any]:
         """
-        Creates a complete Q3 Master Financials system with structured tabs:
-        1) Income Statement (P&L)
-        2) Balance Sheet
-        3) Cash Flow Statement
-        4) Summary Dashboard
-        5) Chart of Accounts
-        6) General Journal (double-entry ledger)
+        Dynamic financial system builder. Accepts ANY user-defined accounts and journal entries
+        from the LLM agent and auto-generates structured financial tabs (Income Statement,
+        Balance Sheet, Dashboard) from the provided data.
 
-        Populates actual data into the connected Google Sheet and shared memory.
+        Args:
+            sheet_title: Name for the Google Sheet
+            accounts: List of account dicts with code, name, category, type, balance, normal_balance, description
+            journal_entries: List of journal entry dicts
+            custom_tabs: Optional dict of {tab_name: [[row_values]]} for any additional custom tabs
         """
-        # --- Q3 Chart of Accounts (Startup GAAP) ---
-        q3_accounts = [
-            {"code": "1010", "name": "Cash & Cash Equivalents", "category": "Assets", "type": "Current Asset", "balance": 405000.00, "normal_balance": "Debit", "description": "Primary operating cash after Q3 activity"},
-            {"code": "1100", "name": "Accounts Receivable (AR)", "category": "Assets", "type": "Current Asset", "balance": 0.00, "normal_balance": "Debit", "description": "Outstanding customer invoices"},
-            {"code": "1200", "name": "Prepaid Expenses", "category": "Assets", "type": "Current Asset", "balance": 15000.00, "normal_balance": "Debit", "description": "Prepaid office rent (3 months)"},
-            {"code": "1500", "name": "Property, Plant & Equipment (PP&E)", "category": "Assets", "type": "Non-Current Asset", "balance": -1000.00, "normal_balance": "Debit", "description": "Development servers net of depreciation"},
-            {"code": "2010", "name": "Accounts Payable (AP)", "category": "Liabilities", "type": "Current Liability", "balance": 0.00, "normal_balance": "Credit", "description": "Vendor invoices cleared"},
-            {"code": "2100", "name": "Accrued Salaries", "category": "Liabilities", "type": "Current Liability", "balance": 0.00, "normal_balance": "Credit", "description": "Accrued payroll obligations"},
-            {"code": "2500", "name": "Convertible Notes / Venture Debt", "category": "Liabilities", "type": "Non-Current Liability", "balance": 0.00, "normal_balance": "Credit", "description": "Long-term financing instruments"},
-            {"code": "3100", "name": "Share Capital (Common Stock)", "category": "Equity", "type": "Equity", "balance": 500000.00, "normal_balance": "Credit", "description": "Seed round equity issuance"},
-            {"code": "3200", "name": "Additional Paid-in Capital (APIC)", "category": "Equity", "type": "Equity", "balance": 0.00, "normal_balance": "Credit", "description": "Premium over par value"},
-            {"code": "3300", "name": "Retained Earnings", "category": "Equity", "type": "Equity", "balance": 0.00, "normal_balance": "Credit", "description": "Cumulative net income"},
-            {"code": "4100", "name": "SaaS Revenue", "category": "Revenue", "type": "Operating Revenue", "balance": 10000.00, "normal_balance": "Credit", "description": "Monthly recurring revenue (MRR)"},
-            {"code": "4200", "name": "Professional Services Revenue", "category": "Revenue", "type": "Non-Recurring Revenue", "balance": 5000.00, "normal_balance": "Credit", "description": "Consulting and implementation fees"},
-            {"code": "5100", "name": "Hosting & Infrastructure (COGS)", "category": "COGS", "type": "Cost of Goods Sold", "balance": 6000.00, "normal_balance": "Debit", "description": "AWS/Cloud hosting + depreciation"},
-            {"code": "5200", "name": "Customer Support (COGS)", "category": "COGS", "type": "Cost of Goods Sold", "balance": 0.00, "normal_balance": "Debit", "description": "Customer support team costs"},
-            {"code": "6100", "name": "Research & Development (R&D)", "category": "OPEX", "type": "Operating Expense", "balance": 67000.00, "normal_balance": "Debit", "description": "Engineering payroll (Jul+Aug+Sep)"},
-            {"code": "6200", "name": "Sales & Marketing (S&M)", "category": "OPEX", "type": "Operating Expense", "balance": 8000.00, "normal_balance": "Debit", "description": "Google Ads & LinkedIn campaigns"},
-            {"code": "6300", "name": "General & Administrative (G&A)", "category": "OPEX", "type": "Operating Expense", "balance": 5000.00, "normal_balance": "Debit", "description": "Office supplies, licenses, misc"},
-        ]
+        # Use provided accounts or fall back to standard template
+        if accounts and isinstance(accounts, list) and len(accounts) > 0:
+            final_accounts = accounts
+        else:
+            final_accounts = list(STANDARD_CHART_OF_ACCOUNTS_TEMPLATE)
+
+        # Normalize account fields
+        for acc in final_accounts:
+            acc.setdefault("balance", 0.00)
+            acc.setdefault("normal_balance", "Debit" if acc.get("category") in ("Assets", "COGS", "OPEX") else "Credit")
+            acc.setdefault("type", acc.get("category", "Other"))
+            acc.setdefault("description", "")
 
         # Save COA to shared memory
         self.memory.set(
             business_id=self.business_id,
             key="finance_chart_of_accounts",
-            value=q3_accounts,
-            tags=["finance", "google_sheets", "chart_of_accounts", "q3"]
+            value=final_accounts,
+            tags=["finance", "google_sheets", "chart_of_accounts"]
         )
 
-        # --- Q3 Double-Entry Journal Transactions ---
-        q3_journal = [
-            {"id": "JE-001", "date": "2024-07-01", "reference": "SEED-001", "description": "Seed funding round injection from lead investors", "debit_account": "1010", "credit_account": "3100", "amount": 500000.00, "status": "Posted"},
-            {"id": "JE-002", "date": "2024-07-02", "reference": "RENT-001", "description": "Prepaid 3 months office lease", "debit_account": "1200", "credit_account": "1010", "amount": 15000.00, "status": "Posted"},
-            {"id": "JE-003", "date": "2024-07-05", "reference": "COGS-001", "description": "AWS cloud infrastructure hosting", "debit_account": "5100", "credit_account": "2010", "amount": 5000.00, "status": "Posted"},
-            {"id": "JE-004", "date": "2024-07-10", "reference": "PAY-001", "description": "July payroll - 2 senior engineers", "debit_account": "6100", "credit_account": "1010", "amount": 20000.00, "status": "Posted"},
-            {"id": "JE-005", "date": "2024-07-15", "reference": "REV-001", "description": "Enterprise SaaS contract (30-day terms)", "debit_account": "1100", "credit_account": "4100", "amount": 10000.00, "status": "Posted"},
-            {"id": "JE-006", "date": "2024-08-01", "reference": "PAY-002", "description": "August payroll run", "debit_account": "6100", "credit_account": "1010", "amount": 22000.00, "status": "Posted"},
-            {"id": "JE-007", "date": "2024-08-05", "reference": "MKT-001", "description": "Google Ads & LinkedIn campaign spend", "debit_account": "6200", "credit_account": "1010", "amount": 8000.00, "status": "Posted"},
-            {"id": "JE-008", "date": "2024-08-10", "reference": "GA-001", "description": "Office supplies and utilities", "debit_account": "6300", "credit_account": "2010", "amount": 2000.00, "status": "Posted"},
-            {"id": "JE-009", "date": "2024-08-15", "reference": "COL-001", "description": "Collected AR from July enterprise deal", "debit_account": "1010", "credit_account": "1100", "amount": 10000.00, "status": "Posted"},
-            {"id": "JE-010", "date": "2024-09-01", "reference": "PAY-003", "description": "September core engineering payroll", "debit_account": "6100", "credit_account": "1010", "amount": 25000.00, "status": "Posted"},
-            {"id": "JE-011", "date": "2024-09-05", "reference": "GA-002", "description": "Annual software licenses (legal/compliance)", "debit_account": "6300", "credit_account": "1010", "amount": 3000.00, "status": "Posted"},
-            {"id": "JE-012", "date": "2024-09-15", "reference": "REV-002", "description": "Professional services revenue (upfront cash)", "debit_account": "1010", "credit_account": "4200", "amount": 5000.00, "status": "Posted"},
-            {"id": "JE-013", "date": "2024-09-30", "reference": "DEP-001", "description": "Monthly depreciation on dev servers", "debit_account": "5100", "credit_account": "1500", "amount": 1000.00, "status": "Posted"},
-            {"id": "JE-014", "date": "2024-09-30", "reference": "PAY-AP", "description": "Settled outstanding vendor payables", "debit_account": "2010", "credit_account": "1010", "amount": 7000.00, "status": "Posted"},
-        ]
+        # Use provided journal entries or empty
+        final_journal = journal_entries if (journal_entries and isinstance(journal_entries, list)) else []
+        if final_journal:
+            self.memory.set(
+                business_id=self.business_id,
+                key="finance_journal_entries",
+                value=final_journal,
+                tags=["finance", "google_sheets", "journal"]
+            )
 
-        self.memory.set(
-            business_id=self.business_id,
-            key="finance_journal_entries",
-            value=q3_journal,
-            tags=["finance", "google_sheets", "journal", "q3"]
-        )
+        # --- Categorize accounts for auto-generation ---
+        revenue_accounts = [a for a in final_accounts if a.get("category") in ("Revenue",)]
+        cogs_accounts = [a for a in final_accounts if a.get("category") in ("COGS",)]
+        opex_accounts = [a for a in final_accounts if a.get("category") in ("OPEX",)]
+        asset_accounts = [a for a in final_accounts if a.get("category") in ("Assets",)]
+        liability_accounts = [a for a in final_accounts if a.get("category") in ("Liabilities",)]
+        equity_accounts = [a for a in final_accounts if a.get("category") in ("Equity",)]
 
-        # --- Build Tab Data Matrices ---
-        # Tab 1: Income Statement (P&L)
+        current_assets = [a for a in asset_accounts if "current" in a.get("type", "").lower() and "non" not in a.get("type", "").lower()]
+        noncurrent_assets = [a for a in asset_accounts if "non" in a.get("type", "").lower() or "fixed" in a.get("type", "").lower()]
+        current_liabilities = [a for a in liability_accounts if "current" in a.get("type", "").lower() and "non" not in a.get("type", "").lower()]
+        noncurrent_liabilities = [a for a in liability_accounts if "non" in a.get("type", "").lower() or "long" in a.get("type", "").lower()]
+        if not current_assets and asset_accounts:
+            current_assets = asset_accounts
+        if not current_liabilities and liability_accounts:
+            current_liabilities = liability_accounts
+
+        # --- Tab 1: Income Statement (P&L) - auto-generated ---
         income_statement = [
-            ["Q3 2024 INCOME STATEMENT (P&L)", "", "", ""],
+            [f"{sheet_title} - INCOME STATEMENT (P&L)", "", "", ""],
             ["", "", "", ""],
-            ["REVENUE", "", "", "Q3 Total ($)"],
-            ["SaaS Revenue (MRR)", "", "", 10000],
-            ["Professional Services Revenue", "", "", 5000],
-            ["TOTAL REVENUE", "", "", "=SUM(D4:D5)"],
-            ["", "", "", ""],
-            ["COST OF GOODS SOLD (COGS)", "", "", ""],
-            ["Hosting & Infrastructure", "", "", 5000],
-            ["Depreciation (Servers)", "", "", 1000],
-            ["Customer Support", "", "", 0],
-            ["TOTAL COGS", "", "", "=SUM(D9:D11)"],
-            ["", "", "", ""],
-            ["GROSS PROFIT", "", "", "=D6-D12"],
-            ["Gross Margin %", "", "", "=IF(D6>0,D14/D6,0)"],
-            ["", "", "", ""],
-            ["OPERATING EXPENSES", "", "", ""],
-            ["Research & Development (R&D)", "", "", 67000],
-            ["Sales & Marketing (S&M)", "", "", 8000],
-            ["General & Administrative (G&A)", "", "", 5000],
-            ["TOTAL OPEX", "", "", "=SUM(D18:D20)"],
-            ["", "", "", ""],
-            ["OPERATING INCOME (EBIT)", "", "", "=D14-D21"],
-            ["", "", "", ""],
-            ["NET INCOME (LOSS)", "", "", "=D23"],
-            ["Net Margin %", "", "", "=IF(D6>0,D25/D6,0)"],
+            ["REVENUE", "", "", "Total ($)"],
         ]
+        rev_start = len(income_statement) + 1
+        for acc in revenue_accounts:
+            income_statement.append([f"  {acc['name']}", acc['code'], "", acc.get('balance', 0)])
+        rev_end = rev_start + max(len(revenue_accounts) - 1, 0)
+        income_statement.append(["TOTAL REVENUE", "", "", f"=SUM(D{rev_start}:D{rev_end})" if revenue_accounts else 0])
+        total_rev_row = len(income_statement)
 
-        # Tab 2: Balance Sheet
+        income_statement.append(["", "", "", ""])
+        income_statement.append(["COST OF GOODS SOLD (COGS)", "", "", ""])
+        cogs_start = len(income_statement) + 1
+        for acc in cogs_accounts:
+            income_statement.append([f"  {acc['name']}", acc['code'], "", acc.get('balance', 0)])
+        cogs_end = cogs_start + max(len(cogs_accounts) - 1, 0)
+        income_statement.append(["TOTAL COGS", "", "", f"=SUM(D{cogs_start}:D{cogs_end})" if cogs_accounts else 0])
+        total_cogs_row = len(income_statement)
+
+        income_statement.append(["", "", "", ""])
+        income_statement.append(["GROSS PROFIT", "", "", f"=D{total_rev_row}-D{total_cogs_row}"])
+        gross_row = len(income_statement)
+
+        income_statement.append(["", "", "", ""])
+        income_statement.append(["OPERATING EXPENSES", "", "", ""])
+        opex_start = len(income_statement) + 1
+        for acc in opex_accounts:
+            income_statement.append([f"  {acc['name']}", acc['code'], "", acc.get('balance', 0)])
+        opex_end = opex_start + max(len(opex_accounts) - 1, 0)
+        income_statement.append(["TOTAL OPEX", "", "", f"=SUM(D{opex_start}:D{opex_end})" if opex_accounts else 0])
+        total_opex_row = len(income_statement)
+
+        income_statement.append(["", "", "", ""])
+        income_statement.append(["NET INCOME (LOSS)", "", "", f"=D{gross_row}-D{total_opex_row}"])
+
+        # --- Tab 2: Balance Sheet - auto-generated ---
         balance_sheet = [
-            ["Q3 2024 BALANCE SHEET", "", "", ""],
-            ["As of September 30, 2024", "", "", ""],
+            [f"{sheet_title} - BALANCE SHEET", "", "", ""],
             ["", "", "", ""],
             ["ASSETS", "", "", "Balance ($)"],
-            ["Current Assets", "", "", ""],
-            ["  Cash & Cash Equivalents", "1010", "", 405000],
-            ["  Accounts Receivable", "1100", "", 0],
-            ["  Prepaid Expenses", "1200", "", 15000],
-            ["Total Current Assets", "", "", "=SUM(D6:D8)"],
-            ["", "", "", ""],
-            ["Non-Current Assets", "", "", ""],
-            ["  PP&E (net of depreciation)", "1500", "", -1000],
-            ["Total Non-Current Assets", "", "", "=D12"],
-            ["", "", "", ""],
-            ["TOTAL ASSETS", "", "", "=D9+D13"],
-            ["", "", "", ""],
-            ["LIABILITIES", "", "", ""],
-            ["Current Liabilities", "", "", ""],
-            ["  Accounts Payable", "2010", "", 0],
-            ["  Accrued Salaries", "2100", "", 0],
-            ["Total Current Liabilities", "", "", "=SUM(D19:D20)"],
-            ["", "", "", ""],
-            ["Non-Current Liabilities", "", "", ""],
-            ["  Convertible Notes / Venture Debt", "2500", "", 0],
-            ["Total Non-Current Liabilities", "", "", "=D24"],
-            ["", "", "", ""],
-            ["TOTAL LIABILITIES", "", "", "=D21+D25"],
-            ["", "", "", ""],
-            ["EQUITY", "", "", ""],
-            ["  Share Capital (Common Stock)", "3100", "", 500000],
-            ["  APIC", "3200", "", 0],
-            ["  Retained Earnings (Net Income)", "3300", "", "='Income Statement'!D25"],
-            ["TOTAL EQUITY", "", "", "=SUM(D30:D32)"],
-            ["", "", "", ""],
-            ["TOTAL LIABILITIES + EQUITY", "", "", "=D27+D33"],
-            ["", "", "", ""],
-            ["Balance Check (Assets = L+E)", "", "", "=IF(D15=D35,\"✅ BALANCED\",\"❌ UNBALANCED\")"],
         ]
+        ca_start = len(balance_sheet) + 1
+        for acc in current_assets:
+            balance_sheet.append([f"  {acc['name']}", acc['code'], "", acc.get('balance', 0)])
+        ca_end = ca_start + max(len(current_assets) - 1, 0)
+        balance_sheet.append(["Total Current Assets", "", "", f"=SUM(D{ca_start}:D{ca_end})" if current_assets else 0])
+        tca_row = len(balance_sheet)
 
-        # Tab 3: Cash Flow Statement
-        cash_flow = [
-            ["Q3 2024 CASH FLOW STATEMENT", "", ""],
-            ["Period: July 1 - September 30, 2024", "", ""],
-            ["", "", ""],
-            ["OPERATING ACTIVITIES", "", "Amount ($)"],
-            ["Net Income (Loss)", "", "='Income Statement'!D25"],
-            ["Adjustments:", "", ""],
-            ["  + Depreciation", "", 1000],
-            ["  - Decrease in AR", "", 0],
-            ["  + Increase in Prepaid Expenses", "", -15000],
-            ["  - Decrease in AP", "", 0],
-            ["Net Cash from Operations", "", "=SUM(C5:C10)"],
-            ["", "", ""],
-            ["INVESTING ACTIVITIES", "", ""],
-            ["  Capital Expenditures (PP&E)", "", 0],
-            ["Net Cash from Investing", "", "=C14"],
-            ["", "", ""],
-            ["FINANCING ACTIVITIES", "", ""],
-            ["  Seed Funding Received", "", 500000],
-            ["  Debt Repayments", "", 0],
-            ["Net Cash from Financing", "", "=SUM(C18:C19)"],
-            ["", "", ""],
-            ["NET CHANGE IN CASH", "", "=C11+C15+C20"],
-            ["Beginning Cash Balance", "", 0],
-            ["ENDING CASH BALANCE", "", "=C22+C23"],
-        ]
+        if noncurrent_assets:
+            balance_sheet.append(["", "", "", ""])
+            nca_start = len(balance_sheet) + 1
+            for acc in noncurrent_assets:
+                balance_sheet.append([f"  {acc['name']}", acc['code'], "", acc.get('balance', 0)])
+            nca_end = nca_start + max(len(noncurrent_assets) - 1, 0)
+            balance_sheet.append(["Total Non-Current Assets", "", "", f"=SUM(D{nca_start}:D{nca_end})"])
+            tnca_row = len(balance_sheet)
+        else:
+            tnca_row = None
 
-        # Tab 4: Summary Dashboard
+        balance_sheet.append(["", "", "", ""])
+        ta_formula = f"=D{tca_row}+D{tnca_row}" if tnca_row else f"=D{tca_row}"
+        balance_sheet.append(["TOTAL ASSETS", "", "", ta_formula])
+        ta_row = len(balance_sheet)
+
+        balance_sheet.append(["", "", "", ""])
+        balance_sheet.append(["LIABILITIES", "", "", ""])
+        cl_start = len(balance_sheet) + 1
+        for acc in current_liabilities:
+            balance_sheet.append([f"  {acc['name']}", acc['code'], "", acc.get('balance', 0)])
+        cl_end = cl_start + max(len(current_liabilities) - 1, 0)
+        balance_sheet.append(["Total Liabilities", "", "", f"=SUM(D{cl_start}:D{cl_end})" if current_liabilities else 0])
+        tl_row = len(balance_sheet)
+
+        balance_sheet.append(["", "", "", ""])
+        balance_sheet.append(["EQUITY", "", "", ""])
+        eq_start = len(balance_sheet) + 1
+        for acc in equity_accounts:
+            balance_sheet.append([f"  {acc['name']}", acc['code'], "", acc.get('balance', 0)])
+        eq_end = eq_start + max(len(equity_accounts) - 1, 0)
+        balance_sheet.append(["TOTAL EQUITY", "", "", f"=SUM(D{eq_start}:D{eq_end})" if equity_accounts else 0])
+        te_row = len(balance_sheet)
+
+        balance_sheet.append(["", "", "", ""])
+        balance_sheet.append(["TOTAL LIABILITIES + EQUITY", "", "", f"=D{tl_row}+D{te_row}"])
+
+        # --- Tab 3: Dashboard - auto-computed ---
+        total_revenue = sum(self._to_float(a.get('balance', 0)) for a in revenue_accounts)
+        total_cogs_val = sum(self._to_float(a.get('balance', 0)) for a in cogs_accounts)
+        total_opex_val = sum(self._to_float(a.get('balance', 0)) for a in opex_accounts)
+        gross_profit_val = total_revenue - total_cogs_val
+        net_income_val = gross_profit_val - total_opex_val
+        total_cash = sum(self._to_float(a.get('balance', 0)) for a in final_accounts if 'cash' in a.get('name', '').lower())
+        monthly_burn = (total_cogs_val + total_opex_val) / 3 if (total_cogs_val + total_opex_val) > 0 else 0
+        runway = total_cash / monthly_burn if monthly_burn > 0 else float('inf')
+
         dashboard = [
-            ["📊 Q3 2024 EXECUTIVE FINANCIAL DASHBOARD", "", ""],
-            ["SSS Group of Companies - Startup Financials", "", ""],
+            [f"📊 {sheet_title} - DASHBOARD", "", ""],
             ["", "", ""],
             ["KEY METRICS", "", "Value"],
-            ["Total Revenue (Q3)", "", "='Income Statement'!D6"],
-            ["Total COGS (Q3)", "", "='Income Statement'!D12"],
-            ["Gross Profit (Q3)", "", "='Income Statement'!D14"],
-            ["Gross Margin %", "", "='Income Statement'!D15"],
-            ["Total OPEX (Q3)", "", "='Income Statement'!D21"],
-            ["Net Income (Loss)", "", "='Income Statement'!D25"],
-            ["Net Margin %", "", "='Income Statement'!D26"],
+            ["Total Revenue", "", total_revenue],
+            ["Total COGS", "", total_cogs_val],
+            ["Gross Profit", "", gross_profit_val],
+            ["Gross Margin %", "", f"{(gross_profit_val/total_revenue*100):.1f}%" if total_revenue > 0 else "N/A"],
+            ["Total OPEX", "", total_opex_val],
+            ["Net Income (Loss)", "", net_income_val],
             ["", "", ""],
             ["CASH POSITION", "", ""],
-            ["Ending Cash Balance", "", "='Cash Flow Statement'!C24"],
-            ["Monthly Burn Rate (Avg)", "", "=(C9+C6)/3"],
-            ["Runway (Months)", "", "=IF(C15>0,C14/C15,\"∞\")"],
-            ["", "", ""],
-            ["BALANCE SHEET HEALTH", "", ""],
-            ["Total Assets", "", "='Balance Sheet'!D15"],
-            ["Total Liabilities", "", "='Balance Sheet'!D27"],
-            ["Total Equity", "", "='Balance Sheet'!D33"],
-            ["Balance Check", "", "='Balance Sheet'!D37"],
-            ["", "", ""],
-            ["UNIT ECONOMICS", "", ""],
-            ["R&D as % of Revenue", "", "=IF(C5>0,'Income Statement'!D18/C5,0)"],
-            ["S&M as % of Revenue", "", "=IF(C5>0,'Income Statement'!D19/C5,0)"],
-            ["G&A as % of Revenue", "", "=IF(C5>0,'Income Statement'!D20/C5,0)"],
+            ["Cash on Hand", "", total_cash],
+            ["Monthly Burn Rate", "", round(monthly_burn, 2)],
+            ["Runway (Months)", "", round(runway, 1) if runway != float('inf') else "∞"],
         ]
 
-        # Push all tabs to Google Sheets
-        tabs_pushed = {}
-        tab_data = {
+        # --- Assemble and push all tabs ---
+        tab_data: Dict[str, List[List[Any]]] = {
             "Income Statement": income_statement,
             "Balance Sheet": balance_sheet,
-            "Cash Flow Statement": cash_flow,
             "Dashboard": dashboard,
+            "Chart of Accounts": self.read_sheet_range("Accounts", "A1:G100"),
+            "General Journal": self.read_sheet_range("General Journal", "A1:H100"),
         }
+        if custom_tabs and isinstance(custom_tabs, dict):
+            for tab_name, tab_values in custom_tabs.items():
+                if isinstance(tab_values, list):
+                    tab_data[tab_name] = tab_values
 
-        # Also add COA and Journal tabs
-        coa_matrix = self.read_sheet_range("Accounts", "A1:G100")
-        journal_matrix = self.read_sheet_range("General Journal", "A1:H100")
-        tab_data["Chart of Accounts"] = coa_matrix
-        tab_data["General Journal"] = journal_matrix
-
+        tabs_pushed = {}
         for tab_name, tab_values in tab_data.items():
             pushed = self._push_live_composio_sheet(tab_name, tab_values)
             tabs_pushed[tab_name] = "live_synced" if pushed else "memory_stored"
 
-        # Store tab data in shared memory as backup
-        self.memory.set(
-            business_id=self.business_id,
-            key="q3_master_financials_tabs",
-            value={k: v[:5] for k, v in tab_data.items()},  # Store preview (first 5 rows per tab)
-            tags=["finance", "google_sheets", "q3", "master_financials"]
-        )
-
-        # Update custom title
-        self.memory.set(
-            business_id=self.business_id,
-            key="google_sheets_custom_title",
-            value=sheet_title,
-            tags=["finance", "google_sheets", "config"],
-            updated_by="Finance Specialist"
-        )
-
-        # Record sync timestamp
+        # Persist metadata
+        self.memory.set(self.business_id, "google_sheets_custom_title", sheet_title, ["finance", "config"], updated_by="Finance Agent")
         now_str = datetime.utcnow().isoformat()
-        self.memory.set(
-            business_id=self.business_id,
-            key="finance_last_sheets_sync",
-            value=now_str,
-            tags=["finance", "google_sheets", "sync"]
-        )
+        self.memory.set(self.business_id, "finance_last_sheets_sync", now_str, ["finance", "sync"])
 
         cfg = self.get_config()
-        sheet_url = cfg.get("spreadsheet_url", f"https://docs.google.com/spreadsheets/d/{self.spreadsheet_id}/edit")
-
         return {
             "status": "SUCCESS",
             "spreadsheet_title": sheet_title,
-            "spreadsheet_url": sheet_url,
+            "spreadsheet_url": cfg.get("spreadsheet_url"),
             "spreadsheet_id": self.spreadsheet_id,
             "tabs_created": list(tab_data.keys()),
             "tabs_sync_status": tabs_pushed,
-            "total_accounts": len(q3_accounts),
-            "total_journal_entries": len(q3_journal),
+            "total_accounts": len(final_accounts),
+            "total_journal_entries": len(final_journal),
             "financial_summary": {
-                "total_revenue": 15000.00,
-                "total_cogs": 6000.00,
-                "gross_profit": 9000.00,
-                "total_opex": 80000.00,
-                "net_income": -71000.00,
-                "ending_cash": 405000.00,
-                "monthly_burn_rate": 28667.00,
-                "runway_months": 14.1
+                "total_revenue": round(total_revenue, 2),
+                "total_cogs": round(total_cogs_val, 2),
+                "gross_profit": round(gross_profit_val, 2),
+                "total_opex": round(total_opex_val, 2),
+                "net_income": round(net_income_val, 2),
+                "cash_on_hand": round(total_cash, 2),
+                "monthly_burn_rate": round(monthly_burn, 2),
+                "runway_months": round(runway, 1) if runway != float('inf') else "unlimited"
             },
             "synced_at": now_str,
-            "message": f"Successfully created and populated '{sheet_title}' with 6 structured tabs, {len(q3_accounts)} accounts, and {len(q3_journal)} journal entries."
+            "message": f"Successfully created '{sheet_title}' with {len(tab_data)} tabs, {len(final_accounts)} accounts, {len(final_journal)} journal entries."
         }
 
-    def create_group_financial_tracking_system(
-        self,
-        group_name: str = "SSS Group of Companies",
-        entities: Optional[List[str]] = None
-    ) -> Dict[str, Any]:
-        """
-        Alias for create_q3_master_financials. Sets up the master financial tracking system.
-        """
-        return self.create_q3_master_financials(
-            sheet_title=f"{group_name} - Q3 Master Financials"
+    def create_q3_master_financials(self, sheet_title: str = "Q3 Startup Master Financials") -> Dict[str, Any]:
+        """Pre-built Q3 startup financials template using the dynamic builder."""
+        return self.create_dynamic_financial_system(
+            sheet_title=sheet_title,
+            accounts=[
+                {"code": "1010", "name": "Cash & Cash Equivalents", "category": "Assets", "type": "Current Asset", "balance": 405000.00, "normal_balance": "Debit"},
+                {"code": "1100", "name": "Accounts Receivable", "category": "Assets", "type": "Current Asset", "balance": 0.00, "normal_balance": "Debit"},
+                {"code": "1200", "name": "Prepaid Expenses", "category": "Assets", "type": "Current Asset", "balance": 15000.00, "normal_balance": "Debit"},
+                {"code": "1500", "name": "PP&E (net)", "category": "Assets", "type": "Non-Current Asset", "balance": -1000.00, "normal_balance": "Debit"},
+                {"code": "2010", "name": "Accounts Payable", "category": "Liabilities", "type": "Current Liability", "balance": 0.00, "normal_balance": "Credit"},
+                {"code": "2500", "name": "Convertible Notes", "category": "Liabilities", "type": "Non-Current Liability", "balance": 0.00, "normal_balance": "Credit"},
+                {"code": "3100", "name": "Share Capital", "category": "Equity", "type": "Equity", "balance": 500000.00, "normal_balance": "Credit"},
+                {"code": "3300", "name": "Retained Earnings", "category": "Equity", "type": "Equity", "balance": 0.00, "normal_balance": "Credit"},
+                {"code": "4100", "name": "SaaS Revenue", "category": "Revenue", "type": "Operating Revenue", "balance": 10000.00, "normal_balance": "Credit"},
+                {"code": "4200", "name": "Professional Services", "category": "Revenue", "type": "Non-Recurring Revenue", "balance": 5000.00, "normal_balance": "Credit"},
+                {"code": "5100", "name": "Hosting & Infrastructure", "category": "COGS", "type": "COGS", "balance": 6000.00, "normal_balance": "Debit"},
+                {"code": "6100", "name": "R&D (Engineering)", "category": "OPEX", "type": "Operating Expense", "balance": 67000.00, "normal_balance": "Debit"},
+                {"code": "6200", "name": "Sales & Marketing", "category": "OPEX", "type": "Operating Expense", "balance": 8000.00, "normal_balance": "Debit"},
+                {"code": "6300", "name": "General & Administrative", "category": "OPEX", "type": "Operating Expense", "balance": 5000.00, "normal_balance": "Debit"},
+            ],
+            journal_entries=[
+                {"id": "JE-001", "date": "2024-07-01", "reference": "SEED-001", "description": "Seed funding", "debit_account": "1010", "credit_account": "3100", "amount": 500000, "status": "Posted"},
+                {"id": "JE-002", "date": "2024-07-02", "reference": "RENT-001", "description": "Prepaid rent", "debit_account": "1200", "credit_account": "1010", "amount": 15000, "status": "Posted"},
+                {"id": "JE-003", "date": "2024-07-10", "reference": "PAY-001", "description": "July payroll", "debit_account": "6100", "credit_account": "1010", "amount": 20000, "status": "Posted"},
+                {"id": "JE-004", "date": "2024-07-15", "reference": "REV-001", "description": "SaaS revenue", "debit_account": "1100", "credit_account": "4100", "amount": 10000, "status": "Posted"},
+                {"id": "JE-005", "date": "2024-08-01", "reference": "PAY-002", "description": "August payroll", "debit_account": "6100", "credit_account": "1010", "amount": 22000, "status": "Posted"},
+                {"id": "JE-006", "date": "2024-08-05", "reference": "MKT-001", "description": "Marketing spend", "debit_account": "6200", "credit_account": "1010", "amount": 8000, "status": "Posted"},
+                {"id": "JE-007", "date": "2024-09-01", "reference": "PAY-003", "description": "September payroll", "debit_account": "6100", "credit_account": "1010", "amount": 25000, "status": "Posted"},
+                {"id": "JE-008", "date": "2024-09-15", "reference": "REV-002", "description": "Consulting revenue", "debit_account": "1010", "credit_account": "4200", "amount": 5000, "status": "Posted"},
+            ]
         )
+
+    def create_group_financial_tracking_system(self, group_name: str = "SSS Group of Companies", entities: Optional[List[str]] = None) -> Dict[str, Any]:
+        """Alias for create_q3_master_financials."""
+        return self.create_q3_master_financials(sheet_title=f"{group_name} - Master Financials")
