@@ -18,6 +18,7 @@ from app.agents.finance_tools import register_finance_tools
 from app.services.task_service import TaskService
 from app.services.cost_service import CostService, calculate_llm_cost
 from app.services.conversation_memory import prune_and_summarize_messages
+from app.services.financial_deliverable_formatter import process_and_enrich_financial_deliverable
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -168,6 +169,15 @@ def make_specialist_worker_node(agent_data: dict):
             f"- When asked about meetings or schedule: execute the `calendar_schedule` tool.\n"
             f"- When asked to search: execute the `search_web` tool.\n"
             f"CRITICAL: After executing any tool, you MUST output a complete, beautifully structured final deliverable presenting all data, emails, tables, or findings clearly for the founder.\n"
+            f"Always think step-by-step and structure your internal reasoning inside <thought>...</thought> before outputting your deliverables."
+        )
+    elif "finance" in role.lower() or "account" in role.lower() or "controller" in role.lower():
+        system_modifier = (
+            f"You are {name}, acting as the Founder's {role} at Trust Tier '{trust_tier.upper()}'.\n"
+            f"Your responsibilities: financial modeling, chart of accounts setup, double-entry bookkeeping, P&L, balance sheets, and cash flow tracking.\n"
+            f"- When building spreadsheets, master financials, or tracking systems: execute the `google_sheets` tool (action='create_dynamic_financial_system' or 'create_q3_master_financials') with the structured payload.\n"
+            f"- In your final output, ALWAYS provide a complete, beautifully structured financial report with the live Google Sheet link [Open Google Sheet](url), full URL, Chart of Accounts table, journal entry ledger table, and summary financial metrics.\n"
+            f"CRITICAL: Never output raw unexecuted tool call text or JSON dumps without explanation. Always output a formatted executive report.\n"
             f"Always think step-by-step and structure your internal reasoning inside <thought>...</thought> before outputting your deliverables."
         )
     else:
@@ -358,6 +368,14 @@ def make_specialist_worker_node(agent_data: dict):
                         except Exception as e:
                             logger.error(f"Direct worker completion note: {e}")
                             raw_output = f"Execution deliverable for: {task.description}"
+
+                # Process and enrich financial deliverables (intercept raw tool calls, create sheets if needed)
+                raw_output = process_and_enrich_financial_deliverable(
+                    role=role,
+                    task_desc=task.description,
+                    raw_output=raw_output,
+                    business_id=b_id
+                )
 
                 if total_input_tokens == 0:
                     total_input_tokens = max(20, sum(len(str(getattr(m, "content", ""))) for m in res.get("messages", [])[:-1]) // 4)

@@ -16,6 +16,7 @@ from app.agents.finance_checker import FinanceCheckerEngine, CheckerVerdict
 from app.agents.circuit_breaker import FinancialCircuitBreaker, CircuitBreakerConfig
 from app.agents.tool_registry import registry
 from app.services.shared_memory import SharedMemoryService
+from app.services.financial_deliverable_formatter import process_and_enrich_financial_deliverable
 
 logger = logging.getLogger(__name__)
 
@@ -595,6 +596,15 @@ def make_finance_worker_node(agent_data: dict):
             final_state = finance_worker_app.invoke(worker_state)
 
             final_output = final_state.get("final_output", "")
+            
+            # Enrich financial deliverables (intercept raw tool calls, create sheets if needed)
+            final_output = process_and_enrich_financial_deliverable(
+                role=role,
+                task_desc=task.description,
+                raw_output=final_output,
+                business_id=business_id
+            )
+
             status = final_state.get("status", "completed")
             confidence = final_state.get("confidence", 0.95)
             risk_level = final_state.get("risk_level", "low")
