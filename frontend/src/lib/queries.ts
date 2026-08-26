@@ -267,9 +267,9 @@ export const useFinanceAccounts = () => {
     return useQuery({
         queryKey: ['finance-accounts'],
         queryFn: api.getFinanceAccounts,
-        refetchInterval: 6000,
+        refetchInterval: 12000,
         retry: 1,
-        staleTime: 3000,
+        staleTime: 6000,
     });
 };
 
@@ -277,9 +277,9 @@ export const useJournalEntries = () => {
     return useQuery({
         queryKey: ['finance-journal'],
         queryFn: api.getJournalEntries,
-        refetchInterval: 6000,
+        refetchInterval: 12000,
         retry: 1,
-        staleTime: 3000,
+        staleTime: 6000,
     });
 };
 
@@ -311,6 +311,7 @@ export const useSyncSheets = () => {
             queryClient.invalidateQueries({ queryKey: ['finance-accounts'] });
             queryClient.invalidateQueries({ queryKey: ['finance-journal'] });
             queryClient.invalidateQueries({ queryKey: ['finance-sheets-config'] });
+            queryClient.invalidateQueries({ queryKey: ['finance-workbook'] });
             queryClient.invalidateQueries({ queryKey: ['company-feed'] });
         },
     });
@@ -323,6 +324,7 @@ export const usePostJournalEntry = () => {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['finance-accounts'] });
             queryClient.invalidateQueries({ queryKey: ['finance-journal'] });
+            queryClient.invalidateQueries({ queryKey: ['finance-workbook'] });
             queryClient.invalidateQueries({ queryKey: ['company-feed'] });
         },
     });
@@ -334,6 +336,7 @@ export const useCreateAccount = () => {
         mutationFn: api.createOrUpdateAccount,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['finance-accounts'] });
+            queryClient.invalidateQueries({ queryKey: ['finance-workbook'] });
         },
     });
 };
@@ -346,6 +349,7 @@ export const useClearFinanceData = () => {
             queryClient.invalidateQueries({ queryKey: ['finance-accounts'] });
             queryClient.invalidateQueries({ queryKey: ['finance-journal'] });
             queryClient.invalidateQueries({ queryKey: ['finance-sheets-config'] });
+            queryClient.invalidateQueries({ queryKey: ['finance-workbook'] });
         },
     });
 };
@@ -367,8 +371,8 @@ export const useFinanceWorkbook = () => {
     return useQuery({
         queryKey: ['finance-workbook'],
         queryFn: api.getFinanceWorkbook,
-        refetchInterval: 6000,
-        staleTime: 3000,
+        refetchInterval: 12000,
+        staleTime: 6000,
     });
 };
 

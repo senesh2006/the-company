@@ -1,7 +1,8 @@
 import uuid
+import time
 import logging
 from datetime import datetime, timezone
-from typing import Any, Optional, List, Dict
+from typing import Any, Optional, List, Dict, Tuple
 
 try:
     from supabase._sync.client import create_client, Client
@@ -37,6 +38,8 @@ class SharedMemoryService:
     # In-memory storage cache as fallback/local dev buffer (shared across instances)
     _local_kv: Dict[str, Dict[str, Any]] = {}
     _local_docs: Dict[str, Dict[str, Any]] = {}
+    _read_cache: Dict[str, Tuple[float, Any]] = {}
+    _READ_CACHE_TTL: float = 4.0  # 4 seconds memory cache
 
     def __init__(self, supabase_client: Optional[Client] = None):
         self._client = supabase_client
@@ -67,9 +70,17 @@ class SharedMemoryService:
 
     def get(self, business_id: str, key: str) -> Optional[dict[str, Any]]:
         """
-        Fetch a specific key from shared memory for a business.
+        Fetch a specific key from shared memory for a business with 4-second TTL cache.
         """
         norm_biz_id = _normalize_business_id(business_id)
+        cache_key = f"{norm_biz_id}:{key}"
+        now = time.time()
+        
+        if cache_key in self._read_cache:
+            ts, cached_val = self._read_cache[cache_key]
+            if now - ts < self._READ_CACHE_TTL:
+                return cached_val
+
         try:
             if self.client:
                 response = self.client.table("shared_memory")\
@@ -79,14 +90,20 @@ class SharedMemoryService:
                     .execute()
                     
                 if response.data and isinstance(response.data, list) and len(response.data) > 0 and isinstance(response.data[0], dict):
-                    return response.data[0]
+                    result = response.data[0]
+                    self._read_cache[cache_key] = (now, result)
+                    return result
+                else:
+                    self._read_cache[cache_key] = (now, None)
         except Exception as e:
             logger.warning(f"Supabase read fallback for key '{key}': {e}")
 
         # Local fallback (check normalized and raw keys)
         local_key = f"{norm_biz_id}:{key}"
         raw_key = f"{business_id}:{key}"
-        return self._local_kv.get(local_key) or self._local_kv.get(raw_key)
+        fallback_val = self._local_kv.get(local_key) or self._local_kv.get(raw_key)
+        self._read_cache[cache_key] = (now, fallback_val)
+        return fallback_val
 
     def set(self, business_id: str, key: str, value: Any, tags: List[str] = [], updated_by: Optional[str] = None) -> dict[str, Any]:
         """
@@ -132,6 +149,7 @@ class SharedMemoryService:
         # Cache locally
         local_key = f"{norm_biz_id}:{key}"
         self._local_kv[local_key] = record
+        self._read_cache[local_key] = (time.time(), record)
 
         # Emit Memory Updated audit event for the Company Feed
         try:
@@ -201,6 +219,8 @@ class SharedMemoryService:
 
         local_key = f"{norm_biz_id}:{key}"
         raw_key = f"{business_id}:{key}"
+        self._read_cache.pop(local_key, None)
+        self._read_cache.pop(raw_key, None)
         if local_key in self._local_kv or raw_key in self._local_kv:
             self._local_kv.pop(local_key, None)
             self._local_kv.pop(raw_key, None)

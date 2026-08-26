@@ -61,7 +61,6 @@ class GoogleSheetsService:
             pass
 
         self.spreadsheet_id = saved_id or os.getenv("GOOGLE_SHEETS_SPREADSHEET_ID") or "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
-        self._ensure_initialized()
 
     def set_spreadsheet_id(self, spreadsheet_id_or_url: str, custom_title: Optional[str] = None) -> Dict[str, Any]:
         """
