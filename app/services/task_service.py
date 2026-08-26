@@ -1,4 +1,6 @@
+import difflib
 import logging
+import threading
 import uuid
 from datetime import datetime
 from typing import Any, Optional, List, Dict
@@ -33,6 +35,18 @@ _IN_MEMORY_AGENT_EXTRA: Dict[str, Dict[str, Any]] = {}
 _IN_MEMORY_AGENTS: Dict[str, Dict[str, Any]] = {}
 _IN_MEMORY_TASKS: Dict[str, Dict[str, Any]] = {}
 _IN_MEMORY_LIVE_THOUGHTS: Dict[str, List[Dict[str, Any]]] = {}
+
+# Short-lived thread locks keyed by business_id to eliminate task creation race conditions
+_BUSINESS_TASK_LOCKS: Dict[str, threading.Lock] = {}
+_GLOBAL_LOCKS_MUTEX = threading.Lock()
+
+def get_business_task_lock(business_id: str) -> threading.Lock:
+    """Returns a short-lived thread lock keyed by business_id to prevent concurrent task creation races."""
+    b_id = str(business_id) if business_id else "00000000-0000-0000-0000-000000000001"
+    with _GLOBAL_LOCKS_MUTEX:
+        if b_id not in _BUSINESS_TASK_LOCKS:
+            _BUSINESS_TASK_LOCKS[b_id] = threading.Lock()
+        return _BUSINESS_TASK_LOCKS[b_id]
 
 class TaskService:
     def __init__(self, supabase_client: Optional[Client] = None):
@@ -403,6 +417,7 @@ class TaskService:
 
             if not task:
                 task = dict(data)
+                task["business_id"] = str(business_id)
                 _IN_MEMORY_TASKS[clean_id] = task
 
             # Attach PRD mandate metadata
@@ -430,7 +445,7 @@ class TaskService:
             fallback_id = str(uuid.uuid4())
             fallback_task = {
                 "id": fallback_id,
-                "business_id": business_id,
+                "business_id": str(business_id),
                 "description": description,
                 "status": status,
                 "assignee_role": assignee_role,
@@ -442,6 +457,8 @@ class TaskService:
     def list_tasks(self, business_id: str, status: Optional[str] = None) -> List[dict[str, Any]]:
         """List tasks for a business."""
         try:
+            if not self.client or not is_valid_uuid(business_id):
+                return [t for t in _IN_MEMORY_TASKS.values() if str(t.get("business_id")) == str(business_id)]
             query = self.client.table("tasks").select("*").eq("business_id", business_id)
             if status:
                 query = query.eq("status", status)
@@ -464,11 +481,17 @@ class TaskService:
                 except Exception:
                     pass
 
-            response = self.client.table("tasks")\
-                .update(update_payload)\
-                .eq("id", str(task_id))\
-                .execute()
-            return response.data[0] if response.data else {}
+            if self.client and is_valid_uuid(task_id):
+                response = self.client.table("tasks")\
+                    .update(update_payload)\
+                    .eq("id", str(task_id))\
+                    .execute()
+                if response.data:
+                    return response.data[0]
+            if str(task_id) in _IN_MEMORY_TASKS:
+                _IN_MEMORY_TASKS[str(task_id)].update(update_payload)
+                return _IN_MEMORY_TASKS[str(task_id)]
+            return {}
         except Exception as e:
             logger.warning(f"Warning assigning task {task_id} to agent {agent_id}: {e}")
             return {}
@@ -476,20 +499,26 @@ class TaskService:
     def get_active_task_for_agent(self, agent_id: str) -> Optional[dict[str, Any]]:
         """Finds the currently running task for a given agent_id."""
         try:
-            response = self.client.table("tasks")\
-                .select("*")\
-                .eq("agent_id", agent_id)\
-                .eq("status", "running")\
-                .execute()
-            
-            if not response.data:
+            if self.client and is_valid_uuid(agent_id):
                 response = self.client.table("tasks")\
                     .select("*")\
                     .eq("agent_id", agent_id)\
-                    .eq("status", "assigned")\
+                    .eq("status", "running")\
                     .execute()
-                    
-            return response.data[0] if response.data else None
+                
+                if not response.data:
+                    response = self.client.table("tasks")\
+                        .select("*")\
+                        .eq("agent_id", agent_id)\
+                        .eq("status", "assigned")\
+                        .execute()
+                        
+                if response.data:
+                    return response.data[0]
+            for t in _IN_MEMORY_TASKS.values():
+                if str(t.get("agent_id")) == str(agent_id) and t.get("status") in ("running", "assigned"):
+                    return t
+            return None
         except Exception as e:
             logger.error(f"Error fetching active task for agent {agent_id}: {e}")
             raise e
@@ -501,7 +530,7 @@ class TaskService:
         t_id = str(task_id)
         task_data = None
         try:
-            if settings.SUPABASE_URL and settings.SUPABASE_KEY:
+            if settings.SUPABASE_URL and settings.SUPABASE_KEY and is_valid_uuid(t_id):
                 response = self.client.table("tasks").select("*").eq("id", t_id).execute()
                 if response.data:
                     task_data = dict(response.data[0])
@@ -515,6 +544,92 @@ class TaskService:
             task_data["live_thoughts"] = self.get_live_thoughts(t_id)
             _IN_MEMORY_TASKS[t_id] = task_data
             return task_data
+        return None
+
+    def queue_task(self, business_id: str, description: str, priority: int = 0) -> dict[str, Any]:
+        """Creates and queues a new task for the given business."""
+        return self.create_task(
+            business_id=business_id,
+            description=description,
+            status="queued",
+            priority=str(priority)
+        )
+
+    def has_active_task_for_objective(
+        self,
+        business_id: str,
+        description: str,
+        exclude_task_id: Optional[str] = None,
+        similarity_threshold: float = 0.85
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Checks if an active task (status in 'queued', 'running', 'assigned', 'pending') with an equivalent
+        or closely matching objective is already in flight for this business.
+        
+        Matches using:
+        1. Exact match (case & whitespace normalized).
+        2. Substring match (for substantial prompts >= 15 chars).
+        3. Fuzzy match via SequenceMatcher with similarity threshold >= 0.85.
+        
+        Returns the matching active task dictionary if found, otherwise None.
+        """
+        if not description or not description.strip():
+            return None
+
+        raw_biz_id = str(business_id) if business_id else "00000000-0000-0000-0000-000000000001"
+        valid_uuid = is_valid_uuid(raw_biz_id)
+        norm_desc = " ".join(description.strip().lower().split())
+
+        active_statuses = ["queued", "running", "assigned", "pending"]
+        candidate_tasks: List[Dict[str, Any]] = []
+
+        # 1. Fetch from Supabase DB only if client is configured and business_id is a valid UUID
+        if self.client and valid_uuid:
+            try:
+                query = self.client.table("tasks")\
+                    .select("*")\
+                    .eq("business_id", raw_biz_id)\
+                    .in_("status", active_statuses)\
+                    .order("created_at", desc=True)
+                resp = query.execute()
+                if resp.data:
+                    candidate_tasks.extend(resp.data)
+            except Exception as e:
+                logger.warning(f"Failed to query active tasks from DB: {e}")
+
+        # 2. Merge in-memory tasks
+        for t_id, task in _IN_MEMORY_TASKS.items():
+            t_biz = str(task.get("business_id", ""))
+            if (t_biz == raw_biz_id or (valid_uuid and t_biz == "00000000-0000-0000-0000-000000000001")) and task.get("status") in active_statuses:
+                if not any(str(c.get("id")) == str(t_id) for c in candidate_tasks):
+                    candidate_tasks.append(task)
+
+        # 3. Check for matching objective
+        for cand in candidate_tasks:
+            cand_id = str(cand.get("id", ""))
+            if exclude_task_id and cand_id == str(exclude_task_id):
+                continue
+
+            cand_desc = str(cand.get("description") or cand.get("mandate") or "").strip().lower()
+            if not cand_desc:
+                continue
+
+            cand_norm = " ".join(cand_desc.split())
+
+            # 1. Exact match
+            if norm_desc == cand_norm:
+                return cand
+
+            # 2. Substring match for substantial prompts
+            if len(norm_desc) >= 15 and len(cand_norm) >= 15:
+                if norm_desc in cand_norm or cand_norm in norm_desc:
+                    return cand
+
+            # 3. Fuzzy similarity check
+            ratio = difflib.SequenceMatcher(None, norm_desc, cand_norm).ratio()
+            if ratio >= similarity_threshold:
+                return cand
+
         return None
 
     def get_active_task_for_business(self, business_id: str) -> Optional[dict[str, Any]]:
@@ -533,51 +648,76 @@ class TaskService:
 
     def update_task_status(self, task_id: str, status: str) -> dict[str, Any]:
         """Updates the status of a task."""
+        t_id = str(task_id)
+        if t_id in _IN_MEMORY_TASKS:
+            _IN_MEMORY_TASKS[t_id]["status"] = status
         try:
-            response = self.client.table("tasks")\
-                .update({"status": status})\
-                .eq("id", task_id)\
-                .execute()
-            return response.data[0] if response.data else {}
+            if self.client and is_valid_uuid(t_id):
+                response = self.client.table("tasks")\
+                    .update({"status": status})\
+                    .eq("id", t_id)\
+                    .execute()
+                if response.data:
+                    return response.data[0]
+            return _IN_MEMORY_TASKS.get(t_id, {})
         except Exception as e:
             logger.error(f"Error updating task {task_id} status to {status}: {e}")
-            raise e
+            return _IN_MEMORY_TASKS.get(t_id, {})
 
     def update_task_result(self, task_id: str, result: str) -> dict[str, Any]:
         """Updates the result of a task."""
+        t_id = str(task_id)
+        if t_id in _IN_MEMORY_TASKS:
+            _IN_MEMORY_TASKS[t_id]["result"] = result
+            _IN_MEMORY_TASKS[t_id]["status"] = "completed"
         try:
-            response = self.client.table("tasks")\
-                .update({"result": result, "status": "completed"})\
-                .eq("id", task_id)\
-                .execute()
-            return response.data[0] if response.data else {}
+            if self.client and is_valid_uuid(t_id):
+                response = self.client.table("tasks")\
+                    .update({"result": result, "status": "completed"})\
+                    .eq("id", t_id)\
+                    .execute()
+                if response.data:
+                    return response.data[0]
+            return _IN_MEMORY_TASKS.get(t_id, {})
         except Exception as e:
             logger.error(f"Error updating task {task_id} result: {e}")
-            raise e
+            return _IN_MEMORY_TASKS.get(t_id, {})
 
     def complete_task(self, task_id: str, result: Optional[str] = None) -> dict[str, Any]:
         """Marks a task as completed with optional result."""
+        t_id = str(task_id)
         data = {"status": "completed"}
         if result is not None:
             data["result"] = result
+        if t_id in _IN_MEMORY_TASKS:
+            _IN_MEMORY_TASKS[t_id].update(data)
         try:
-            response = self.client.table("tasks").update(data).eq("id", task_id).execute()
-            return response.data[0] if response.data else {}
+            if self.client and is_valid_uuid(t_id):
+                response = self.client.table("tasks").update(data).eq("id", t_id).execute()
+                if response.data:
+                    return response.data[0]
+            return _IN_MEMORY_TASKS.get(t_id, {})
         except Exception as e:
             logger.error(f"Error completing task {task_id}: {e}")
-            return {}
+            return _IN_MEMORY_TASKS.get(t_id, {})
 
     def fail_task(self, task_id: str, error: Optional[str] = None) -> dict[str, Any]:
         """Marks a task as failed with optional error message."""
+        t_id = str(task_id)
         data = {"status": "failed"}
         if error is not None:
             data["result"] = error
+        if t_id in _IN_MEMORY_TASKS:
+            _IN_MEMORY_TASKS[t_id].update(data)
         try:
-            response = self.client.table("tasks").update(data).eq("id", task_id).execute()
-            return response.data[0] if response.data else {}
+            if self.client and is_valid_uuid(t_id):
+                response = self.client.table("tasks").update(data).eq("id", t_id).execute()
+                if response.data:
+                    return response.data[0]
+            return _IN_MEMORY_TASKS.get(t_id, {})
         except Exception as e:
             logger.error(f"Error failing task {task_id}: {e}")
-            return {}
+            return _IN_MEMORY_TASKS.get(t_id, {})
 
     # --- Company Feed / Audit Trail (PRD v6.0 §4.2, §10.1) ---
 

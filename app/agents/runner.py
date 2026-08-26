@@ -83,6 +83,19 @@ class TeamRunner:
         return initial_state, agents
         
     def start(self, initial_instruction: str) -> dict:
+        # Belt-and-suspenders guard: ensure no duplicate run is spun up for same business & objective
+        existing = self.task_service.has_active_task_for_objective(
+            self.business_id,
+            initial_instruction,
+            exclude_task_id=self.task_id
+        )
+        if existing and existing.get("status") in ("running", "queued"):
+            self.logger.warning(
+                f"TeamRunner.start aborted for task {self.task_id}: another task {existing.get('id')} is already active ({existing.get('status')}) for this objective."
+            )
+            self.task_service.fail_task(self.task_id, error=f"Aborted: duplicate of active task {existing.get('id')}")
+            return {"status": "aborted", "reason": "already_running", "existing_task_id": existing.get("id")}
+
         initial_state, agents = self._build_initial_state(initial_instruction)
 
         # Store the prompt for later use (e.g. WhatsApp reply)

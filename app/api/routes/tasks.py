@@ -4,7 +4,7 @@ from pydantic import BaseModel
 from typing import Optional, List, Any, Dict
 import json
 
-from app.services.task_service import TaskService
+from app.services.task_service import TaskService, get_business_task_lock
 from app.services.governance_service import GovernanceService
 from app.services.task_decomposer import generate_task_milestones, calculate_milestone_progress
 from app.services.task_stream_bus import task_broadcaster
@@ -56,26 +56,39 @@ def get_business_feed(business_id: str, limit: int = 50, user = Depends(get_curr
 
 @router.post("/mandate")
 def create_mandate_default(payload: MandatePayload, background_tasks: BackgroundTasks, user = Depends(get_current_user)):
-    """Dispatches a structured Mandate Contract (PRD v6.0 §6.2) for the authenticated user's business."""
+    """Dispatches a structured Mandate Contract (PRD v6.0 §6.2) for the authenticated user's business with active objective deduplication."""
     try:
         biz_id = user.business_id or "00000000-0000-0000-0000-000000000001"
 
-        task = task_service.create_task(
-            business_id=biz_id,
-            description=payload.mandate,
-            mandate=payload.mandate,
-            status="queued",
-            assignee_role=payload.assignee_role,
-            cadence=payload.cadence or "once",
-            priority=payload.priority or "normal",
-            authority_limit=payload.authority_limit,
-            trust_tier=payload.trust_tier or "observe",
-            specialization_id=payload.specialization_id,
-            shared_memory_refs=payload.shared_memory_refs,
-            expected_output=payload.expected_output
-        )
-        background_tasks.add_task(run_team_task_bg, biz_id, task["id"], payload.mandate)
-        return {"status": "success", "mandate_task": task, "task": task, "id": task.get("id")}
+        with get_business_task_lock(biz_id):
+            existing = task_service.has_active_task_for_objective(biz_id, payload.mandate)
+            if existing:
+                logger.info(f"Duplicate mandate detected for business {biz_id}: Task {existing.get('id')} is already active ({existing.get('status')}).")
+                return {
+                    "status": "already_running",
+                    "mandate_task": existing,
+                    "task": existing,
+                    "id": existing.get("id"),
+                    "task_id": existing.get("id"),
+                    "message": f"Mandate already running with matching objective (ID: {existing.get('id')})"
+                }
+
+            task = task_service.create_task(
+                business_id=biz_id,
+                description=payload.mandate,
+                mandate=payload.mandate,
+                status="queued",
+                assignee_role=payload.assignee_role,
+                cadence=payload.cadence or "once",
+                priority=payload.priority or "normal",
+                authority_limit=payload.authority_limit,
+                trust_tier=payload.trust_tier or "observe",
+                specialization_id=payload.specialization_id,
+                shared_memory_refs=payload.shared_memory_refs,
+                expected_output=payload.expected_output
+            )
+            background_tasks.add_task(run_team_task_bg, biz_id, task["id"], payload.mandate)
+            return {"status": "success", "mandate_task": task, "task": task, "id": task.get("id")}
     except Exception as e:
         logger.error(f"Failed to dispatch mandate: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -186,16 +199,41 @@ def dispatch_worker_direct_route(
 
 @router.post("/{business_id}/queue")
 def queue_task(business_id: str, payload: QueueTaskPayload, background_tasks: BackgroundTasks, user = Depends(get_current_user)):
-    """Adds a new task to the queue and starts processing it."""
+    """Adds a new task to the queue and starts processing it, guarded against concurrent duplicate objectives."""
     try:
-        task = task_service.queue_task(business_id, payload.description, payload.priority)
-        background_tasks.add_task(run_team_task_bg, business_id, task["id"], payload.description)
-        return {"status": "success", "task": task}
+        biz_id = business_id or (getattr(user, "business_id", None) if user else None) or "00000000-0000-0000-0000-000000000001"
+
+        with get_business_task_lock(biz_id):
+            existing = task_service.has_active_task_for_objective(biz_id, payload.description)
+            if existing:
+                logger.info(f"Duplicate task detected for business {biz_id}: Task {existing.get('id')} is already active ({existing.get('status')}).")
+                return {
+                    "status": "already_running",
+                    "task": existing,
+                    "task_id": existing.get("id"),
+                    "id": existing.get("id"),
+                    "message": f"Task already running with matching objective (ID: {existing.get('id')})"
+                }
+
+            task = task_service.queue_task(biz_id, payload.description, payload.priority)
+            background_tasks.add_task(run_team_task_bg, biz_id, task["id"], payload.description)
+            return {"status": "success", "task": task}
     except Exception as e:
+        logger.error(f"Failed to queue task: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 def run_team_task_bg(business_id: str, task_id: str, description: str):
     try:
+        from app.services.task_service import TaskService
+        ts = TaskService()
+
+        # Guard check before starting runner (belt-and-suspenders)
+        existing = ts.has_active_task_for_objective(business_id, description, exclude_task_id=task_id)
+        if existing and existing.get("status") in ("running", "queued"):
+            logger.warning(f"Aborting duplicate background run for task {task_id}: Task {existing.get('id')} is already active ({existing.get('status')}).")
+            ts.fail_task(task_id, error=f"Aborted: duplicate of active task {existing.get('id')}")
+            return
+
         from app.agents.runner import TeamRunner
         runner = TeamRunner(business_id, task_id)
         runner.start(description)
