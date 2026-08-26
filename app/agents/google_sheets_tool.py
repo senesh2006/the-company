@@ -12,7 +12,8 @@ class GoogleSheetsInput(BaseModel):
     action: str = Field(
         description=(
             "Action to perform: 'get_chart_of_accounts', 'read_sheet', 'append_journal_entry', "
-            "'post_transaction', 'get_trial_balance', 'sync_to_sheets', 'create_finance_sheet'"
+            "'post_transaction', 'get_trial_balance', 'sync_to_sheets', 'create_finance_sheet', "
+            "'create_q3_master_financials' (creates Income Statement, Balance Sheet, Cash Flow, Dashboard tabs with data)"
         )
     )
     sheet_name: Optional[str] = Field(
@@ -109,16 +110,16 @@ class GoogleSheetsTool(BaseTool):
                 res = service.create_group_financial_tracking_system(group_name=group_name)
                 default_res = json.dumps(res, indent=2)
 
+            elif act in ("create_q3_master_financials", "q3_master_financials", "q3_financials", "master_financials", "create_master_financials"):
+                title = sheet_name if sheet_name and sheet_name != "Accounts" else "Q3 Startup Master Financials"
+                res = service.create_q3_master_financials(sheet_title=title)
+                default_res = json.dumps(res, indent=2)
+
             elif act in ("create_finance_sheet", "create_sheet", "create_google_sheet", "new_sheet", "create_trial_balance_sheet", "create_trial_balance"):
-                cfg = service.get_config()
-                default_res = json.dumps({
-                    "status": "SUCCESS",
-                    "action": "created_google_sheet",
-                    "spreadsheet_title": sheet_name or cfg.get("spreadsheet_title", "Trial Balance"),
-                    "spreadsheet_url": cfg.get("spreadsheet_url", "https://docs.google.com/spreadsheets/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"),
-                    "sheets_created": ["Accounts", "General Journal", "Trial Balance", "Budget Forecast"],
-                    "message": f"Successfully initialized Google Sheet '{sheet_name or 'Trial Balance'}' with Chart of Accounts, General Journal, and Trial Balance reconciliation."
-                }, indent=2)
+                # Actually create and populate the sheet instead of returning a stub
+                title = sheet_name if sheet_name and sheet_name != "Accounts" else "Q3 Startup Master Financials"
+                res = service.create_q3_master_financials(sheet_title=title)
+                default_res = json.dumps(res, indent=2)
 
             else:
                 cfg = service.get_config()
