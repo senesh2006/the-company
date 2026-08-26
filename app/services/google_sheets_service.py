@@ -374,6 +374,38 @@ class GoogleSheetsService:
             }
         }
 
+    def _ensure_sheet_tab_exists(self, sheet_name: str) -> bool:
+        """
+        Ensures a specific sheet/tab exists in the Google Spreadsheet via Composio GOOGLESHEETS_ADD_SHEET.
+        If the tab already exists, handles the 'already exists' response gracefully as success.
+        """
+        if self.spreadsheet_id == "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms":
+            return False
+
+        try:
+            from app.services.composio_client import composio_service
+            user_id = composio_service.resolve_user_id(self.business_id)
+            if not user_id:
+                logger.warning(f"Cannot ensure sheet tab '{sheet_name}': could not resolve Composio-connected user for business {self.business_id}")
+                return False
+
+            composio_service.execute_tool(
+                user_id=user_id,
+                slug="GOOGLESHEETS_ADD_SHEET",
+                arguments={
+                    "spreadsheet_id": self.spreadsheet_id,
+                    "title": sheet_name
+                }
+            )
+            return True
+        except Exception as e:
+            err_msg = str(e).lower()
+            # If the tab already exists, Google Sheets API returns an error indicating already exists
+            if "already exists" in err_msg or "sheet with name" in err_msg or "duplicate" in err_msg or "already exist" in err_msg:
+                return True
+            logger.warning(f"Failed to ensure sheet tab '{sheet_name}' in spreadsheet {self.spreadsheet_id}: {e}")
+            return False
+
     def _push_live_composio_sheet(self, sheet_name: str, values: List[List[Any]]) -> bool:
         """Attempts to push values directly to live Google Sheets via Composio."""
         if self.spreadsheet_id == "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms":
@@ -383,18 +415,30 @@ class GoogleSheetsService:
         try:
             from app.services.composio_client import composio_service
             user_id = composio_service.resolve_user_id(self.business_id)
+            if not user_id:
+                logger.warning(f"Cannot push to live Google Sheet: could not resolve Composio user for business {self.business_id}")
+                return False
+
+            # Ensure the sheet tab exists before writing data into it
+            tab_ok = self._ensure_sheet_tab_exists(sheet_name)
+            if not tab_ok:
+                logger.warning(f"Skipping batch update for '{sheet_name}': sheet tab does not exist and could not be created.")
+                return False
+
             composio_service.execute_tool(
                 user_id=user_id,
                 slug="GOOGLESHEETS_BATCH_UPDATE",
                 arguments={
                     "spreadsheet_id": self.spreadsheet_id,
-                    "range": f"{sheet_name}!A1",
-                    "values": values
+                    "sheet_name": sheet_name,
+                    "first_cell_location": "A1",
+                    "values": values,
+                    "value_input_option": "USER_ENTERED"
                 }
             )
             return True
         except Exception as e:
-            logger.debug(f"Composio live sheet push note: {e}")
+            logger.warning(f"Composio live sheet push failed for '{sheet_name}' in spreadsheet {self.spreadsheet_id}: {e}")
             return False
 
     def sync_to_google_sheets(self) -> Dict[str, Any]:
@@ -503,17 +547,22 @@ class GoogleSheetsService:
                     try:
                         from app.services.composio_client import composio_service
                         user_id = composio_service.resolve_user_id(self.business_id)
-                        composio_service.execute_tool(
-                            user_id=user_id,
-                            slug="GOOGLESHEETS_APPEND_ROW",
-                            arguments={
-                                "spreadsheet_id": self.spreadsheet_id,
-                                "sheet_name": sheet_name,
-                                "values": [row_values]
-                            }
-                        )
+                        if not user_id:
+                            logger.warning(f"Live row append skipped: could not resolve Composio user for business {self.business_id}")
+                        else:
+                            if self._ensure_sheet_tab_exists(sheet_name):
+                                composio_service.execute_tool(
+                                    user_id=user_id,
+                                    slug="GOOGLESHEETS_BATCH_UPDATE",
+                                    arguments={
+                                        "spreadsheet_id": self.spreadsheet_id,
+                                        "sheet_name": sheet_name,
+                                        "values": [row_values],
+                                        "value_input_option": "USER_ENTERED"
+                                    }
+                                )
                     except Exception as e:
-                        logger.debug(f"Live row append via Composio note: {e}")
+                        logger.warning(f"Live row append via Composio failed for '{sheet_name}' in {self.spreadsheet_id}: {e}")
 
                 return {"success": True, "appended_entry": entry}
 

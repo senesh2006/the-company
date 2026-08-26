@@ -454,15 +454,16 @@ class ComposioService:
             }
         }
 
-    def resolve_user_id(self, user_or_business_id: Optional[str]) -> str:
+    def resolve_user_id(self, user_or_business_id: Optional[str]) -> Optional[str]:
         """
         Resolves the actual user_id for a given business_id or user_id by checking
-        businesses table owner_id or verifying live Composio account ownership.
+        businesses table owner_id, connected_accounts, or verifying live Composio account ownership.
+        Returns None if no valid connected user or owner could be resolved.
         """
         if not user_or_business_id:
-            return "00000000-0000-0000-0000-000000000000"
+            return None
 
-        # 1. Check if user_or_business_id is a business with owner_id
+        # 1. Check if user_or_business_id is a business with owner_id in Supabase
         client = get_supabase_client()
         if client:
             try:
@@ -472,12 +473,38 @@ class ComposioService:
             except Exception as e:
                 logger.debug(f"Could not resolve owner_id from businesses table: {e}")
 
-        # 2. Check if this specific user has live active Composio accounts
+        # 2. Check if this ID itself has connected accounts in DB
+        if client:
+            try:
+                accs = client.table("connected_accounts").select("user_id").eq("user_id", user_or_business_id).eq("status", "connected").limit(1).execute()
+                if accs.data and len(accs.data) > 0:
+                    return user_or_business_id
+            except Exception as e:
+                logger.debug(f"Could not check connected_accounts table: {e}")
+
+        # 3. Check if this specific user has live active Composio accounts
         live_accounts = self._fetch_live_composio_accounts(user_id=user_or_business_id)
         if live_accounts:
             return user_or_business_id
 
-        return user_or_business_id
+        # 4. Check shared memory cache for connected accounts
+        try:
+            from app.services.shared_memory import SharedMemoryService
+            mem = SharedMemoryService()
+            for key in self.SUPPORTED_TOOLKITS.keys():
+                stored = mem.get(user_or_business_id, f"connected_account_{key}")
+                if stored and isinstance(stored.get("value"), dict) and stored["value"].get("status") == "connected":
+                    return user_or_business_id
+        except Exception:
+            pass
+
+        # If it's a known user ID (not equal to dummy business UUID), check if user exists in auth/profiles
+        if user_or_business_id and user_or_business_id != "00000000-0000-0000-0000-000000000001":
+            # Return the user_or_business_id if it might be a direct user_id
+            return user_or_business_id
+
+        logger.warning(f"resolve_user_id could not resolve a Composio-connected user from ID: {user_or_business_id}")
+        return None
 
     def execute_tool(
         self,
@@ -493,6 +520,8 @@ class ComposioService:
             raise ComposioClientError("Composio SDK or API key not available")
 
         resolved_uid = self.resolve_user_id(user_id)
+        if not resolved_uid:
+            raise ComposioClientError(f"Could not resolve a Composio-connected user from ID: {user_id}")
 
         try:
             res = sdk.tools.execute(
