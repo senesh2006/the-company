@@ -111,10 +111,8 @@ export default function SignUpPage() {
       <div className="w-full bg-white dark:bg-slate-900/95 backdrop-blur-xl border border-slate-200/90 dark:border-slate-700/90 rounded-2xl shadow-2xl shadow-slate-200/60 p-8 sm:p-9">
         {/* Header Branding */}
         <div className="text-center mb-6">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-tr from-emerald-600 via-teal-500 to-cyan-500 p-[1px] shadow-lg shadow-emerald-500/20 mb-3.5">
-            <div className="w-full h-full bg-white dark:bg-slate-900 rounded-[15px] flex items-center justify-center">
-              <span className="material-symbols-outlined text-emerald-600 text-2xl font-bold">hub</span>
-            </div>
+          <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl overflow-hidden shadow-xl shadow-slate-950/20 mb-3.5 bg-slate-950 p-1 border border-slate-800">
+            <img src="/logo.png" alt="Company OS Logo" className="w-full h-full object-contain rounded-xl" />
           </div>
           <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">
             Create Your Company

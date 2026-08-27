@@ -371,8 +371,8 @@ export function LandingPage() {
         <div className="max-w-7xl mx-auto flex items-center justify-between px-4 sm:px-6 lg:px-8 h-16">
           {/* Wordmark */}
           <Link href="/landing" className="flex items-center gap-2.5 group">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-600 to-teal-500 flex items-center justify-center shadow-sm shadow-emerald-600/20">
-              <Bot className="w-4.5 h-4.5 text-white" />
+            <div className="w-9 h-9 rounded-xl overflow-hidden bg-slate-950 p-0.5 border border-slate-800 shadow-sm shrink-0">
+              <img src="/logo.png" alt="Company OS Logo" className="w-full h-full object-contain rounded-lg" />
             </div>
             <span className="text-lg font-extrabold tracking-tight bg-gradient-to-r from-emerald-700 to-teal-600 dark:from-emerald-400 dark:to-teal-400 bg-clip-text text-transparent">
               Company OS
@@ -794,8 +794,8 @@ export function LandingPage() {
         {/* Footer */}
         <footer className="mt-20 pt-8 border-t border-slate-200 dark:border-slate-800 max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-slate-500 dark:text-slate-400">
           <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-emerald-600 to-teal-500 flex items-center justify-center">
-              <Bot className="w-3.5 h-3.5 text-white" />
+            <div className="w-7 h-7 rounded-lg overflow-hidden bg-slate-950 p-0.5 border border-slate-800 shrink-0">
+              <img src="/logo.png" alt="Company OS Logo" className="w-full h-full object-contain rounded-md" />
             </div>
             <span className="font-bold text-slate-700 dark:text-slate-300">Company OS</span>
           </div>

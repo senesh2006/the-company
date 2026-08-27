@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Company OS — End-to-End Demo Account Seed Script
+Company OS — End-to-End Demo Account Seed Engine
 =================================================
 Populates a complete, production-ready demo account entirely through existing
 FastAPI routes (not directly modifying the database), exercising the identical
@@ -60,7 +60,7 @@ BUSINESS_PROFILE: Dict[str, Any] = {
     "knowledge_snippets": [
         "Aperture Analytics was founded in 2025 by veteran AI research engineers.",
         "Seed financing of $750,000 closed in January 2026 led by Frontier Venture Partners.",
-        "Current cash balance is $620,000 with a monthly net burn of ~$18,000, giving >30 months of runway."
+        "Current cash balance is $620,000 with a monthly net burn of ~$18,500, giving >30 months of runway."
     ],
     "starter_agents": [],  # Explicitly hired via /agents in Step 3
     "monthly_budget_usd": 2500.0,
@@ -99,74 +99,247 @@ WORKER_ROLES: List[Dict[str, Any]] = [
     }
 ]
 
-# --- C. Multi-Month Financial General Journal Entries ---
-# Balances: Seed $750k + Rev $136.5k - Exp $266.5k = $620,000.00 Cash | MRR: $35,000.00
+# --- C. Multi-Month Financial General Journal Entries (6-Month History: Jan–Aug 2026) ---
+# Accounting Rollup Math:
+# Capitalization: Seed $750,000.00 (Jan 2026)
+# Revenue (Mar–Aug): $18k + $21.5k + $25k + $28.5k + $32k + $35k = $160,000.00 (MRR growing to $35k)
+# Expenses (Mar–Aug): $44.5k + $51k + $47.5k + $53.5k + $47k + $46.5k = $290,000.00
+# Cash Balance: $750,000 + $160,000 - $290,000 = EXACTLY $620,000.00 Cash on Hand | Trial Balance: EQUAL
 JOURNAL_ENTRIES: List[Dict[str, Any]] = [
-    # 1. Capitalization (January 2026 Seed Round)
+    # -----------------------------------------------------------------------
+    # Month 0: January 2026 (Seed Capitalization)
+    # -----------------------------------------------------------------------
     {
         "date": "2026-01-15",
         "reference": "EQUITY-SEED-01",
-        "description": "Frontier Venture Partners Seed Round Investment Capital Injection",
+        "description": "Frontier Venture Partners Seed Round Capital Injection",
         "debit_account": "1000 - Cash & Cash Equivalents",
         "credit_account": "3000 - Common Stock (Paid-in Capital)",
         "amount": 750000.0,
         "source": "Seed Capitalization"
     },
-    # 2. May 2026 (Month 1: $32.5k Revenue, $66.5k Expenses)
+
+    # -----------------------------------------------------------------------
+    # Month 1: March 2026 (MRR $18,000 | Revenue $18,000 | Expenses $44,500)
+    # -----------------------------------------------------------------------
+    {
+        "date": "2026-03-01",
+        "reference": "REV-2026-03",
+        "description": "March 2026 Recurring SaaS Platform Subscriptions (8 Accounts)",
+        "debit_account": "1000 - Cash & Cash Equivalents",
+        "credit_account": "4000 - Platform Subscription Revenue",
+        "amount": 18000.0,
+        "source": "Billing Engine"
+    },
+    {
+        "date": "2026-03-10",
+        "reference": "EXP-2026-03-LEGAL",
+        "description": "Legal Structuring & IP Assignment Fees for Seed Round",
+        "debit_account": "6000 - Software Subscriptions & SaaS Tools",
+        "credit_account": "1000 - Cash & Cash Equivalents",
+        "amount": 6500.0,
+        "source": "Vendor Invoicing"
+    },
+    {
+        "date": "2026-03-15",
+        "reference": "EXP-2026-03-COGS-1",
+        "description": "March 2026 AWS Cloud Cluster & Server Infrastructure",
+        "debit_account": "5000 - Cloud Hosting & Server Infrastructure",
+        "credit_account": "1000 - Cash & Cash Equivalents",
+        "amount": 4500.0,
+        "source": "Vendor Invoicing"
+    },
+    {
+        "date": "2026-03-18",
+        "reference": "EXP-2026-03-COGS-2",
+        "description": "March 2026 LLM Inference & API Costs",
+        "debit_account": "5100 - LLM Inference & API Costs",
+        "credit_account": "1000 - Cash & Cash Equivalents",
+        "amount": 2200.0,
+        "source": "API Metering"
+    },
+    {
+        "date": "2026-03-25",
+        "reference": "EXP-2026-03-OPEX-1",
+        "description": "March 2026 Internal Dev Tools (GitHub, Linear, Google Workspace)",
+        "debit_account": "6000 - Software Subscriptions & SaaS Tools",
+        "credit_account": "1000 - Cash & Cash Equivalents",
+        "amount": 1800.0,
+        "source": "Corporate Card"
+    },
+    {
+        "date": "2026-03-28",
+        "reference": "EXP-2026-03-PAYROLL",
+        "description": "March 2026 Core Engineering & Founder Payroll (3 FTEs)",
+        "debit_account": "6100 - Growth & Marketing",
+        "credit_account": "1000 - Cash & Cash Equivalents",
+        "amount": 26000.0,
+        "source": "Payroll Processor"
+    },
+    {
+        "date": "2026-03-30",
+        "reference": "EXP-2026-03-MKTG",
+        "description": "March 2026 Outbound Lead Discovery & Search Ads",
+        "debit_account": "6100 - Growth & Marketing",
+        "credit_account": "1000 - Cash & Cash Equivalents",
+        "amount": 3500.0,
+        "source": "Ad Manager"
+    },
+
+    # -----------------------------------------------------------------------
+    # Month 2: April 2026 (MRR $21,500 | Revenue $21,500 | Expenses $51,000)
+    # -----------------------------------------------------------------------
+    {
+        "date": "2026-04-01",
+        "reference": "REV-2026-04",
+        "description": "April 2026 Recurring SaaS Platform Subscriptions (10 Accounts)",
+        "debit_account": "1000 - Cash & Cash Equivalents",
+        "credit_account": "4000 - Platform Subscription Revenue",
+        "amount": 21500.0,
+        "source": "Billing Engine"
+    },
+    {
+        "date": "2026-04-12",
+        "reference": "EXP-2026-04-EVENT",
+        "description": "April 2026 Hackathon Sponsorship & Developer Community Event",
+        "debit_account": "6100 - Growth & Marketing",
+        "credit_account": "1000 - Cash & Cash Equivalents",
+        "amount": 8500.0,
+        "source": "Corporate Card"
+    },
+    {
+        "date": "2026-04-15",
+        "reference": "EXP-2026-04-COGS-1",
+        "description": "April 2026 AWS Cloud Infrastructure & Ingestion Pipelines",
+        "debit_account": "5000 - Cloud Hosting & Server Infrastructure",
+        "credit_account": "1000 - Cash & Cash Equivalents",
+        "amount": 5200.0,
+        "source": "Vendor Invoicing"
+    },
+    {
+        "date": "2026-04-18",
+        "reference": "EXP-2026-04-COGS-2",
+        "description": "April 2026 Token Inference & Fine-Tuning Execution",
+        "debit_account": "5100 - LLM Inference & API Costs",
+        "credit_account": "1000 - Cash & Cash Equivalents",
+        "amount": 3000.0,
+        "source": "API Metering"
+    },
+    {
+        "date": "2026-04-25",
+        "reference": "EXP-2026-04-OPEX-1",
+        "description": "April 2026 Software Subscriptions & Security Audit Tools",
+        "debit_account": "6000 - Software Subscriptions & SaaS Tools",
+        "credit_account": "1000 - Cash & Cash Equivalents",
+        "amount": 2100.0,
+        "source": "Corporate Card"
+    },
+    {
+        "date": "2026-04-28",
+        "reference": "EXP-2026-04-PAYROLL",
+        "description": "April 2026 Full Team Payroll & Benefits (3.5 FTEs)",
+        "debit_account": "6100 - Growth & Marketing",
+        "credit_account": "1000 - Cash & Cash Equivalents",
+        "amount": 28200.0,
+        "source": "Payroll Processor"
+    },
+    {
+        "date": "2026-04-30",
+        "reference": "EXP-2026-04-MKTG",
+        "description": "April 2026 Outbound SDR Tooling & Email Verification",
+        "debit_account": "6100 - Growth & Marketing",
+        "credit_account": "1000 - Cash & Cash Equivalents",
+        "amount": 4000.0,
+        "source": "Corporate Card"
+    },
+
+    # -----------------------------------------------------------------------
+    # Month 3: May 2026 (MRR $25,000 | Revenue $25,000 | Expenses $47,500)
+    # -----------------------------------------------------------------------
     {
         "date": "2026-05-01",
         "reference": "REV-2026-05",
-        "description": "May 2026 Recurring SaaS Platform Subscription Revenue (14 Accounts)",
+        "description": "May 2026 Recurring SaaS Platform Subscriptions (12 Accounts)",
         "debit_account": "1000 - Cash & Cash Equivalents",
         "credit_account": "4000 - Platform Subscription Revenue",
-        "amount": 32500.0,
+        "amount": 25000.0,
         "source": "Billing Engine"
+    },
+    {
+        "date": "2026-05-10",
+        "reference": "EXP-2026-05-DESIGN",
+        "description": "Specialist UI/UX Design Contractor for Product Redesign",
+        "debit_account": "6000 - Software Subscriptions & SaaS Tools",
+        "credit_account": "1000 - Cash & Cash Equivalents",
+        "amount": 4800.0,
+        "source": "Contractor Invoice"
     },
     {
         "date": "2026-05-15",
         "reference": "EXP-2026-05-COGS-1",
-        "description": "May 2026 AWS Cloud Cluster & GPU Compute Infrastructure",
+        "description": "May 2026 AWS Cloud Cluster & Server Infrastructure",
         "debit_account": "5000 - Cloud Hosting & Server Infrastructure",
         "credit_account": "1000 - Cash & Cash Equivalents",
-        "amount": 7500.0,
+        "amount": 6000.0,
         "source": "Vendor Invoicing"
     },
     {
         "date": "2026-05-18",
         "reference": "EXP-2026-05-COGS-2",
-        "description": "May 2026 Model Inference API & Token Usage Costs",
+        "description": "May 2026 Model Inference API & Vector Storage Costs",
         "debit_account": "5100 - LLM Inference & API Costs",
         "credit_account": "1000 - Cash & Cash Equivalents",
-        "amount": 5000.0,
+        "amount": 3800.0,
         "source": "API Metering"
     },
     {
         "date": "2026-05-25",
         "reference": "EXP-2026-05-OPEX-1",
-        "description": "May 2026 Software Subscriptions (GitHub, Linear, Google Workspace)",
+        "description": "May 2026 Software Subscriptions (Composio, Vercel, Supabase)",
         "debit_account": "6000 - Software Subscriptions & SaaS Tools",
         "credit_account": "1000 - Cash & Cash Equivalents",
-        "amount": 4200.0,
+        "amount": 2300.0,
         "source": "Corporate Card"
     },
     {
         "date": "2026-05-28",
-        "reference": "EXP-2026-05-OPEX-2",
-        "description": "May 2026 Growth Marketing & Targeted Outbound Lead Generation",
+        "reference": "EXP-2026-05-PAYROLL",
+        "description": "May 2026 Full Team Payroll & Operations (4 FTEs)",
         "debit_account": "6100 - Growth & Marketing",
         "credit_account": "1000 - Cash & Cash Equivalents",
-        "amount": 49800.0,
-        "source": "Payroll & Marketing"
+        "amount": 26100.0,
+        "source": "Payroll Processor"
     },
-    # 3. June 2026 (Month 2: $34.0k Revenue, $66.5k Expenses)
+    {
+        "date": "2026-05-30",
+        "reference": "EXP-2026-05-MKTG",
+        "description": "May 2026 Content Marketing & SEO Strategy Pipeline",
+        "debit_account": "6100 - Growth & Marketing",
+        "credit_account": "1000 - Cash & Cash Equivalents",
+        "amount": 4500.0,
+        "source": "Corporate Card"
+    },
+
+    # -----------------------------------------------------------------------
+    # Month 4: June 2026 (MRR $28,500 | Revenue $28,500 | Expenses $53,500)
+    # -----------------------------------------------------------------------
     {
         "date": "2026-06-01",
         "reference": "REV-2026-06",
-        "description": "June 2026 Recurring SaaS Platform Subscription Revenue (16 Accounts)",
+        "description": "June 2026 Recurring SaaS Platform Subscriptions (14 Accounts)",
         "debit_account": "1000 - Cash & Cash Equivalents",
         "credit_account": "4000 - Platform Subscription Revenue",
-        "amount": 34000.0,
+        "amount": 28500.0,
         "source": "Billing Engine"
+    },
+    {
+        "date": "2026-06-12",
+        "reference": "EXP-2026-06-CAMPAIGN",
+        "description": "June 2026 Growth Marketing Ad Blitz & PR Campaign",
+        "debit_account": "6100 - Growth & Marketing",
+        "credit_account": "1000 - Cash & Cash Equivalents",
+        "amount": 12000.0,
+        "source": "Marketing Agency"
     },
     {
         "date": "2026-06-15",
@@ -174,7 +347,7 @@ JOURNAL_ENTRIES: List[Dict[str, Any]] = [
         "description": "June 2026 AWS Cloud Cluster & Server Infrastructure",
         "debit_account": "5000 - Cloud Hosting & Server Infrastructure",
         "credit_account": "1000 - Cash & Cash Equivalents",
-        "amount": 8000.0,
+        "amount": 6800.0,
         "source": "Vendor Invoicing"
     },
     {
@@ -183,44 +356,56 @@ JOURNAL_ENTRIES: List[Dict[str, Any]] = [
         "description": "June 2026 LLM Token Inference & Fine-Tuning Execution",
         "debit_account": "5100 - LLM Inference & API Costs",
         "credit_account": "1000 - Cash & Cash Equivalents",
-        "amount": 5500.0,
+        "amount": 4500.0,
         "source": "API Metering"
     },
     {
         "date": "2026-06-25",
         "reference": "EXP-2026-06-OPEX-1",
-        "description": "June 2026 Software Subscriptions & Enterprise Tool Licenses",
+        "description": "June 2026 Software Subscriptions & Enterprise SaaS Licenses",
         "debit_account": "6000 - Software Subscriptions & SaaS Tools",
         "credit_account": "1000 - Cash & Cash Equivalents",
-        "amount": 4500.0,
+        "amount": 2400.0,
         "source": "Corporate Card"
     },
     {
         "date": "2026-06-28",
-        "reference": "EXP-2026-06-OPEX-2",
-        "description": "June 2026 Outbound Acquisition & Content Marketing Engine",
+        "reference": "EXP-2026-06-PAYROLL",
+        "description": "June 2026 Full Team Payroll & Contractor Stipends",
         "debit_account": "6100 - Growth & Marketing",
         "credit_account": "1000 - Cash & Cash Equivalents",
-        "amount": 48500.0,
-        "source": "Payroll & Marketing"
+        "amount": 23000.0,
+        "source": "Payroll Processor"
     },
-    # 4. July 2026 (Month 3: $35.0k Revenue, $66.5k Expenses)
+    {
+        "date": "2026-06-30",
+        "reference": "EXP-2026-06-MKTG",
+        "description": "June 2026 Lead Generation & Prospect Data Enrichment",
+        "debit_account": "6100 - Growth & Marketing",
+        "credit_account": "1000 - Cash & Cash Equivalents",
+        "amount": 4800.0,
+        "source": "Corporate Card"
+    },
+
+    # -----------------------------------------------------------------------
+    # Month 5: July 2026 (MRR $32,000 | Revenue $32,000 | Expenses $47,000)
+    # -----------------------------------------------------------------------
     {
         "date": "2026-07-01",
         "reference": "REV-2026-07",
-        "description": "July 2026 Recurring SaaS Platform Subscription Revenue (18 Accounts)",
+        "description": "July 2026 Recurring SaaS Platform Subscriptions (16 Accounts)",
         "debit_account": "1000 - Cash & Cash Equivalents",
         "credit_account": "4000 - Platform Subscription Revenue",
-        "amount": 35000.0,
+        "amount": 32000.0,
         "source": "Billing Engine"
     },
     {
         "date": "2026-07-15",
         "reference": "EXP-2026-07-COGS-1",
-        "description": "July 2026 Multi-Region AWS Cloud Infrastructure & Data Ingestion",
+        "description": "July 2026 AWS Cloud Compute Infrastructure & Data Pipelines",
         "debit_account": "5000 - Cloud Hosting & Server Infrastructure",
         "credit_account": "1000 - Cash & Cash Equivalents",
-        "amount": 8200.0,
+        "amount": 7500.0,
         "source": "Vendor Invoicing"
     },
     {
@@ -229,7 +414,7 @@ JOURNAL_ENTRIES: List[Dict[str, Any]] = [
         "description": "July 2026 High-Throughput Token Inference Engine",
         "debit_account": "5100 - LLM Inference & API Costs",
         "credit_account": "1000 - Cash & Cash Equivalents",
-        "amount": 5800.0,
+        "amount": 5200.0,
         "source": "API Metering"
     },
     {
@@ -238,23 +423,35 @@ JOURNAL_ENTRIES: List[Dict[str, Any]] = [
         "description": "July 2026 SaaS Tool Suite & Security Monitoring Software",
         "debit_account": "6000 - Software Subscriptions & SaaS Tools",
         "credit_account": "1000 - Cash & Cash Equivalents",
-        "amount": 4500.0,
+        "amount": 2600.0,
         "source": "Corporate Card"
     },
     {
         "date": "2026-07-28",
-        "reference": "EXP-2026-07-OPEX-2",
-        "description": "July 2026 Operational Growth Campaign & Lead Acceleration",
+        "reference": "EXP-2026-07-PAYROLL",
+        "description": "July 2026 Full Team Payroll & Operations (4 FTEs)",
         "debit_account": "6100 - Growth & Marketing",
         "credit_account": "1000 - Cash & Cash Equivalents",
-        "amount": 48000.0,
-        "source": "Payroll & Marketing"
+        "amount": 26700.0,
+        "source": "Payroll Processor"
     },
-    # 5. August 2026 (Month 4: $35.0k Revenue, $67.0k Expenses)
+    {
+        "date": "2026-07-30",
+        "reference": "EXP-2026-07-MKTG",
+        "description": "July 2026 Growth Lead Campaign & Retargeting Ads",
+        "debit_account": "6100 - Growth & Marketing",
+        "credit_account": "1000 - Cash & Cash Equivalents",
+        "amount": 5000.0,
+        "source": "Ad Manager"
+    },
+
+    # -----------------------------------------------------------------------
+    # Month 6: August 2026 (MRR $35,000 | Revenue $35,000 | Expenses $46,500)
+    # -----------------------------------------------------------------------
     {
         "date": "2026-08-01",
         "reference": "REV-2026-08",
-        "description": "August 2026 Recurring SaaS Platform Subscription Revenue",
+        "description": "August 2026 Recurring SaaS Platform Subscriptions (18 Accounts)",
         "debit_account": "1000 - Cash & Cash Equivalents",
         "credit_account": "4000 - Platform Subscription Revenue",
         "amount": 35000.0,
@@ -263,10 +460,10 @@ JOURNAL_ENTRIES: List[Dict[str, Any]] = [
     {
         "date": "2026-08-15",
         "reference": "EXP-2026-08-COGS-1",
-        "description": "August 2026 Cloud Hosting & Data Pipeline Infrastructure",
+        "description": "August 2026 AWS Cloud Hosting & Production Database Compute",
         "debit_account": "5000 - Cloud Hosting & Server Infrastructure",
         "credit_account": "1000 - Cash & Cash Equivalents",
-        "amount": 8300.0,
+        "amount": 8200.0,
         "source": "Vendor Invoicing"
     },
     {
@@ -275,7 +472,7 @@ JOURNAL_ENTRIES: List[Dict[str, Any]] = [
         "description": "August 2026 Autonomous Worker Token Inference & Embeddings",
         "debit_account": "5100 - LLM Inference & API Costs",
         "credit_account": "1000 - Cash & Cash Equivalents",
-        "amount": 5700.0,
+        "amount": 6100.0,
         "source": "API Metering"
     },
     {
@@ -284,17 +481,26 @@ JOURNAL_ENTRIES: List[Dict[str, Any]] = [
         "description": "August 2026 Software Tool Subscriptions & Domain Governance",
         "debit_account": "6000 - Software Subscriptions & SaaS Tools",
         "credit_account": "1000 - Cash & Cash Equivalents",
-        "amount": 4800.0,
+        "amount": 2800.0,
         "source": "Corporate Card"
     },
     {
         "date": "2026-08-25",
-        "reference": "EXP-2026-08-OPEX-2",
+        "reference": "EXP-2026-08-PAYROLL",
+        "description": "August 2026 Team Payroll & Operations (4 FTEs)",
+        "debit_account": "6100 - Growth & Marketing",
+        "credit_account": "1000 - Cash & Cash Equivalents",
+        "amount": 24200.0,
+        "source": "Payroll Processor"
+    },
+    {
+        "date": "2026-08-28",
+        "reference": "EXP-2026-08-MKTG",
         "description": "August 2026 Growth Pipeline & Outbound Demand Generation",
         "debit_account": "6100 - Growth & Marketing",
         "credit_account": "1000 - Cash & Cash Equivalents",
-        "amount": 48200.0,
-        "source": "Payroll & Marketing"
+        "amount": 5200.0,
+        "source": "Ad Manager"
     }
 ]
 
@@ -363,7 +569,7 @@ SHARED_MEMORY_FACTS: List[Dict[str, Any]] = [
     }
 ]
 
-# --- E. Business Documents to Upload ---
+# --- E. Expanded Business Documents Set to Upload (Markdown, CSV, TXT, and PDF) ---
 DEMO_DOCUMENTS: List[Dict[str, Any]] = [
     {
         "file_name": "pitch_summary.md",
@@ -394,6 +600,42 @@ DEMO_DOCUMENTS: List[Dict[str, Any]] = [
         "title": "Leadership Strategy Recap & Q3 Execution Plan",
         "category": "meeting_notes",
         "mime_type": "text/plain"
+    },
+    {
+        "file_name": "investor_update_q3.md",
+        "title": "Aperture Analytics — Q3 2026 Investor Update",
+        "category": "investor_update",
+        "mime_type": "text/markdown"
+    },
+    {
+        "file_name": "competitor_analysis.md",
+        "title": "Competitive Intelligence & Market Positioning",
+        "category": "competitor_intel",
+        "mime_type": "text/markdown"
+    },
+    {
+        "file_name": "sales_call_notes.txt",
+        "title": "Recent Prospect Sales Call Notes & Objection Log",
+        "category": "sales_notes",
+        "mime_type": "text/plain"
+    },
+    {
+        "file_name": "product_roadmap.md",
+        "title": "Q3/Q4 2026 Product & Engineering Roadmap",
+        "category": "product_roadmap",
+        "mime_type": "text/markdown"
+    },
+    {
+        "file_name": "hr_policies.md",
+        "title": "Internal HR Policies & Operating Guidelines",
+        "category": "hr_policies",
+        "mime_type": "text/markdown"
+    },
+    {
+        "file_name": "board_deck_summary.pdf",
+        "title": "Executive Board Deck & Financial Summary (PDF)",
+        "category": "board_deck",
+        "mime_type": "application/pdf"
     }
 ]
 
@@ -598,19 +840,34 @@ class DemoSeedRunner:
         print(f"  ✓ Initialized Standard Chart of Accounts ({acc_count} accounts with $0 base).")
 
         # 2. Post multi-month double-entry journal transactions
-        print(f"  → Posting {len(JOURNAL_ENTRIES)} verified double-entry transactions (Jan–Aug 2026)...")
+        print(f"  → Posting {len(JOURNAL_ENTRIES)} verified double-entry transactions (Jan–Aug 2026 6-Month History)...")
         for entry in JOURNAL_ENTRIES:
             self._request("POST", "/finance/journal", json=entry)
             self.stats["journal_entries_posted"] += 1
             print(f"    • [{entry['date']}] {entry['reference']}: ${entry['amount']:,.2f} ({entry['debit_account']} → {entry['credit_account']})")
 
-        # 3. Verify Trial Balance Integrity
+        # 3. Verify Trial Balance Integrity & Rollup Calculations
         tb_resp = self._request("GET", "/finance/trial-balance")
         tb = tb_resp.json()
         debits = tb.get("total_debits", 0)
         credits = tb.get("total_credits", 0)
         is_balanced = tb.get("is_balanced", False)
-        print(f"  ✓ Ledger Verified! Total Debits: ${debits:,.2f} | Total Credits: ${credits:,.2f} | Balanced: {is_balanced}")
+        summary = tb.get("summary", {})
+        
+        print("\n  =================== FINANCIAL ROLLUP VERIFICATION ===================")
+        print(f"  • Total Debits:             ${debits:,.2f}")
+        print(f"  • Total Credits:            ${credits:,.2f}")
+        print(f"  • Trial Balance Status:     {'✓ BALANCED' if is_balanced else '❌ UNBALANCED'}")
+        print(f"  • Total Cash Balance:       ${summary.get('total_assets', 0):,.2f} (Target: $620,000.00)")
+        print(f"  • Total Paid-in Equity:     ${summary.get('total_equity', 0):,.2f} (Seed: $750,000.00)")
+        print(f"  • Cumulative Revenue:       ${summary.get('total_revenue', 0):,.2f} (MRR: $35,000.00)")
+        print(f"  • Cumulative COGS:          ${summary.get('total_cogs', 0):,.2f}")
+        print(f"  • Cumulative OPEX:          ${summary.get('total_opex', 0):,.2f}")
+        print(f"  • Cumulative Net Income:    ${summary.get('net_income', 0):,.2f}")
+        print("  =====================================================================\n")
+
+        if not is_balanced:
+            print("  ⚠️ Warning: Trial Balance is unbalanced!")
 
     # --- STEP 5: SEED SHARED MEMORY FACTS ---
     def seed_shared_memory(self):
@@ -629,6 +886,11 @@ class DemoSeedRunner:
     def upload_documents(self):
         print(f"\n[6/7] 📁 Uploading & Indexing Domain Documents into Knowledge Base...")
         
+        # Ensure PDF file exists before uploading
+        pdf_path = DOCS_DIR / "board_deck_summary.pdf"
+        if not pdf_path.exists():
+            self._ensure_pdf_file_exists(pdf_path)
+
         # Check existing documents for idempotency
         try:
             docs_resp = self._request("GET", "/memory/documents")
@@ -657,7 +919,66 @@ class DemoSeedRunner:
                 
                 self._request("POST", "/memory/upload", is_json=False, files=files, data=data)
                 self.stats["documents_uploaded"] += 1
-                print(f"  ✓ Uploaded & Indexed: '{doc['title']}' [{doc['category']}]")
+                print(f"  ✓ Uploaded & Indexed: '{doc['title']}' [{doc['category']}] ({doc['mime_type']})")
+
+    def _ensure_pdf_file_exists(self, pdf_path: Path):
+        """Helper to create a valid minimal PDF file if not present."""
+        try:
+            DOCS_DIR.mkdir(parents=True, exist_ok=True)
+            text_lines = [
+                "APERTURE ANALYTICS - BOARD DECK & EXECUTIVE SUMMARY",
+                "Category: Executive Board Deck (PDF Format)",
+                "Seed Round Capitalization: $750,000.00 (January 2026)",
+                "Current Cash on Hand: $620,000.00 | MRR: $35,000.00",
+                "Active Accounts: 18 Enterprise & Mid-Market Subscribers",
+                "Net Revenue Retention (NRR): 118% | Gross Margin: 84%",
+                "Key Goals: Scale to $100k MRR by Q4 2026 with autonomous AI fleet."
+            ]
+            stream_lines = ["BT /F1 12 Tf 40 740 Td 18 TL"]
+            for line in text_lines:
+                escaped = line.replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)")
+                stream_lines.append(f"({escaped}) '")
+            stream_lines.append("ET")
+            stream_content = "\n".join(stream_lines)
+            stream_bytes = stream_content.encode("utf-8")
+
+            pdf_str = f"""%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Count 1 /Kids [3 0 R] >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>
+endobj
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+5 0 obj
+<< /Length {len(stream_bytes)} >>
+stream
+{stream_content}
+endstream
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000244 00000 n 
+0000000318 00000 n 
+trailer
+<< /Size 6 /Root 1 0 R >>
+startxref
+450
+%%EOF"""
+            with open(pdf_path, "wb") as f:
+                f.write(pdf_str.encode("latin1"))
+            print(f"  ✓ Generated binary PDF document at {pdf_path}")
+        except Exception as e:
+            print(f"  ⚠️ Error generating PDF file: {e}")
 
     # --- STEP 7: QUEUE DEMO TASKS ---
     def queue_demo_tasks(self):
@@ -703,7 +1024,7 @@ class DemoSeedRunner:
         print(f"  • Base API Endpoint:      {self.base_url}")
         print("-" * 72)
         print(f"  • AI Specialists Hired:   {self.stats['agents_hired']}")
-        print(f"  • Journal Entries Posted: {self.stats['journal_entries_posted']} (Total Cash: $620,000.00 | MRR: $35,000.00)")
+        print(f"  • Journal Entries Posted: {self.stats['journal_entries_posted']} (6-Month History | Total Cash: $620,000.00 | MRR: $35,000.00)")
         print(f"  • Memory Facts Seeded:    {self.stats['memory_facts_saved']}")
         print(f"  • Documents Uploaded:     {self.stats['documents_uploaded']} ({self.stats['documents_skipped']} previously indexed)")
         print(f"  • Demo Tasks Queued:      {self.stats['tasks_queued']}")

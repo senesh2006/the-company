@@ -139,14 +139,12 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
       <div className="mb-8 px-3 pt-2">
         <Link href="/" className="flex items-center gap-3 group" onClick={onMobileClose}>
           <motion.div 
-            className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-600 via-teal-500 to-cyan-500 p-[1px] shadow-md shadow-emerald-500/10"
+            className="w-10 h-10 rounded-xl overflow-hidden shadow-md shadow-slate-900/10 shrink-0 bg-slate-950 p-0.5 border border-slate-800"
             whileHover={{ scale: 1.05, rotate: 1 }}
             whileTap={{ scale: 0.95 }}
             transition={{ type: "spring", stiffness: 400, damping: 25 }}
           >
-            <div className="w-full h-full bg-white dark:bg-slate-900 rounded-[11px] flex items-center justify-center">
-              <Sparkles className="w-5 h-5 text-emerald-600" />
-            </div>
+            <img src="/logo.png" alt="Company OS Logo" className="w-full h-full object-contain rounded-lg" />
           </motion.div>
           <div>
             <h1 className="font-bold text-sm tracking-tight text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
@@ -251,10 +249,8 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
             >
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-emerald-600 via-teal-500 to-cyan-500 p-[1px]">
-                    <div className="w-full h-full bg-white dark:bg-slate-900 rounded-md flex items-center justify-center">
-                      <Sparkles className="w-4 h-4 text-emerald-600" />
-                    </div>
+                  <div className="w-8 h-8 rounded-lg overflow-hidden shrink-0 bg-slate-950 p-0.5 border border-slate-800">
+                    <img src="/logo.png" alt="Company OS Logo" className="w-full h-full object-contain rounded-md" />
                   </div>
                   <span className="font-bold text-sm text-slate-900 dark:text-slate-100">Company OS</span>
                 </div>

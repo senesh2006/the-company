@@ -1,0 +1,45 @@
+===============================================================================
+APERTURE ANALYTICS — RECENT PROSPECT SALES CALL NOTES & OBJECTION LOG
+===============================================================================
+Author: Sarah Chen (Growth & Marketing Lead)
+Period: July–August 2026
+
+-------------------------------------------------------------------------------
+CALL #1: ACME CLOUD SERVICES (Mid-Market B2B SaaS - $14M ARR)
+Date: August 14, 2026
+Prospect Attendees: Sarah Jenkins (VP of Finance), David Miller (Director of RevOps)
+Aperture Host: Alex Morgan (CEO)
+
+Notes & Requirements:
+- Acme currently manages 420 customer accounts on NetSuite and Stripe.
+- Pain Point: Month-end close takes 14 days due to deferred revenue recognition across quarterly vs annual contracts.
+- Interest: Excited about Frank Wright (AI Finance Controller) auto-reconciling transactions against GAAP trial balances.
+- Key Objection: "We require SOC2 Type II compliance and full audit trail before connecting live billing tokens."
+- Next Steps: Marcus Vance (Intel Lead) to send enterprise security whitepaper and sample SOC2 data encryption documentation. Follow-up demo set for August 28.
+
+-------------------------------------------------------------------------------
+CALL #2: TECHFLOW INC (Series A AI Platform - $4.2M ARR)
+Date: August 18, 2026
+Prospect Attendees: Jason Rivera (Founder & CEO), Rachel Kim (Head of Growth)
+Aperture Host: Sarah Chen (Growth Lead)
+
+Notes & Requirements:
+- Rapid growth (adding 15 accounts/mo), but struggling with outbound lead qualification.
+- Pain Point: Founder spends 10+ hours/week manually auditing cloud infrastructure costs vs customer tier billing.
+- Interest: Highly impressed by 1-click Google Sheets 2-way sync and autonomous marketing lead pipeline.
+- Key Objection: "Is there a monthly budget limit control so AI agents don't accidentally overspend on ad channels?"
+- Resolution: Explained our strict $500 threshold approval gate for automated payments and monthly budget hard caps.
+- Next Steps: Sent Enterprise Trial proposal ($1,499/mo Growth Tier). Contract expected by end of week.
+
+-------------------------------------------------------------------------------
+CALL #3: APEX MEDIA GROUP (B2B Content & Data Services - $8.5M ARR)
+Date: August 22, 2026
+Prospect Attendees: Michael Thorne (CFO)
+Aperture Host: Alex Morgan (CEO)
+
+Notes & Requirements:
+- Currently evaluating Cube Software and Mosaic.tech.
+- Pain Point: Existing tools are static dashboards; CFO wants actionable insights and automated variance alerts.
+- Key Objection: "How do your AI agents handle custom chart of accounts setups?"
+- Resolution: Demonstrated `initialize_standard_template` and custom GAAP account mapping (`create_or_update_account`).
+- Next Steps: Scheduled custom proof-of-concept (POC) using Apex's redacted sample ledger.

@@ -27,7 +27,11 @@ import sys
 import time
 import argparse
 import logging
+from pathlib import Path
 from typing import Dict, Any
+
+# Ensure project root is on sys.path for direct script execution
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from scripts.seed_demo_account import (
     DemoSeedRunner,
