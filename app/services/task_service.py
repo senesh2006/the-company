@@ -270,8 +270,29 @@ class TaskService:
                 _IN_MEMORY_AGENT_EXTRA[agent_id] = extra_meta
                 agent.update(extra_meta)
                 return agent
-            logger.error(f"Error creating agent for business {business_id}: {e}")
-            raise e
+            logger.error(f"Error creating agent in DB for business {business_id}: {e} — using in-memory fallback.")
+            agent_id = f"agent-{uuid.uuid4().hex[:8]}"
+            agent = {
+                "id": agent_id,
+                "business_id": business_id,
+                "name": name,
+                "role": role,
+                "status": status
+            }
+            _IN_MEMORY_AGENTS[agent_id] = agent
+            extra_meta = {
+                "trust_tier": trust_tier,
+                "specialization_id": specialization_id or f"{role.lower()}-standard-v1",
+                "hiring_model": hiring_model,
+                "clean_cycles_count": 0,
+                "authority_limit_usd": 0.0 if trust_tier == "observe" else 100.0,
+                "system_prompt": system_prompt,
+                "model": model or DEFAULT_AGENT_MODEL_ID,
+                "capabilities": capabilities or []
+            }
+            _IN_MEMORY_AGENT_EXTRA[agent_id] = extra_meta
+            agent.update(extra_meta)
+            return agent
 
     def update_agent_status(self, agent_id: str, status: str) -> dict[str, Any]:
         """Updates the status of an agent."""
