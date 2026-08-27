@@ -7,7 +7,7 @@ import { useAuth } from "@/lib/auth-context";
 
 export default function SignUpPage() {
   const router = useRouter();
-  const { signUpWithPassword, signInWithOAuth, isConfigured } = useAuth();
+  const { signUpWithPassword, signInWithOAuth, signInAsDemo, isConfigured } = useAuth();
   
   const [fullName, setFullName] = useState("");
   const [companyName, setCompanyName] = useState("");
@@ -16,6 +16,24 @@ export default function SignUpPage() {
   const [industry, setIndustry] = useState("Technology & Software");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [demoLoading, setDemoLoading] = useState(false);
+
+  const handleDemoLogin = async () => {
+    setErrorMsg(null);
+    setDemoLoading(true);
+    try {
+      const res = await signInAsDemo();
+      if (res?.error) {
+        setErrorMsg(res.error.message || "Failed to initialize demo session.");
+      } else {
+        router.push("/");
+      }
+    } catch (err: any) {
+      setErrorMsg(err?.message || "Demo login error.");
+    } finally {
+      setDemoLoading(false);
+    }
+  };
 
   // Detect OAuth redirect errors
   useEffect(() => {
@@ -92,7 +110,7 @@ export default function SignUpPage() {
     <div className="w-full max-w-[480px] mx-auto py-10 px-4 flex flex-col items-center justify-center">
       <div className="w-full bg-white dark:bg-slate-900/95 backdrop-blur-xl border border-slate-200/90 dark:border-slate-700/90 rounded-2xl shadow-2xl shadow-slate-200/60 p-8 sm:p-9">
         {/* Header Branding */}
-        <div className="text-center mb-7">
+        <div className="text-center mb-6">
           <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-tr from-emerald-600 via-teal-500 to-cyan-500 p-[1px] shadow-lg shadow-emerald-500/20 mb-3.5">
             <div className="w-full h-full bg-white dark:bg-slate-900 rounded-[15px] flex items-center justify-center">
               <span className="material-symbols-outlined text-emerald-600 text-2xl font-bold">hub</span>
@@ -104,6 +122,38 @@ export default function SignUpPage() {
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium">
             Deploy an autonomous AI workforce for your organization
           </p>
+        </div>
+
+        {/* 1-Click Demo / Judge Instant Access Button */}
+        <div className="mb-5">
+          <button
+            type="button"
+            disabled={demoLoading || loading}
+            onClick={handleDemoLogin}
+            className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-400 hover:to-orange-400 text-white text-xs font-bold shadow-lg shadow-amber-500/25 border border-amber-400/40 transition-all hover:scale-[1.01] active:scale-98 flex items-center justify-between group cursor-pointer"
+          >
+            <div className="flex items-center gap-2.5">
+              <span className="flex h-6 w-6 rounded-lg bg-white/20 items-center justify-center text-sm">
+                ⚡
+              </span>
+              <div className="text-left">
+                <div className="font-bold text-white tracking-wide text-xs">Try Live Demo Account</div>
+                <div className="text-[10px] text-amber-100 font-normal">1-Click Instant Judge Access • No Signup Required</div>
+              </div>
+            </div>
+            {demoLoading ? (
+              <span className="material-symbols-outlined text-sm animate-spin text-white">progress_activity</span>
+            ) : (
+              <span className="material-symbols-outlined text-base group-hover:translate-x-0.5 transition-transform text-white">arrow_forward</span>
+            )}
+          </button>
+        </div>
+
+        <div className="relative flex items-center justify-center mb-5">
+          <div className="border-t border-slate-200 dark:border-slate-700 w-full"></div>
+          <span className="bg-white dark:bg-slate-900 px-3 text-[10px] font-semibold text-slate-400 uppercase tracking-wider absolute">
+            or create custom company
+          </span>
         </div>
 
         {/* Error Alert */}

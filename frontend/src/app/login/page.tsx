@@ -7,7 +7,7 @@ import { useAuth } from "@/lib/auth-context";
 
 export default function LoginPage() {
   const router = useRouter();
-  const { signInWithPassword, signUpWithPassword, signInWithOAuth, isConfigured } = useAuth();
+  const { signInWithPassword, signUpWithPassword, signInWithOAuth, signInAsDemo, isConfigured } = useAuth();
   
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState("");
@@ -16,6 +16,28 @@ export default function LoginPage() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [demoLoading, setDemoLoading] = useState(false);
+
+  const handleDemoLogin = async () => {
+    setErrorMsg(null);
+    setSuccessMsg(null);
+    setDemoLoading(true);
+    try {
+      const res = await signInAsDemo();
+      if (res?.error) {
+        setErrorMsg(res.error.message || "Failed to initialize demo session.");
+      } else {
+        setSuccessMsg("Demo session authenticated! Entering workspace...");
+        setTimeout(() => {
+          router.push("/");
+        }, 500);
+      }
+    } catch (err: any) {
+      setErrorMsg(err?.message || "Demo login error.");
+    } finally {
+      setDemoLoading(false);
+    }
+  };
 
   // Detect OAuth redirect errors (e.g. provider not enabled in Supabase)
   useEffect(() => {
@@ -117,6 +139,38 @@ export default function LoginPage() {
               ? "Initialize your autonomous AI workforce environment" 
               : "Access your executive command & control center"}
           </p>
+        </div>
+
+        {/* 1-Click Demo / Judge Instant Access Button */}
+        <div className="mb-5">
+          <button
+            type="button"
+            disabled={demoLoading || loading}
+            onClick={handleDemoLogin}
+            className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-400 hover:to-orange-400 text-white text-xs font-bold shadow-lg shadow-amber-500/25 border border-amber-400/40 transition-all hover:scale-[1.01] active:scale-98 flex items-center justify-between group cursor-pointer"
+          >
+            <div className="flex items-center gap-2.5">
+              <span className="flex h-6 w-6 rounded-lg bg-white/20 items-center justify-center text-sm">
+                ⚡
+              </span>
+              <div className="text-left">
+                <div className="font-bold text-white tracking-wide text-xs">Try Live Demo Account</div>
+                <div className="text-[10px] text-amber-100 font-normal">1-Click Instant Judge Access • No Signup Required</div>
+              </div>
+            </div>
+            {demoLoading ? (
+              <span className="material-symbols-outlined text-sm animate-spin text-white">progress_activity</span>
+            ) : (
+              <span className="material-symbols-outlined text-base group-hover:translate-x-0.5 transition-transform text-white">arrow_forward</span>
+            )}
+          </button>
+        </div>
+
+        <div className="relative flex items-center justify-center mb-5">
+          <div className="border-t border-slate-200 dark:border-slate-700 w-full"></div>
+          <span className="bg-white dark:bg-slate-900 px-3 text-[10px] font-semibold text-slate-400 uppercase tracking-wider absolute">
+            or sign in with credentials
+          </span>
         </div>
 
         {/* Auth Mode Toggle Tabs */}

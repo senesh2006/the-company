@@ -88,6 +88,18 @@ export function Topbar({ onMenuClick }: TopbarProps) {
       
       {/* Right controls */}
       <div className="flex items-center gap-2 lg:gap-3.5">
+        {/* Demo Mode / Judge Badge */}
+        {(user?.user_metadata?.is_demo || user?.email === "demo@thecompany.ai") && (
+          <motion.div 
+            className="hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400 text-[11px] font-bold shadow-xs"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+          >
+            <span className="text-amber-500">⚡</span>
+            <span>Judge Demo Account</span>
+          </motion.div>
+        )}
+
         {/* Real-time Workforce Status Pill */}
         <motion.div 
           className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-200/90 text-xs"

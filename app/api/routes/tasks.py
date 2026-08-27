@@ -1,9 +1,13 @@
+import time
+from collections import deque
+from threading import Lock
 from fastapi import APIRouter, HTTPException, Query, BackgroundTasks, Depends, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import Optional, List, Any, Dict
 import json
 
+from app.core.config import settings
 from app.services.task_service import TaskService, get_business_task_lock
 from app.services.governance_service import GovernanceService
 from app.services.task_decomposer import generate_task_milestones, calculate_milestone_progress
@@ -13,6 +17,40 @@ from app.api.deps import get_current_user
 
 router = APIRouter()
 task_service = TaskService()
+
+# Sliding-window rate limiter specifically for the shared demo account
+_demo_rate_limit_lock = Lock()
+_demo_task_timestamps: deque = deque()
+DEMO_MAX_TASKS_PER_WINDOW = 3
+DEMO_WINDOW_SECONDS = 600  # 10 minutes
+
+def check_demo_rate_limit(business_id: str) -> None:
+    """
+    Enforces a strict rate limit of 3 task dispatches per 10 minutes specifically
+    on the demo business_id to prevent orchestrator collisions during live evaluation.
+    """
+    demo_biz_id = settings.DEMO_BUSINESS_ID or "00000000-0000-0000-0000-000000000001"
+    if str(business_id).lower() == str(demo_biz_id).lower():
+        now = time.time()
+        with _demo_rate_limit_lock:
+            # Evict timestamps outside the 10-minute window
+            while _demo_task_timestamps and now - _demo_task_timestamps[0] > DEMO_WINDOW_SECONDS:
+                _demo_task_timestamps.popleft()
+            
+            if len(_demo_task_timestamps) >= DEMO_MAX_TASKS_PER_WINDOW:
+                oldest_age = int(DEMO_WINDOW_SECONDS - (now - _demo_task_timestamps[0]))
+                minutes_remaining = max(1, (oldest_age + 59) // 60)
+                logger.warning(f"Demo rate limit exceeded for business {business_id}: {len(_demo_task_timestamps)} tasks in {DEMO_WINDOW_SECONDS}s")
+                raise HTTPException(
+                    status_code=429,
+                    detail=f"Demo rate limit reached (maximum {DEMO_MAX_TASKS_PER_WINDOW} tasks per 10 minutes for the shared judge demo account). Please try again in ~{minutes_remaining} minute(s) or explore completed task outputs in the Task Hub."
+                )
+            _demo_task_timestamps.append(now)
+
+def reset_demo_rate_limits() -> None:
+    """Helper to clear demo rate limit history (used by reset script & tests)."""
+    with _demo_rate_limit_lock:
+        _demo_task_timestamps.clear()
 
 class QueueTaskPayload(BaseModel):
     description: str
@@ -59,6 +97,7 @@ def create_mandate_default(payload: MandatePayload, background_tasks: Background
     """Dispatches a structured Mandate Contract (PRD v6.0 §6.2) for the authenticated user's business with active objective deduplication."""
     try:
         biz_id = user.business_id or "00000000-0000-0000-0000-000000000001"
+        check_demo_rate_limit(biz_id)
 
         with get_business_task_lock(biz_id):
             existing = task_service.has_active_task_for_objective(biz_id, payload.mandate)
@@ -89,6 +128,8 @@ def create_mandate_default(payload: MandatePayload, background_tasks: Background
             )
             background_tasks.add_task(run_team_task_bg, biz_id, task["id"], payload.mandate)
             return {"status": "success", "mandate_task": task, "task": task, "id": task.get("id")}
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Failed to dispatch mandate: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -202,6 +243,7 @@ def queue_task(business_id: str, payload: QueueTaskPayload, background_tasks: Ba
     """Adds a new task to the queue and starts processing it, guarded against concurrent duplicate objectives."""
     try:
         biz_id = business_id or (getattr(user, "business_id", None) if user else None) or "00000000-0000-0000-0000-000000000001"
+        check_demo_rate_limit(biz_id)
 
         with get_business_task_lock(biz_id):
             existing = task_service.has_active_task_for_objective(biz_id, payload.description)
@@ -218,6 +260,8 @@ def queue_task(business_id: str, payload: QueueTaskPayload, background_tasks: Ba
             task = task_service.queue_task(biz_id, payload.description, payload.priority)
             background_tasks.add_task(run_team_task_bg, biz_id, task["id"], payload.description)
             return {"status": "success", "task": task}
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Failed to queue task: {e}")
         raise HTTPException(status_code=500, detail=str(e))

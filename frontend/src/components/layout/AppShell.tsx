@@ -39,7 +39,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     pathname === "/login" || 
     pathname === "/signup" || 
     pathname === "/startup" ||
-    pathname === "/onboarding";
+    pathname === "/onboarding" ||
+    pathname === "/landing";
 
   if (isAuthOrOnboardingPage) {
     return (

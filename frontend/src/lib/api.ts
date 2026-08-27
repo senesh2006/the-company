@@ -296,6 +296,12 @@ export const getAuthHeaders = async (customHeaders: Record<string, string> = {})
   } catch {
     // If supabase fails, continue without token
   }
+  if (!headers['Authorization'] && typeof window !== "undefined") {
+    const demoToken = localStorage.getItem("companyos_demo_token");
+    if (demoToken) {
+      headers['Authorization'] = `Bearer ${demoToken}`;
+    }
+  }
   return headers;
 };
 
@@ -915,6 +921,26 @@ export const api = {
       method: 'POST',
     });
     if (!res.ok) throw new Error(`Failed to trigger routine (${res.status})`);
+    return res.json();
+  },
+
+  // --- Demo / Judge 1-Click Access ---
+  demoLogin: async (): Promise<{
+    status: string;
+    access_token: string;
+    token_type: string;
+    business_id: string;
+    user: any;
+    message?: string;
+  }> => {
+    const baseUrl = getBaseUrl();
+    const res = await fetch(`${baseUrl}/api/v1/demo/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    if (!res.ok) throw new Error(`Demo login failed (${res.status})`);
     return res.json();
   },
 };

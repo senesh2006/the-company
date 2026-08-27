@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useMetrics, useAgents, useTasks } from "@/lib/queries";
 import { useAppStore } from "@/lib/store";
+import { useAuth } from "@/lib/auth-context";
 import { 
   Users, 
   CheckCircle2, 
@@ -25,6 +27,8 @@ import { api } from "@/lib/api";
 import { TodaysBriefing } from "@/components/dashboard/TodaysBriefing";
 
 export default function DashboardPage() {
+  const router = useRouter();
+  const { user, isLoading: authLoading } = useAuth();
   const { data: metrics } = useMetrics();
   const { data: agents } = useAgents();
   const { data: tasks, refetch: refetchTasks } = useTasks();
@@ -35,6 +39,22 @@ export default function DashboardPage() {
   const [mandateText, setMandateText] = useState("");
   const [isSubmittingMandate, setIsSubmittingMandate] = useState(false);
   const [mandateFeedback, setMandateFeedback] = useState<string | null>(null);
+
+  // Auth gate: redirect unauthenticated visitors to the marketing landing page
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.replace("/landing");
+    }
+  }, [authLoading, user, router]);
+
+  // Show nothing while checking auth or redirecting
+  if (authLoading || !user) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="w-8 h-8 border-3 border-emerald-200 border-t-emerald-600 rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   // Dynamic calculations reflecting real live user data
   const totalWorkers = agents?.length ?? 0;

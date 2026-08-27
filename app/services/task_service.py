@@ -759,3 +759,34 @@ class TaskService:
         """Retrieves the chronological audit log for the Company Feed."""
         filtered = [e for e in _IN_MEMORY_AUDIT_LOG if e.get("business_id") == str(business_id) or business_id == "00000000-0000-0000-0000-000000000001"]
         return filtered[:limit]
+
+    def clear_business_data(self, business_id: str) -> Dict[str, Any]:
+        """Cleans up all tasks, agents, live thoughts, and audit entries for a specified business."""
+        b_id = str(business_id)
+        global _IN_MEMORY_AUDIT_LOG
+        
+        # Clear in-memory tasks
+        tasks_to_delete = [tid for tid, t in _IN_MEMORY_TASKS.items() if str(t.get("business_id")) == b_id]
+        for tid in tasks_to_delete:
+            _IN_MEMORY_TASKS.pop(tid, None)
+            _IN_MEMORY_LIVE_THOUGHTS.pop(tid, None)
+            
+        # Clear in-memory agents
+        agents_to_delete = [aid for aid, a in _IN_MEMORY_AGENTS.items() if str(a.get("business_id")) == b_id]
+        for aid in agents_to_delete:
+            _IN_MEMORY_AGENTS.pop(aid, None)
+            _IN_MEMORY_AGENT_EXTRA.pop(aid, None)
+            
+        # Filter audit log
+        _IN_MEMORY_AUDIT_LOG = [e for e in _IN_MEMORY_AUDIT_LOG if str(e.get("business_id")) != b_id]
+        
+        # Clear database records if Supabase connected
+        if self.client and is_valid_uuid(b_id):
+            try:
+                self.client.table("tasks").delete().eq("business_id", b_id).execute()
+                self.client.table("agents").delete().eq("business_id", b_id).execute()
+            except Exception as e:
+                logger.warning(f"Error clearing database records for business {b_id}: {e}")
+                
+        return {"deleted_tasks": len(tasks_to_delete), "deleted_agents": len(agents_to_delete)}
+

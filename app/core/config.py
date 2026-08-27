@@ -33,6 +33,8 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 8  # 8 days
     SUPABASE_JWT_SECRET: Optional[str] = None
+    DEMO_BUSINESS_ID: str = os.getenv("DEMO_BUSINESS_ID", "00000000-0000-0000-0000-000000000001")
+    DEMO_EMAIL: str = os.getenv("DEMO_EMAIL", "demo@thecompany.ai")
 
     # Postgres (Optional if using Supabase client)
     POSTGRES_SERVER: Optional[str] = None

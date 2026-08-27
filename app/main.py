@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from app.core.config import settings
-from app.api.routes import health, agents, tasks, costs, metrics, memory, attention, hierarchy, finance, departments, ui_control, whatsapp, onboarding, briefing, connections, assistant, routines
+from app.api.routes import health, agents, tasks, costs, metrics, memory, attention, hierarchy, finance, departments, ui_control, whatsapp, onboarding, briefing, connections, assistant, routines, demo
 from app.core.logging import logger
 from app.services.event_bus import start_event_bus
 from app.services.routine_scheduler import routine_scheduler_daemon
@@ -27,6 +27,8 @@ app.add_middleware(
 # Include routers
 app.include_router(health.router, tags=["health"])
 app.include_router(health.router, prefix=f"{settings.API_V1_STR}", tags=["health"])
+app.include_router(demo.router, prefix="/demo", tags=["demo"])
+app.include_router(demo.router, prefix=f"{settings.API_V1_STR}/demo", tags=["demo"])
 app.include_router(assistant.router, prefix=f"{settings.API_V1_STR}/assistant", tags=["assistant"])
 app.include_router(assistant.router, prefix=f"{settings.API_V1_STR}/agents/assistant", tags=["assistant"])
 app.include_router(agents.router, prefix=f"{settings.API_V1_STR}/agents", tags=["agents"])
