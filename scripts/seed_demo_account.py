@@ -801,8 +801,7 @@ class DemoSeedRunner:
             except Exception:
                 jwt_secret = os.getenv("SUPABASE_JWT_SECRET") or os.getenv("SECRET_KEY") or "your-super-secret-key-change-in-production"
 
-            dev_sub = str(int(time.time()))
-            dev_user_id = f"00000000-0000-0000-0000-00000000{dev_sub[-4:]}"
+            dev_user_id = "00000000-0000-0000-0000-000000000001"
             dev_payload = {
                 "sub": dev_user_id,
                 "email": DEMO_EMAIL,
@@ -824,7 +823,8 @@ class DemoSeedRunner:
         resp = self._request("POST", "/onboarding/complete", json=BUSINESS_PROFILE)
         data = resp.json()
         
-        self.business_id = data.get("business_id") or self.user_id or "00000000-0000-0000-0000-000000000001"
+        self.business_id = "00000000-0000-0000-0000-000000000001"
+        self.demo_business_id = "00000000-0000-0000-0000-000000000001"
         keys_created = len(data.get("memory_keys_created", []))
         print(f"  ✓ Onboarding complete! Assigned Business ID: {self.business_id}")
         print(f"  ✓ Initialized {keys_created} core memory policies & company profile.")

@@ -60,9 +60,14 @@ def _get_or_create_business_for_user(user_id: str, email: Optional[str]) -> str:
     """
     Resolve a business_id for this user with in-memory caching.
     - Check memory cache first.
+    - Check if demo user or demo business ID.
     - Check if a business with id == user_id or owner_id == user_id exists.
     - Otherwise use user_id itself as the stable business_id.
     """
+    if (email and email.lower() == (settings.DEMO_EMAIL or "demo@thecompany.ai").lower()) or user_id == settings.DEMO_BUSINESS_ID:
+        _business_cache[user_id] = settings.DEMO_BUSINESS_ID
+        return settings.DEMO_BUSINESS_ID
+
     if user_id in _business_cache:
         return _business_cache[user_id]
 
