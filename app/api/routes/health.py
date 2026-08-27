@@ -88,11 +88,11 @@ def llm_health_check():
             p_display = "OpenRouter (Primary)" if idx == 0 else f"OpenRouter (Fallback #{idx})"
             providers.append({
                 "name": p_tag,
-                "display_name": f"{p_display} ({getattr(settings, 'OPENROUTER_MODEL', 'dots-studio/dots-3-note-preview:free')})",
+                "display_name": f"{p_display} ({getattr(settings, 'OPENROUTER_MODEL', 'nvidia/nemotron-3-ultra-550b-a55b:free')})",
                 "key": k,
                 "base_url": getattr(settings, "OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1"),
                 "models": [
-                    getattr(settings, "OPENROUTER_MODEL", "dots-studio/dots-3-note-preview:free") or "dots-studio/dots-3-note-preview:free",
+                    getattr(settings, "OPENROUTER_MODEL", "nvidia/nemotron-3-ultra-550b-a55b:free") or "nvidia/nemotron-3-ultra-550b-a55b:free",
                     "meta-llama/llama-3.3-70b-instruct:free"
                 ],
                 "headers": {"HTTP-Referer": "https://thecompany.ai", "X-Title": "The Company OS"}
@@ -104,7 +104,7 @@ def llm_health_check():
             "key": getattr(settings, "OPENROUTER_API_KEY", None),
             "base_url": getattr(settings, "OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1"),
             "models": [
-                getattr(settings, "OPENROUTER_MODEL", "dots-studio/dots-3-note-preview:free") or "dots-studio/dots-3-note-preview:free",
+                getattr(settings, "OPENROUTER_MODEL", "nvidia/nemotron-3-ultra-550b-a55b:free") or "nvidia/nemotron-3-ultra-550b-a55b:free",
                 "meta-llama/llama-3.3-70b-instruct:free"
             ],
             "headers": {"HTTP-Referer": "https://thecompany.ai", "X-Title": "The Company OS"}

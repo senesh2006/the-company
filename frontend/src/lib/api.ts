@@ -5,6 +5,7 @@ export type AgentRole = 'Manager' | 'Worker' | 'Specialist';
 export type TrustTier = 'observe' | 'assist' | 'operate';
 export type HiringModel = 'salaried' | 'freelance' | 'contract';
 export type ModelId =
+  | 'nemotron-3-ultra'
   | 'kimi-k3'
   | 'gpt-4o'
   | 'gpt-4o-mini'
@@ -24,6 +25,7 @@ export interface ModelOption {
 
 // Hardcoded fallback is only used when the backend /models endpoint is unreachable.
 export const FALLBACK_MODELS: ModelOption[] = [
+  { id: 'nemotron-3-ultra', name: 'Nemotron 3 Ultra 550B (Reasoning)', provider: 'OpenRouter', tier: 'power' },
   { id: 'kimi-k3', name: 'Llama 3.3 70B', provider: 'Groq', tier: 'power' },
   { id: 'gpt-4o', name: 'GPT-4o', provider: 'OpenAI', tier: 'standard' },
   { id: 'gpt-4o-mini', name: 'GPT-4o Mini', provider: 'OpenAI', tier: 'fast' },
@@ -34,7 +36,7 @@ export const FALLBACK_MODELS: ModelOption[] = [
   { id: 'mistral-small-24b', name: 'Mixtral 8x7B', provider: 'Groq', tier: 'fast' },
 ];
 
-export const DEFAULT_MODEL: ModelId = 'kimi-k3';
+export const DEFAULT_MODEL: ModelId = 'nemotron-3-ultra';
 
 export type KnowledgeCategory = 
   | 'Brand Guidelines' 

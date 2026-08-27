@@ -143,14 +143,15 @@ def test_list_available_models_hides_broken_models():
 
 
 def test_resolve_model_openrouter_priority():
-    """OpenRouter should be priority 1 and resolve to dots-studio/dots-3-note-preview:free."""
+    """OpenRouter should be priority 1 and resolve to nvidia/nemotron-3-ultra-550b-a55b:free."""
     with patch("app.agents.llm_factory.settings.OPENROUTER_API_KEY", "sk-or-v1-testkey1234567890"), \
          patch("app.agents.llm_factory.settings.OPENROUTER_FALLBACK_API_KEY", None), \
+         patch("app.agents.llm_factory.settings.OPENROUTER_MODEL", "nvidia/nemotron-3-ultra-550b-a55b:free"), \
          patch("app.agents.llm_factory.settings.GROQ_API_KEY", "gsk-testkey"), \
          patch("app.agents.llm_factory.settings.NVIDIA_API_KEY", "nvapi-testkey"):
-        model_name, provider = resolve_model("dots-3-note", role="default")
+        model_name, provider = resolve_model("nemotron-3-ultra", role="default")
         assert provider == "openrouter"
-        assert model_name == "dots-studio/dots-3-note-preview:free"
+        assert model_name == "nvidia/nemotron-3-ultra-550b-a55b:free"
 
 
 def test_get_all_openrouter_keys_multiple():

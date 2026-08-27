@@ -140,7 +140,7 @@ if not settings.OPENROUTER_FALLBACK_API_KEY:
         os.getenv("OPENROUTER_SECONDARY_API_KEY")
     )
 if not settings.OPENROUTER_MODEL:
-    settings.OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL") or "dots-studio/dots-3-note-preview:free"
+    settings.OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL") or "nvidia/nemotron-3-ultra-550b-a55b:free"
 if not settings.FIREWORKS_API_KEY:
     settings.FIREWORKS_API_KEY = os.getenv("FIREWORKS_API_KEY")
 if not settings.GEMINI_API_KEY:

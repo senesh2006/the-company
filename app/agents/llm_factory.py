@@ -68,8 +68,10 @@ class MissingApiKeyFallbackLLM(SimpleChatModel):
 
 # Model registry: public display id -> (provider_model_id, provider)
 MODEL_REGISTRY = {
-    "dots-3-note": ("dots-studio/dots-3-note-preview:free", "openrouter"),
-    "dots-studio/dots-3-note-preview:free": ("dots-studio/dots-3-note-preview:free", "openrouter"),
+    "nemotron-3-ultra": ("nvidia/nemotron-3-ultra-550b-a55b:free", "openrouter"),
+    "nvidia/nemotron-3-ultra-550b-a55b:free": ("nvidia/nemotron-3-ultra-550b-a55b:free", "openrouter"),
+    "dots-3-note": ("nvidia/nemotron-3-ultra-550b-a55b:free", "openrouter"),
+    "dots-studio/dots-3-note-preview:free": ("nvidia/nemotron-3-ultra-550b-a55b:free", "openrouter"),
     "kimi-k3": ("llama-3.3-70b-versatile", "groq"),
     "gpt-4o": ("gpt-4o", "openai"),
     "gpt-4o-mini": ("gpt-4o-mini", "openai"),
@@ -81,6 +83,7 @@ MODEL_REGISTRY = {
 }
 
 NVIDIA_MODEL_MAP = {
+    "nemotron-3-ultra": "meta/llama-3.3-70b-instruct",
     "dots-3-note": "meta/llama-3.3-70b-instruct",
     "kimi-k3": "meta/llama-3.3-70b-instruct",
     "llama-3.1-70b": "meta/llama-3.3-70b-instruct",
@@ -90,11 +93,12 @@ NVIDIA_MODEL_MAP = {
     "mistral-small-24b": "mistralai/mixtral-8x7b-instruct-v0.1",
 }
 
-DEFAULT_AGENT_MODEL_ID = "dots-3-note"
+DEFAULT_AGENT_MODEL_ID = "nemotron-3-ultra"
 BROKEN_MODEL_IDS = {"llama-3.1-8b"}
 
 MODEL_DISPLAY = {
-    "dots-3-note": {"name": "Dots 3 Note (Preview)", "provider": "OpenRouter", "tier": "power"},
+    "nemotron-3-ultra": {"name": "Nemotron 3 Ultra 550B (Reasoning Free)", "provider": "OpenRouter", "tier": "power"},
+    "dots-3-note": {"name": "Nemotron 3 Ultra 550B (Reasoning Free)", "provider": "OpenRouter", "tier": "power"},
     "kimi-k3": {"name": "Llama 3.3 70B", "provider": "Groq", "tier": "power"},
     "gpt-4o": {"name": "GPT-4o", "provider": "OpenAI", "tier": "standard"},
     "gpt-4o-mini": {"name": "GPT-4o Mini", "provider": "OpenAI", "tier": "fast"},
@@ -106,15 +110,15 @@ MODEL_DISPLAY = {
 }
 
 DEFAULT_MODEL_BY_ROLE = {
-    "Finance Manager": "dots-3-note",
-    "Marketing Manager": "dots-3-note",
-    "Admin & Operations Worker": "dots-3-note",
-    "Research Specialist": "dots-3-note",
-    "EngineeringWorker": "dots-3-note",
-    "Coder": "dots-3-note",
-    "Engineering Manager": "dots-3-note",
-    "Software Engineer": "dots-3-note",
-    "default": "dots-3-note",
+    "Finance Manager": "nemotron-3-ultra",
+    "Marketing Manager": "nemotron-3-ultra",
+    "Admin & Operations Worker": "nemotron-3-ultra",
+    "Research Specialist": "nemotron-3-ultra",
+    "EngineeringWorker": "nemotron-3-ultra",
+    "Coder": "nemotron-3-ultra",
+    "Engineering Manager": "nemotron-3-ultra",
+    "Software Engineer": "nemotron-3-ultra",
+    "default": "nemotron-3-ultra",
 }
 
 
@@ -163,7 +167,7 @@ def _openrouter_model_name(model_id: str) -> str:
     reg = MODEL_REGISTRY.get(model_id)
     if reg and reg[1] == "openrouter":
         return reg[0]
-    return "dots-studio/dots-3-note-preview:free"
+    return "nvidia/nemotron-3-ultra-550b-a55b:free"
 
 
 def _groq_model_name(model_id: str) -> str:
@@ -202,7 +206,7 @@ def resolve_model(model_id: Optional[str], role: Optional[str] = None) -> tuple[
     if forced:
         logger.info(f"[LLM Resolve] LLM_PROVIDER forced to: '{forced}'")
         if forced == "openrouter" and has_openrouter:
-            return _openrouter_model_name(model_id or "dots-3-note"), "openrouter"
+            return _openrouter_model_name(model_id or "nemotron-3-ultra"), "openrouter"
         elif forced == "groq" and has_groq:
             return _groq_model_name(model_id or "kimi-k3"), "groq"
         elif forced == "openai" and has_openai:
@@ -219,7 +223,7 @@ def resolve_model(model_id: Optional[str], role: Optional[str] = None) -> tuple[
     if not model_id or model_id not in MODEL_REGISTRY or model_id in BROKEN_MODEL_IDS:
         model_id = DEFAULT_MODEL_BY_ROLE.get(role or "default", DEFAULT_MODEL_BY_ROLE["default"])
 
-    model_name, default_provider = MODEL_REGISTRY.get(model_id, ("dots-studio/dots-3-note-preview:free", "openrouter"))
+    model_name, default_provider = MODEL_REGISTRY.get(model_id, ("nvidia/nemotron-3-ultra-550b-a55b:free", "openrouter"))
 
     # Priority 1: OpenRouter (Main provider)
     if has_openrouter:
@@ -294,7 +298,7 @@ def get_llm(model_id: Optional[str] = None, role: Optional[str] = None, temperat
                 logger.warning(f"Failed to create ChatOpenAI for provider {p_name}: {e}")
 
     if provider == "openrouter":
-        or_model = getattr(settings, "OPENROUTER_MODEL", "dots-studio/dots-3-note-preview:free") or "dots-studio/dots-3-note-preview:free"
+        or_model = getattr(settings, "OPENROUTER_MODEL", "nvidia/nemotron-3-ultra-550b-a55b:free") or "nvidia/nemotron-3-ultra-550b-a55b:free"
         for idx, k in enumerate(or_keys):
             tag = "openrouter" if idx == 0 else f"openrouter-fallback-{idx+1}"
             add_candidate(or_model, tag, k, settings.OPENROUTER_BASE_URL, headers=or_headers)
@@ -316,7 +320,7 @@ def get_llm(model_id: Optional[str] = None, role: Optional[str] = None, temperat
 
     # Add remaining valid API keys as secondary fallbacks
     if provider != "openrouter" and or_keys:
-        or_model = getattr(settings, "OPENROUTER_MODEL", "dots-studio/dots-3-note-preview:free") or "dots-studio/dots-3-note-preview:free"
+        or_model = getattr(settings, "OPENROUTER_MODEL", "nvidia/nemotron-3-ultra-550b-a55b:free") or "nvidia/nemotron-3-ultra-550b-a55b:free"
         for idx, k in enumerate(or_keys):
             tag = "openrouter" if idx == 0 else f"openrouter-fallback-{idx+1}"
             add_candidate(or_model, tag, k, settings.OPENROUTER_BASE_URL, headers=or_headers)
@@ -382,9 +386,9 @@ def get_fast_llm(temperature: float = 0.0) -> Any:
 
     or_headers = {"HTTP-Referer": "https://thecompany.ai", "X-Title": "The Company OS"}
 
-    # 1. OpenRouter (dots-studio/dots-3-note-preview:free & llama-3.3-70b:free across all keys)
+    # 1. OpenRouter (nvidia/nemotron-3-ultra-550b-a55b:free & llama-3.3-70b:free across all keys)
     if has_openrouter:
-        or_model = getattr(settings, "OPENROUTER_MODEL", "dots-studio/dots-3-note-preview:free") or "dots-studio/dots-3-note-preview:free"
+        or_model = getattr(settings, "OPENROUTER_MODEL", "nvidia/nemotron-3-ultra-550b-a55b:free") or "nvidia/nemotron-3-ultra-550b-a55b:free"
         for idx, k in enumerate(or_keys):
             tag = "openrouter" if idx == 0 else f"openrouter-fallback-{idx+1}"
             add_candidate(or_model, tag, k, settings.OPENROUTER_BASE_URL, headers=or_headers)
