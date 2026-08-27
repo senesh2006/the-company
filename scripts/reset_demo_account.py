@@ -111,7 +111,12 @@ def reset_demo_state(base_url: str = API_BASE_URL, business_id: str = None) -> N
 
     # 5. Re-run complete baseline seed
     print("\n  → Re-seeding clean baseline demo environment...")
-    runner = DemoSeedRunner(base_url=base_url)
+    try:
+        from fastapi.testclient import TestClient
+        from app.main import app
+        runner = DemoSeedRunner(base_url=base_url, session=TestClient(app))
+    except Exception:
+        runner = DemoSeedRunner(base_url=base_url)
     runner.run()
     print("  ✓ Demo account successfully restored to baseline state!\n")
 

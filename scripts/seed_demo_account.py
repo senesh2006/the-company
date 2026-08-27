@@ -657,9 +657,12 @@ DEMO_TASKS: List[Dict[str, Any]] = [
 # ---------------------------------------------------------------------------
 
 class DemoSeedRunner:
-    def __init__(self, base_url: str):
+    def __init__(self, base_url: str = API_BASE_URL, session: Any = None):
         self.base_url = base_url
-        self.session = requests.Session()
+        if session is not None:
+            self.session = session
+        else:
+            self.session = requests.Session()
         self.access_token: Optional[str] = None
         self.business_id: Optional[str] = None
         self.user_id: Optional[str] = None
@@ -691,7 +694,7 @@ class DemoSeedRunner:
             headers["Authorization"] = f"Bearer {self.access_token}"
         return headers
 
-    def _request(self, method: str, path: str, is_json: bool = True, **kwargs) -> requests.Response:
+    def _request(self, method: str, path: str, is_json: bool = True, **kwargs) -> Any:
         """Execute an HTTP request and fail loudly on non-2xx status codes."""
         endpoint = self._url(path)
         headers = {**self._headers(is_json=is_json), **kwargs.pop("headers", {})}
@@ -699,8 +702,14 @@ class DemoSeedRunner:
         try:
             resp = self.session.request(method, endpoint, headers=headers, timeout=30, **kwargs)
         except Exception as conn_err:
-            print(f"\n❌ Connection Error reaching {endpoint}: {conn_err}")
-            sys.exit(1)
+            try:
+                from fastapi.testclient import TestClient
+                from app.main import app
+                self.session = TestClient(app)
+                resp = self.session.request(method, endpoint, headers=headers, **kwargs)
+            except Exception:
+                print(f"\n❌ Connection Error reaching {endpoint}: {conn_err}")
+                raise RuntimeError(f"Connection error reaching {endpoint}: {conn_err}")
 
         if not (200 <= resp.status_code < 300):
             print(f"\n❌ Non-2xx Response from [{method.upper()} {endpoint}]: Status {resp.status_code}")
