@@ -25,6 +25,8 @@ import {
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { TodaysBriefing } from "@/components/dashboard/TodaysBriefing";
+import { DemoGuidedTour } from "@/components/dashboard/DemoGuidedTour";
+import { DemoPromptsPanel } from "@/components/dashboard/DemoPromptsPanel";
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -33,6 +35,8 @@ export default function DashboardPage() {
   const { data: agents } = useAgents();
   const { data: tasks, refetch: refetchTasks } = useTasks();
   const { setSelectedAgentId } = useAppStore();
+
+  const isDemoSession = Boolean(user?.user_metadata?.is_demo || user?.email === "demo@thecompany.ai");
 
   const [timeframe, setTimeframe] = useState<"daily" | "weekly">("weekly");
   const [isQuickMandateOpen, setIsQuickMandateOpen] = useState(false);
@@ -137,6 +141,9 @@ export default function DashboardPage() {
 
   return (
     <div className="flex flex-col gap-6 pb-12">
+      {/* Demo Guided Walkthrough Banner */}
+      {isDemoSession && <DemoGuidedTour />}
+
       {/* 1. Dashboard Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex flex-col gap-1">
@@ -158,6 +165,12 @@ export default function DashboardPage() {
           </button>
         </div>
       </div>
+
+      {/* 2. Today's Executive AI Briefing */}
+      <TodaysBriefing />
+
+      {/* 3. Demo 1-Click Scenario Prompts Panel */}
+      {isDemoSession && <DemoPromptsPanel onTaskDispatched={() => refetchTasks()} />}
 
       {/* Quick Mandate Modal */}
       {isQuickMandateOpen && (

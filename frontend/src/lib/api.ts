@@ -849,6 +849,24 @@ export const api = {
     return res.json();
   },
 
+  // --- Demo Walkthrough & Prompts ---
+  getDemoPrompts: async (): Promise<any> => {
+    const baseUrl = getBaseUrl();
+    const res = await authFetch(`${baseUrl}/api/v1/demo/prompts`);
+    if (!res.ok) throw new Error(`Failed to fetch demo prompts (${res.status})`);
+    return res.json();
+  },
+
+  resetDemoAccount: async (): Promise<any> => {
+    const baseUrl = getBaseUrl();
+    const res = await authFetch(`${baseUrl}/api/v1/demo/reset`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    if (!res.ok) throw new Error(`Failed to reset demo account (${res.status})`);
+    return res.json();
+  },
+
   assistantChat: async (payload: {
     message: string;
     business_id?: string;

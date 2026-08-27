@@ -70,6 +70,31 @@ def test_demo_business_rate_limiting():
     # Reset rate limits again
     reset_demo_rate_limits()
 
+
+def test_get_demo_prompts():
+    """Verify /api/v1/demo/prompts returns 8 curated scenario prompts."""
+    client = TestClient(app)
+    resp = client.get("/api/v1/demo/prompts")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data.get("status") == "success"
+    prompts = data.get("prompts", [])
+    assert len(prompts) == 8
+    assert prompts[0]["role"] == "Marketing Manager"
+    assert prompts[1]["role"] == "Finance Manager"
+
+
+def test_reset_demo_account_endpoint():
+    """Verify /api/v1/demo/reset restores clean baseline state."""
+    client = TestClient(app)
+    resp = client.post("/api/v1/demo/reset")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data.get("status") == "success"
+    assert "pristine baseline state" in data.get("message", "")
+
+
 def time_str(idx: int) -> str:
     import time
     return f"{int(time.time())}_{idx}"
+

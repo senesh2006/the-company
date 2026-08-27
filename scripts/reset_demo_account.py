@@ -70,6 +70,22 @@ def reset_demo_state(base_url: str = API_BASE_URL, business_id: str = None) -> N
     except Exception as e:
         print(f"  → Task service purge notice: {e}")
 
+    # 2b. Purge any leftover recurring verification routines for demo business
+    try:
+        from app.services.routine_service import RoutineService
+        rs = RoutineService()
+        routines = rs.list_routines(demo_biz)
+        deleted_count = 0
+        for r in routines:
+            title_lower = str(r.get("title", "")).lower()
+            if "verification" in title_lower or "judge" in title_lower or "demo" in title_lower:
+                if rs.delete_routine(demo_biz, r.get("id")):
+                    deleted_count += 1
+        if deleted_count > 0:
+            print(f"  ✓ Purged {deleted_count} recurring demo verification routines.")
+    except Exception as e:
+        print(f"  → Routine cleanup notice: {e}")
+
     # 3. Clear Google Sheets / Finance General Ledger
     try:
         from app.services.google_sheets_service import GoogleSheetsService
