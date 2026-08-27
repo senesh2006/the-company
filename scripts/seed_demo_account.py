@@ -171,7 +171,7 @@ JOURNAL_ENTRIES: List[Dict[str, Any]] = [
         "date": "2026-03-28",
         "reference": "EXP-2026-03-PAYROLL",
         "description": "March 2026 Core Engineering & Founder Payroll (3 FTEs)",
-        "debit_account": "6100 - Growth & Marketing",
+        "debit_account": "6200 - Team Payroll & Staff Compensation",
         "credit_account": "1000 - Cash & Cash Equivalents",
         "amount": 26000.0,
         "source": "Payroll Processor"
@@ -238,7 +238,7 @@ JOURNAL_ENTRIES: List[Dict[str, Any]] = [
         "date": "2026-04-28",
         "reference": "EXP-2026-04-PAYROLL",
         "description": "April 2026 Full Team Payroll & Benefits (3.5 FTEs)",
-        "debit_account": "6100 - Growth & Marketing",
+        "debit_account": "6200 - Team Payroll & Staff Compensation",
         "credit_account": "1000 - Cash & Cash Equivalents",
         "amount": 28200.0,
         "source": "Payroll Processor"
@@ -305,7 +305,7 @@ JOURNAL_ENTRIES: List[Dict[str, Any]] = [
         "date": "2026-05-28",
         "reference": "EXP-2026-05-PAYROLL",
         "description": "May 2026 Full Team Payroll & Operations (4 FTEs)",
-        "debit_account": "6100 - Growth & Marketing",
+        "debit_account": "6200 - Team Payroll & Staff Compensation",
         "credit_account": "1000 - Cash & Cash Equivalents",
         "amount": 26100.0,
         "source": "Payroll Processor"
@@ -372,7 +372,7 @@ JOURNAL_ENTRIES: List[Dict[str, Any]] = [
         "date": "2026-06-28",
         "reference": "EXP-2026-06-PAYROLL",
         "description": "June 2026 Full Team Payroll & Contractor Stipends",
-        "debit_account": "6100 - Growth & Marketing",
+        "debit_account": "6200 - Team Payroll & Staff Compensation",
         "credit_account": "1000 - Cash & Cash Equivalents",
         "amount": 23000.0,
         "source": "Payroll Processor"
@@ -430,7 +430,7 @@ JOURNAL_ENTRIES: List[Dict[str, Any]] = [
         "date": "2026-07-28",
         "reference": "EXP-2026-07-PAYROLL",
         "description": "July 2026 Full Team Payroll & Operations (4 FTEs)",
-        "debit_account": "6100 - Growth & Marketing",
+        "debit_account": "6200 - Team Payroll & Staff Compensation",
         "credit_account": "1000 - Cash & Cash Equivalents",
         "amount": 26700.0,
         "source": "Payroll Processor"
@@ -874,6 +874,16 @@ class DemoSeedRunner:
         print(f"  • Cumulative OPEX:          ${summary.get('total_opex', 0):,.2f}")
         print(f"  • Cumulative Net Income:    ${summary.get('net_income', 0):,.2f}")
         print("  =====================================================================\n")
+
+        # 4. Generate & Sync Multi-Tab Financial Sheets (P&L, Balance Sheet, Dashboard, COA, Journal)
+        try:
+            from app.services.google_sheets_service import GoogleSheetsService
+            sheets_svc = GoogleSheetsService(self.demo_business_id)
+            sheets_res = sheets_svc.create_dynamic_financial_system(sheet_title="Company OS - Master General Ledger & Financials")
+            sheets_svc.sync_to_google_sheets()
+            print(f"  ✓ Dynamic Financial Sheets Generated: {len(sheets_res.get('tabs_created', []))} tabs (Dashboard, Income Statement, Balance Sheet, COA, Journal).")
+        except Exception as e:
+            print(f"  ⚠️ Financial Sheets sync note: {e}")
 
         if not is_balanced:
             print("  ⚠️ Warning: Trial Balance is unbalanced!")

@@ -36,7 +36,8 @@ STANDARD_CHART_OF_ACCOUNTS_TEMPLATE = [
     
     # OPEX (6000s)
     {"code": "6000", "name": "Software Subscriptions & SaaS Tools", "category": "OPEX", "type": "Operating Expense", "balance": 0.00, "normal_balance": "Debit", "description": "Software tools and licenses"},
-    {"code": "6100", "name": "Growth & Marketing", "category": "OPEX", "type": "Operating Expense", "balance": 0.00, "normal_balance": "Debit", "description": "Marketing and acquisition"}
+    {"code": "6100", "name": "Growth & Marketing", "category": "OPEX", "type": "Operating Expense", "balance": 0.00, "normal_balance": "Debit", "description": "Marketing and acquisition"},
+    {"code": "6200", "name": "Team Payroll & Staff Compensation", "category": "OPEX", "type": "Operating Expense", "balance": 0.00, "normal_balance": "Debit", "description": "Staff salaries, wages and payroll taxes"}
 ]
 
 
