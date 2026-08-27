@@ -28,6 +28,8 @@ def test_demo_login_endpoint():
         assert status_resp.status_code == 200
         assert status_resp.json().get("business_id") == settings.DEMO_BUSINESS_ID
 
+from unittest.mock import patch
+
 def test_demo_business_rate_limiting():
     """Verify demo business_id is rate limited to 3 tasks per 10 minutes, while others are not."""
     client = TestClient(app)
@@ -39,33 +41,35 @@ def test_demo_business_rate_limiting():
     token = login_resp.json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
 
-    # Dispatch up to max tasks
-    for i in range(DEMO_MAX_TASKS_PER_WINDOW):
-        resp = client.post(
+    # Patch background team runner to isolate rate limit logic and avoid slow LLM calls
+    with patch("app.api.routes.tasks.run_team_task_bg"):
+        # Dispatch up to max tasks
+        for i in range(DEMO_MAX_TASKS_PER_WINDOW):
+            resp = client.post(
+                f"/api/v1/tasks/{demo_biz}/queue",
+                json={"description": f"Judge Demo Verification Task #{i+1} ({time_str(i)})", "priority": 1},
+                headers=headers
+            )
+            assert resp.status_code == 200, f"Task {i+1} should succeed, got {resp.status_code}: {resp.text}"
+
+        # 4th task dispatch should trigger 429 Too Many Requests
+        excess_resp = client.post(
             f"/api/v1/tasks/{demo_biz}/queue",
-            json={"description": f"Judge Demo Verification Task #{i+1} ({time_str(i)})", "priority": 1},
+            json={"description": "Excess demo judge task exceeding quota", "priority": 1},
             headers=headers
         )
-        assert resp.status_code == 200, f"Task {i+1} should succeed, got {resp.status_code}: {resp.text}"
+        assert excess_resp.status_code == 429
+        assert "Demo rate limit reached" in excess_resp.json()["detail"]
 
-    # 4th task dispatch should trigger 429 Too Many Requests
-    excess_resp = client.post(
-        f"/api/v1/tasks/{demo_biz}/queue",
-        json={"description": "Excess demo judge task exceeding quota", "priority": 1},
-        headers=headers
-    )
-    assert excess_resp.status_code == 429
-    assert "Demo rate limit reached" in excess_resp.json()["detail"]
-
-    # Non-demo business ID should NOT be blocked by demo rate limit
-    non_demo_biz = "99999999-9999-9999-9999-999999999999"
-    non_demo_resp = client.post(
-        f"/api/v1/tasks/{non_demo_biz}/queue",
-        json={"description": "Independent non-demo task", "priority": 1},
-        headers=headers
-    )
-    # Status should be 200 (not 429)
-    assert non_demo_resp.status_code == 200
+        # Non-demo business ID should NOT be blocked by demo rate limit
+        non_demo_biz = "99999999-9999-9999-9999-999999999999"
+        non_demo_resp = client.post(
+            f"/api/v1/tasks/{non_demo_biz}/queue",
+            json={"description": "Independent non-demo task", "priority": 1},
+            headers=headers
+        )
+        # Status should be 200 (not 429)
+        assert non_demo_resp.status_code == 200
 
     # Reset rate limits again
     reset_demo_rate_limits()
