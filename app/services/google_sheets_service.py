@@ -311,9 +311,54 @@ class GoogleSheetsService:
 
         return entry
 
+    def recalculate_account_balances(self) -> List[Dict[str, Any]]:
+        """
+        Recalculates debit/credit balances for all Chart of Accounts from posted General Journal entries.
+        """
+        raw = self.memory.get(self.business_id, "finance_chart_of_accounts")
+        accounts = self._unpack_memory(raw, [])
+        if not accounts or not isinstance(accounts, list) or len(accounts) == 0:
+            accounts = [dict(a) for a in STANDARD_CHART_OF_ACCOUNTS_TEMPLATE]
+
+        # Reset all account balances to 0
+        for acc in accounts:
+            if isinstance(acc, dict):
+                acc["balance"] = 0.0
+
+        journal = self.get_journal_entries()
+        for entry in journal:
+            if not isinstance(entry, dict):
+                continue
+            amt = self._to_float(entry.get("amount", 0))
+            debit_code = str(entry.get("debit_account", "")).split(" ")[0]
+            credit_code = str(entry.get("credit_account", "")).split(" ")[0]
+
+            for acc in accounts:
+                if not isinstance(acc, dict):
+                    continue
+                code = str(acc.get("code", "")).split(" ")[0]
+                if code == debit_code:
+                    if acc.get("normal_balance") == "Debit":
+                        acc["balance"] = round(self._to_float(acc.get("balance", 0)) + amt, 2)
+                    else:
+                        acc["balance"] = round(self._to_float(acc.get("balance", 0)) - amt, 2)
+                elif code == credit_code:
+                    if acc.get("normal_balance") == "Credit":
+                        acc["balance"] = round(self._to_float(acc.get("balance", 0)) + amt, 2)
+                    else:
+                        acc["balance"] = round(self._to_float(acc.get("balance", 0)) - amt, 2)
+
+        self.memory.set(
+            business_id=self.business_id,
+            key="finance_chart_of_accounts",
+            value=accounts,
+            tags=["finance", "google_sheets", "chart_of_accounts"]
+        )
+        return accounts
+
     def get_trial_balance(self) -> Dict[str, Any]:
         """Calculates total debits, credits, and verification integrity."""
-        accounts = self.get_accounts()
+        accounts = self.recalculate_account_balances()
         total_debits = sum(
             self._to_float(a.get("balance", 0))
             for a in accounts
@@ -586,11 +631,11 @@ class GoogleSheetsService:
             journal_entries: List of journal entry dicts
             custom_tabs: Optional dict of {tab_name: [[row_values]]} for any additional custom tabs
         """
-        # Use provided accounts or fall back to standard template
+        # Use provided accounts or calculate from posted journal entries
         if accounts and isinstance(accounts, list) and len(accounts) > 0:
             final_accounts = accounts
         else:
-            final_accounts = list(STANDARD_CHART_OF_ACCOUNTS_TEMPLATE)
+            final_accounts = self.recalculate_account_balances()
 
         # Normalize account fields
         for acc in final_accounts:
