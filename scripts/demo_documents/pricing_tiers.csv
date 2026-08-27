@@ -1,0 +1,5 @@
+Tier,Monthly_USD,Annual_USD,Target_Audience,Features,SLA_Guarantee
+Starter,499,4990,Seed Startups ($500k-$2M ARR),"Up to 3 data sources, Daily ledger sync, Basic variance alerts, 2 Agent seats, Standard email support",99.5% Uptime (48h support SLA)
+Growth,1499,14990,Scaling Series A/B ($2M-$10M ARR),"Up to 10 data sources, Real-time bi-directional Sheets sync, Automated GAAP double-entry journal, 6 Agent seats, Predictive churn alerts",99.9% Uptime (4h support SLA)
+Enterprise,3499,34990,Mid-Market & Pre-IPO ($10M-$50M ARR),"Unlimited data sources, Custom ERP connectors (NetSuite/Workday), Dedicated Autonomous Controller agent, SOC2 compliance reports, SSO/SAML, Custom webhook triggers",99.99% Uptime (1h dedicated support SLA)
+Custom Dedicated,6500,65000,Enterprise Platforms ($50M+ ARR),"Full on-prem or VPC isolation, Custom fine-tuned LLM agents, 24/7 incident response, Bi-weekly strategy consultations with Chief AI Officer",99.999% High Availability (15m P1 SLA)
