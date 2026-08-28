@@ -238,9 +238,6 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* 2. Today's Executive AI Briefing */}
-      <TodaysBriefing />
-
       {/* 3. Top Stats Row (4 Metric Bento Cards) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5">
         
