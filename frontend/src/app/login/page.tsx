@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { ArrowRight, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 
 export default function LoginPage() {
@@ -157,9 +158,9 @@ export default function LoginPage() {
               </div>
             </div>
             {demoLoading ? (
-              <span className="material-symbols-outlined text-sm animate-spin text-white">progress_activity</span>
+              <Loader2 className="w-4 h-4 animate-spin text-white" />
             ) : (
-              <span className="material-symbols-outlined text-base group-hover:translate-x-0.5 transition-transform text-white">arrow_forward</span>
+              <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform text-white" />
             )}
           </button>
         </div>
@@ -200,13 +201,13 @@ export default function LoginPage() {
         {/* Alerts */}
         {errorMsg && (
           <div className="mb-5 p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-start gap-2.5 leading-relaxed">
-            <span className="material-symbols-outlined text-rose-500 text-base mt-0.5 shrink-0">error</span>
+            <AlertCircle className="w-4 h-4 text-rose-500 mt-0.5 shrink-0" />
             <div>{errorMsg}</div>
           </div>
         )}
         {successMsg && (
           <div className="mb-5 p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center gap-2.5">
-            <span className="material-symbols-outlined text-emerald-600 text-base shrink-0">check_circle</span>
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
             <span>{successMsg}</span>
           </div>
         )}
@@ -263,7 +264,7 @@ export default function LoginPage() {
             disabled={loading}
             className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-semibold shadow-md shadow-emerald-600/20 transition-all hover:scale-[1.01] active:scale-95 disabled:opacity-50 mt-2 flex items-center justify-center gap-2 cursor-pointer"
           >
-            {loading && <span className="material-symbols-outlined text-sm animate-spin">progress_activity</span>}
+            {loading && <Loader2 className="w-4 h-4 animate-spin" />}
             <span>{isSignUp ? "Create Founder Account" : "Sign In with Email"}</span>
           </button>
         </form>

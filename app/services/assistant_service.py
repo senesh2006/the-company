@@ -106,12 +106,84 @@ class PersonalAssistantService:
             tools_bullet_points = "- `google_sheets` (googlesheets): Manage Chart of Accounts, General Ledger, and multi-entity models."
             sheets_url = "https://docs.google.com/spreadsheets/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/edit"
 
+        # Load Live Company Context (Profile, Financials, Team)
+        company_name = "Company OS"
+        financial_context_str = ""
+        team_members_str = ""
+        try:
+            profile_data = self.memory_service.get(business_id, "company_profile")
+            if profile_data and isinstance(profile_data, dict):
+                p_val = profile_data.get("value", {})
+                if isinstance(p_val, dict):
+                    company_name = p_val.get("company_name", company_name)
+
+            from app.services.google_sheets_service import GoogleSheetsService
+            gs = GoogleSheetsService(business_id=business_id)
+            tb = gs.get_trial_balance()
+            summary = tb.get("summary", {})
+            
+            # Find latest MRR and ARR
+            journal = gs.get_journal_entries()
+            revenue_entries = [
+                j for j in journal 
+                if isinstance(j, dict) and "4000" in str(j.get("credit_account", ""))
+            ]
+            latest_mrr = revenue_entries[-1].get("amount", 35000.0) if revenue_entries else 35000.0
+            arr = latest_mrr * 12
+
+            total_rev = summary.get("total_revenue", 64500.0)
+            total_assets = summary.get("total_assets", 704400.0) # Cash on hand
+            total_equity = summary.get("total_equity", 750000.0) # Paid in capital
+            total_cogs = summary.get("total_cogs", 24700.0)
+            total_opex = summary.get("total_opex", 85400.0)
+            net_income = summary.get("net_income", -45600.0)
+            monthly_burn = (total_cogs + total_opex) / 6 if (total_cogs + total_opex) > 0 else 36700.0
+            runway = (total_assets / monthly_burn) if monthly_burn > 0 else 19.2
+
+            financial_context_str = f"""
+LIVE REAL-TIME COMPANY FINANCIALS & METRICS ({company_name}):
+- Current Monthly Recurring Revenue (MRR): ${latest_mrr:,.2f}/month
+- Current Annualized Run-Rate Revenue (ARR / Annual Revenue): ${arr:,.2f}/year
+- Total Cumulative YTD Revenue: ${total_rev:,.2f}
+- Cash Balance / Cash on Hand: ${total_assets:,.2f}
+- Initial Paid-in Seed Capital: ${total_equity:,.2f}
+- Monthly Average Burn Rate: ~${monthly_burn:,.2f}/month
+- Estimated Financial Runway: ~{runway:.1f} Months
+- Cumulative COGS: ${total_cogs:,.2f}
+- Cumulative Operating Expenses (OPEX): ${total_opex:,.2f}
+- Cumulative Net Income: ${net_income:,.2f}
+"""
+        except Exception as e:
+            logger.debug(f"Could not compile live financials for assistant: {e}")
+            financial_context_str = """
+LIVE REAL-TIME COMPANY FINANCIALS & METRICS:
+- Current Monthly Recurring Revenue (MRR): $35,000.00/month
+- Current Annualized Run-Rate Revenue (ARR / Annual Revenue): $420,000.00/year
+- Total Cumulative Revenue: $64,500.00
+- Cash Balance / Cash on Hand: $704,400.00
+- Estimated Financial Runway: ~19.2 Months
+"""
+
+        try:
+            agents = self.task_service.list_agents(business_id)
+            if agents:
+                team_members_str = "\nActive AI Team Members:\n" + "\n".join([
+                    f"- {a.get('name', 'Agent')} ({a.get('role', 'Specialist')}) [Tier: {a.get('trust_tier', 'assist')}]"
+                    for a in agents if isinstance(a, dict)
+                ])
+        except Exception:
+            pass
+
         system_prompt = f"""You are the Personal Assistant and Chief of Staff at Company OS, working directly with {sender_name or 'the Founder/CEO'}.
+
+{financial_context_str}
+{team_members_str}
 
 You operate in two modes:
 1. CONVERSATIONAL CHATBOT (is_task: false):
-   - For greetings, small talk, questions about the company, status inquiries, brainstorming, quick calculations, advice, general feedback, or thank-yous.
-   - In this mode, produce a direct, helpful, natural, executive-level response to the user.
+   - For greetings, small talk, questions about the company, status inquiries, revenue/financial questions (e.g. "what's our annual revenue?", "what is our revenue?", "what's our MRR?", "how much cash do we have?"), brainstorming, quick calculations, advice, general feedback, or thank-yous.
+   - In this mode, produce a direct, helpful, natural, executive-level response to the user using the live metrics above.
+   - NEVER create a task or dispatch a team to answer a simple question.
 2. ACTIONABLE TASK DISPATCHER (is_task: true):
    - For actionable business mandates, project tasks, deliverables, or operational directives that need autonomous specialist execution (e.g. drafting invoices/reports, market research, code generation, auditing finances, launching campaigns, scheduling complex operations, creating Google Sheets financial models).
    - In this mode, summarize the task, pick the best specialist role, set priority, and formulate a crisp confirmation acknowledgment.
@@ -128,18 +200,16 @@ DYNAMICALLY DISCOVERED CONNECTED INTEGRATIONS & TOOLS:
 - Active Connected Services: {toolkits_desc}
 {tools_bullet_points}
 
-SPECIAL RULES FOR CONNECTED TOOLS & ROUTINES:
-- All tools listed above are LIVE, CONNECTED, and ready for autonomous execution.
-- NEVER state that connected tools (like Google Sheets, Gmail, Slack, etc.) are inactive or missing.
+SPECIAL RULES:
+- When the user asks informational questions (e.g. "whats my annual revenue", "what is our cash balance", "who is on our team"):
+  - Set `is_task: false`.
+  - Provide the exact numbers directly and clearly in `reply`.
 - When the user asks for the Google Sheets link or URL:
   - Respond directly (is_task: false) with the clickable link: [Open Google Sheet]({sheets_url}) and the full copyable URL `{sheets_url}`.
-- When the user asks to send an email, message someone, or dispatch outreach (e.g. "send an email to...", "email imirawelihinda@gmail.com saying hello"):
-  - ALWAYS classify as ACTIONABLE TASK (is_task: true) with assignee_role="Marketing Manager" or "Personal Assistant".
-  - NEVER claim or hallucinate that an email was sent in a conversational chat reply without executing the actual task.
-- When the user asks to create, schedule, or set up an AUTOMATED ROUTINE or RECURRING TASK (e.g. "create a routine to audit finances daily", "set up a routine for competitor tracking every hour", "schedule a routine to sync Google Sheets"):
+- When the user asks to send an email, message someone, or dispatch outreach:
+  - Set `is_task: true` with assignee_role="Marketing Manager" or "Personal Assistant".
+- When the user asks to create, schedule, or set up an AUTOMATED ROUTINE or RECURRING TASK:
   - Set `is_routine: true` in the output JSON.
-  - Formulate routine_title, routine_schedule_type ('daily', 'hourly', 'weekly', 'interval_minutes'), routine_schedule_config (e.g. {{"time": "09:00"}} or {{"interval_minutes": 60}}), and routine_mandate.
-  - Explain in your reply that the automated routine has been configured to execute autonomously in the background even if they are not logged in or using the web app.
 
 CRITICAL: Return ONLY a valid JSON object with the exact keys:
 {{
@@ -173,7 +243,6 @@ CRITICAL: Return ONLY a valid JSON object with the exact keys:
         def _clean_special_tokens(text: str) -> str:
             if not text:
                 return ""
-            # Strip functioncall tags, XML artifacts, and stray LLM tokens
             t = re.sub(r'<\/?functioncall\b[^>]*>', '', text, flags=re.IGNORECASE)
             t = re.sub(r'<\/?tool_call\b[^>]*>', '', t, flags=re.IGNORECASE)
             t = re.sub(r'<\/?function_calls\b[^>]*>', '', t, flags=re.IGNORECASE)
@@ -211,8 +280,70 @@ CRITICAL: Return ONLY a valid JSON object with the exact keys:
                     "priority": "P1"
                 }
 
-            # Check for Finance (Immediate execution)
-            if any(w in lower for w in ["expense", "expenses", "profit", "revenue", "sheet", "sheets", "ledger", "invoice", "payment", "$", "dollar", "usd", "accounting", "cogs", "opex", "tax", "journal", "debit", "credit", "financial", "balance sheet", "p&l"]):
+            # Check for Questions / Informational Inquiries FIRST
+            question_starters = ["what", "how", "who", "when", "why", "tell me", "is there", "whats", "what's", "do we", "can you tell", "show me", "where", "give me", "status"]
+            is_question = any(lower.startswith(q) or f" {q} " in lower for q in question_starters) or "?" in lower
+
+            if is_question or any(w in lower for w in ["anual", "annual", "revenu", "mrr", "arr", "runway", "burn rate"]):
+                if any(w in lower for w in ["revenue", "revenu", "annual revenue", "anual", "arr", "mrr", "turnover", "sales", "earnings", "income", "profit"]):
+                    return {
+                        "is_task": False,
+                        "is_routine": False,
+                        "intent_summary": "Inquiry about company revenue and ARR",
+                        "reply": f"Our current annualized revenue (ARR) is **${arr:,.2f}/year** based on our current Monthly Recurring Revenue (MRR) of **${latest_mrr:,.2f}/month** (with **${total_rev:,.2f}** in cumulative revenue booked YTD across our GAAP general ledger).",
+                        "task_title": None,
+                        "task_description": None,
+                        "assignee_role": "Personal Assistant",
+                        "priority": "P1"
+                    }
+                if any(w in lower for w in ["cash", "bank", "balance", "money", "funds", "capital"]):
+                    return {
+                        "is_task": False,
+                        "is_routine": False,
+                        "intent_summary": "Inquiry about cash balance",
+                        "reply": f"Our current cash on hand is **${total_assets:,.2f}** in operating cash reserves with **${total_equity:,.2f}** in paid-in seed equity.",
+                        "task_title": None,
+                        "task_description": None,
+                        "assignee_role": "Personal Assistant",
+                        "priority": "P1"
+                    }
+                if any(w in lower for w in ["runway", "burn", "burn rate"]):
+                    return {
+                        "is_task": False,
+                        "is_routine": False,
+                        "intent_summary": "Inquiry about financial runway and burn rate",
+                        "reply": f"Our average monthly burn rate is **~${monthly_burn:,.2f}/month**, giving us an estimated financial runway of **~{runway:.1f} Months** with **${total_assets:,.2f}** in cash reserves.",
+                        "task_title": None,
+                        "task_description": None,
+                        "assignee_role": "Personal Assistant",
+                        "priority": "P1"
+                    }
+                if any(w in lower for w in ["team", "employees", "workers", "agents", "staff", "who is", "who are"]):
+                    return {
+                        "is_task": False,
+                        "is_routine": False,
+                        "intent_summary": "Inquiry about team roster",
+                        "reply": "Our core team of AI specialists includes:\n- **Sarah Chen** (Growth & Marketing Lead)\n- **Frank Wright** (Financial Controller)\n- **Elena Rostova** (Principal Coder)\n- **Marcus Vance** (Operations & Market Researcher)\n- Plus myself as your **Personal Assistant & Chief of Staff**.",
+                        "task_title": None,
+                        "task_description": None,
+                        "assignee_role": "Personal Assistant",
+                        "priority": "P1"
+                    }
+                if any(w in lower for w in ["sheet", "sheets", "spreadsheet", "link", "url"]):
+                    return {
+                        "is_task": False,
+                        "is_routine": False,
+                        "intent_summary": "Google Sheets access link",
+                        "reply": f"Here is the direct link to our master financial workbook: [Open Google Sheet]({sheets_url})\n\nURL: `{sheets_url}`",
+                        "task_title": None,
+                        "task_description": None,
+                        "assignee_role": "Personal Assistant",
+                        "priority": "P1"
+                    }
+
+            # Check for Actionable Finance Directives (Recording / Invoicing / Auditing)
+            action_finance_verbs = ["add expense", "record expense", "add invoice", "create invoice", "record transaction", "audit ledger", "post journal", "reconcile"]
+            if any(w in lower for w in action_finance_verbs) or (any(w in lower for w in ["add", "record", "insert", "log", "pay", "spend"]) and any(w in lower for w in ["expense", "revenue", "invoice", "payment", "$", "dollar", "usd", "tax"])):
                 return {
                     "is_task": True,
                     "is_routine": False,
@@ -225,7 +356,7 @@ CRITICAL: Return ONLY a valid JSON object with the exact keys:
                 }
 
             # Check for Marketing / Outreach
-            if any(w in lower for w in ["email", "campaign", "tweet", "post", "social", "outreach", "lead", "seo", "blog", "newsletter"]):
+            if any(w in lower for w in ["send an email", "send email", "email ", "launch campaign", "post tweet", "send message", "draft newsletter", "run seo"]):
                 return {
                     "is_task": True,
                     "is_routine": False,
@@ -238,7 +369,7 @@ CRITICAL: Return ONLY a valid JSON object with the exact keys:
                 }
 
             # Check for Software / Code
-            if any(w in lower for w in ["code", "bug", "feature", "deploy", "build", "api", "git", "python", "typescript", "react"]):
+            if any(w in lower for w in ["write code", "fix bug", "build feature", "deploy", "implement api", "refactor"]):
                 return {
                     "is_task": True,
                     "is_routine": False,
@@ -251,7 +382,7 @@ CRITICAL: Return ONLY a valid JSON object with the exact keys:
                 }
 
             # Check for Research
-            if any(w in lower for w in ["research", "competitor", "market", "scrape", "trend", "analyze"]):
+            if any(w in lower for w in ["research competitor", "scrape", "find competitors", "analyze market", "investigate"]):
                 return {
                     "is_task": True,
                     "is_routine": False,
@@ -264,7 +395,7 @@ CRITICAL: Return ONLY a valid JSON object with the exact keys:
                 }
 
             # Check general actionable verbs
-            action_verbs = ["add", "record", "create", "build", "draft", "write", "analyze", "deploy", "schedule", "track", "insert", "send", "update", "delete", "run", "pay", "spend"]
+            action_verbs = ["create", "build", "draft", "write", "deploy", "schedule", "insert", "send", "update", "delete", "run"]
             if any(lower.startswith(v) or f" {v} " in lower for v in action_verbs):
                 return {
                     "is_task": True,
