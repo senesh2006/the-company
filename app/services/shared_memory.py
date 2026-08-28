@@ -379,10 +379,55 @@ class SharedMemoryService:
 
     def get_document(self, business_id: str, doc_id: str) -> Optional[Dict[str, Any]]:
         """
-        Retrieves a document by its ID.
+        Retrieves a document by its ID across local document store and shared memory.
         """
+        norm_biz_id = _normalize_business_id(business_id)
         local_doc_key = f"{business_id}:{doc_id}"
-        return self._local_docs.get(local_doc_key)
+        norm_key = f"{norm_biz_id}:{doc_id}"
+        
+        doc = self._local_docs.get(local_doc_key) or self._local_docs.get(norm_key)
+        if doc:
+            return doc
+
+        # Check partial prefix in _local_docs
+        for k, v in self._local_docs.items():
+            if (k.startswith(f"{business_id}:") or k.startswith(f"{norm_biz_id}:")) and (doc_id in k or k.endswith(doc_id[:8])):
+                return v
+
+        # Search shared memory for stored knowledge documents
+        try:
+            all_mem = self.list_all(business_id)
+            for m in all_mem:
+                if not isinstance(m, dict):
+                    continue
+                k = m.get("key", "")
+                val = m.get("value", {})
+                if isinstance(val, dict):
+                    v_doc_id = str(val.get("doc_id", "") or val.get("id", ""))
+                    if v_doc_id == doc_id or (doc_id and v_doc_id and (doc_id.startswith(v_doc_id) or v_doc_id.startswith(doc_id[:8]))):
+                        return {
+                            "id": doc_id,
+                            "title": val.get("title", k),
+                            "category": val.get("category", "Knowledge Base"),
+                            "filename": val.get("filename", f"{k}.txt"),
+                            "file_type": val.get("file_type", "txt"),
+                            "summary": val.get("summary", ""),
+                            "content": val.get("content", val.get("summary", json.dumps(val, indent=2)))
+                        }
+                elif isinstance(val, str) and (doc_id in k or (doc_id[:8] in k)):
+                    return {
+                        "id": doc_id,
+                        "title": k,
+                        "category": "Knowledge Base",
+                        "filename": f"{k}.txt",
+                        "file_type": "txt",
+                        "summary": val[:200],
+                        "content": val
+                    }
+        except Exception as e:
+            logger.debug(f"Knowledge doc lookup fallback note: {e}")
+
+        return None
 
     def list_documents(self, business_id: str, category: Optional[str] = None) -> List[Dict[str, Any]]:
         """

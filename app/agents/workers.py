@@ -182,9 +182,10 @@ def make_specialist_worker_node(agent_data: dict):
         )
     else:
         system_modifier = (
-            f"You are {name}, acting as an in-house {role} at Trust Tier '{trust_tier.upper()}'. "
-            f"After executing tools or analyzing, you MUST output a complete, beautifully formatted final deliverable for the founder. "
-            f"Always think step-by-step and structure your internal reasoning inside <thought>...</thought> "
+            f"You are {name}, acting as an in-house {role} at Trust Tier '{trust_tier.upper()}'.\n"
+            f"- Tool usage strategy: Perform 1-3 targeted tool calls (e.g. `search_knowledge_base` or `search_web`) to gather necessary facts or context.\n"
+            f"- Once you receive the observations, do NOT loop or repeatedly search. Immediately synthesize all findings and write a comprehensive, beautifully structured final deliverable for the founder.\n"
+            f"- Always think step-by-step and structure your internal reasoning inside <thought>...</thought> "
             f"(explain your plan, tool strategy, and policy considerations) before outputting your deliverables."
         )
     import inspect
@@ -279,7 +280,7 @@ def make_specialist_worker_node(agent_data: dict):
                 pruned_input = prune_and_summarize_messages(input_messages, business_id=b_id, task_id=task.id)
                 res = worker_agent.invoke(
                     {"messages": pruned_input},
-                    config={"recursion_limit": 100}
+                    config={"recursion_limit": 50}
                 )
 
                 # Extract text output from AI messages
@@ -349,25 +350,37 @@ def make_specialist_worker_node(agent_data: dict):
                             }
                         )
 
-                # If AI returned empty raw_output, extract from tool observations or run direct fulfillment
-                if not raw_output or not raw_output.strip():
+                # If AI returned empty raw_output or stopped at recursion limit, synthesize full deliverable
+                is_stalled = (
+                    not raw_output or 
+                    not raw_output.strip() or 
+                    "need more steps" in raw_output.lower() or 
+                    "agent stopped" in raw_output.lower() or
+                    "recursion limit" in raw_output.lower()
+                )
+
+                if is_stalled:
                     tool_observations = []
                     for msg in res.get("messages", []):
                         if getattr(msg, "type", None) == "tool":
                             c = str(getattr(msg, "content", "") or "").strip()
                             if c:
                                 tool_observations.append(c)
-                    if tool_observations:
-                        raw_output = "\n\n---\n\n".join(tool_observations)
-                    else:
-                        try:
-                            direct_res = llm.invoke([
-                                HumanMessage(content=f"Provide a complete, detailed final deliverable for the founder for this mandate: {task.description}")
-                            ])
-                            raw_output = direct_res.content if direct_res and getattr(direct_res, "content", None) else f"Mandate execution deliverable for {task.description}"
-                        except Exception as e:
-                            logger.error(f"Direct worker completion note: {e}")
-                            raw_output = f"Execution deliverable for: {task.description}"
+                    
+                    obs_context = "\n\n".join(tool_observations[-5:]) if tool_observations else "No additional tool context available."
+                    try:
+                        synthesis_res = llm.invoke([
+                            HumanMessage(content=(
+                                f"You are an expert {role}. Based on the following research observations and the mandate, formulate a complete, highly thorough, polished executive deliverable for the founder.\n\n"
+                                f"Mandate: {task.description}\n\n"
+                                f"Context / Observations:\n{obs_context}\n\n"
+                                f"Deliverable:"
+                            ))
+                        ])
+                        raw_output = synthesis_res.content if synthesis_res and getattr(synthesis_res, "content", None) else f"Mandate execution deliverable for {task.description}"
+                    except Exception as e:
+                        logger.error(f"Synthesis fallback note: {e}")
+                        raw_output = f"Execution deliverable for: {task.description}\n\n{obs_context}"
 
                 # Process and enrich financial deliverables (intercept raw tool calls, create sheets if needed)
                 raw_output = process_and_enrich_financial_deliverable(
